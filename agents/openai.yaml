@@ -1,0 +1,4 @@
+interface:
+  display_name: "originplot"
+  short_description: "Build and verify editable Origin/OriginPro OPJU figures."
+  default_prompt: "Reproduce this figure as an editable Origin OPJU: select official Origin references, build a FigureSpec and operation plan, execute through verified Origin capabilities, reopen the OPJU, inspect structure, export from Origin, and report QA."

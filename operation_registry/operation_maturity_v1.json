@@ -1,0 +1,29 @@
+{
+  "schema": "originplot.operation_maturity.v1",
+  "operations": [
+    {
+      "operation_id": "object.text.create",
+      "registry": true,
+      "adapter_implemented": false,
+      "doctor_verified": false,
+      "inspector_readback": false,
+      "integration_test": false
+    },
+    {
+      "operation_id": "plot.add.grouped_stacked_column",
+      "registry": true,
+      "adapter_implemented": false,
+      "doctor_verified": false,
+      "inspector_readback": false,
+      "integration_test": false
+    },
+    {
+      "operation_id": "plot.add.contour",
+      "registry": true,
+      "adapter_implemented": false,
+      "doctor_verified": false,
+      "inspector_readback": false,
+      "integration_test": false
+    }
+  ]
+}

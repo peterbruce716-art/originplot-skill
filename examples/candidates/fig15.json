@@ -1,0 +1,13 @@
+{
+  "candidate_id": "portable_fig15_native_worksheet",
+  "figure": "fig15",
+  "route": "worksheet_backed_two_layer_arrowhead_paths_scale_text",
+  "coordinate_mode": "normalized_source_calibrated_layer_coordinates",
+  "reproduction_mode": "reconstructed_approximate",
+  "curve_method": "digitized_source_centerline_control_points",
+  "axis_route": "worksheet_arrowhead_paths_default_axes_hidden",
+  "text_route": "named_scale_attached_origin_escape_labels_role_anchor_offsets",
+  "caption_route": "named_scale_attached_spanning_caption",
+  "page_size_inches": [8.5, 3.35],
+  "source_crop": "source/fig15_source.png"
+}

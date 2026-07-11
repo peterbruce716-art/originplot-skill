@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.artifacts.v1",
+  "type": "object",
+  "required": ["schema", "run_id", "project", "pre_save_export", "inspection", "post_reopen_export", "worker_pids", "operations", "warnings", "errors"],
+  "properties": {
+    "schema": {"const": "originplot.artifacts.v1"},
+    "run_id": {"type": "string"},
+    "project": {"type": "object"},
+    "pre_save_export": {"type": "object"},
+    "inspection": {"type": "object"},
+    "post_reopen_export": {"type": "object"},
+    "qa_report": {"type": "object"},
+    "worker_pids": {"type": "object"},
+    "operations": {"type": "array"},
+    "warnings": {"type": "array"},
+    "errors": {"type": "array"}
+  }
+}

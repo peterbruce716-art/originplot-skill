@@ -1,0 +1,76 @@
+{
+    "schema":  "originplot.semantic_figure_benchmark.v1",
+    "figure_id":  "fig16",
+    "recipe":  "recipe.bar.grouped_stacked_three_panel.v1",
+    "source_image":  "source_crop.png",
+    "exports":  [
+                    {
+                        "id":  "post_reopen",
+                        "path":  "post_reopen.png",
+                        "panel":  "page"
+                    }
+                ],
+    "expected":  {
+                     "structure":  {
+                                       "graph_pages":  1,
+                                       "panel_count":  3,
+                                       "stage_groups":  7,
+                                       "grouped_stacked_column_implemented":  true
+                                   },
+                     "data":  {
+                                  "stack_components":  3,
+                                  "panel_series":  3
+                              },
+                     "geometry":  {
+                                      "panel_count":  3
+                                  },
+                     "style":  {
+                                   "legend_entries":  3,
+                                   "group_boxes":  3
+                               },
+                     "required_objects":  [
+                                              {
+                                                  "role":  "panel_title",
+                                                  "expected_count":  3,
+                                                  "critical":  true
+                                              },
+                                              {
+                                                  "role":  "legend_entry",
+                                                  "expected_count":  3,
+                                                  "critical":  true
+                                              },
+                                              {
+                                                  "role":  "stage_marker",
+                                                  "expected_count":  7,
+                                                  "critical":  true
+                                              },
+                                              {
+                                                  "role":  "relation_label",
+                                                  "expected_count":  7,
+                                                  "critical":  true
+                                              },
+                                              {
+                                                  "role":  "group_box",
+                                                  "expected_count":  3,
+                                                  "critical":  true
+                                              }
+                                          ],
+                     "visual_thresholds":  {
+                                               "visual_score":  0.9,
+                                               "semantic_coverage":  1.0
+                                           },
+                     "critical_style":  [
+                                            "colormap_levels",
+                                            "bar_stack_colors",
+                                            "curve_line_style",
+                                            "font_family",
+                                            "axis_scale"
+                                        ]
+                 },
+    "actual_source":  {
+                          "inspection":  "inspection.json",
+                          "qa_report":  "qa_report.json",
+                          "run_artifacts":  "run_artifacts.json",
+                          "figurespec":  "figurespec.json"
+                      }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "originplot.capability_profile.v1",
+  "origin_version": "2026",
+  "policy": "prefer_mcp_when_operation_verified",
+  "status_values": ["documented", "available", "verified", "unsupported"],
+  "operations": [
+    {
+      "operation": "origin_doctor",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "Ge-Shun/origin-mcp",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "origin_plan_figure_spec",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "Ge-Shun/origin-mcp FigureSpec planning",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "origin_execute_figure_spec",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "Ge-Shun/origin-mcp FigureSpec execution",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "origin_view_graph",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "Ge-Shun/origin-mcp graph preview",
+      "must_verify_locally": true
+    }
+  ]
+}

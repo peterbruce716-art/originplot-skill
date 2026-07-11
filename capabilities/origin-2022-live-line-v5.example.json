@@ -1,0 +1,47 @@
+{
+  "schema": "originplot.capabilities.v5",
+  "environment": {
+    "origin_version": "2022",
+    "fingerprint": "example-generated-by-origin-doctor-live-originpro",
+    "policy": "example_only_run_origin_doctor_live_originpro_to_generate_real_fingerprint"
+  },
+  "adapters": {
+    "originpro": {
+      "origin_version": "2022",
+      "module": "adapters/originpro/adapter.py",
+      "operations": {
+        "session.start_clean": {"verified": true, "source": "example live line vertical slice"},
+        "session.assert_capabilities": {"verified": true, "source": "example live line vertical slice"},
+        "workbook.create": {"verified": true, "source": "example live line vertical slice"},
+        "worksheet.import": {"verified": true, "source": "example live line vertical slice"},
+        "graph.create": {"verified": true, "source": "example live line vertical slice"},
+        "layer.configure": {"verified": true, "source": "example live line vertical slice"},
+        "plot.add.line": {"verified": true, "source": "example live line vertical slice"},
+        "plot.style.apply": {"verified": true, "source": "example live line vertical slice"},
+        "axis.configure": {"verified": true, "source": "example live line vertical slice"},
+        "axis.verify_final": {"verified": true, "source": "example live line vertical slice"},
+        "graph.export.presave": {"verified": true, "source": "example live line vertical slice"},
+        "project.save": {"verified": true, "source": "example live line vertical slice"},
+        "session.release": {"verified": true, "source": "example live line vertical slice"}
+      }
+    },
+    "inspection": {
+      "origin_version": "2022",
+      "module": "adapters/inspection/adapter.py",
+      "operations": {
+        "project.reopen.clean": {"verified": true, "source": "example live line vertical slice"},
+        "project.inspect": {"verified": true, "source": "example live line vertical slice"},
+        "graph.export.postreopen": {"verified": true, "source": "example live line vertical slice"}
+      }
+    },
+    "evidence_qa": {
+      "module": "adapters/evidence_qa/adapter.py",
+      "operations": {
+        "qa.structure.compare": {"verified": true, "source": "local deterministic QA"},
+        "qa.serialization.compare": {"verified": true, "source": "local deterministic QA"},
+        "qa.image.compare": {"verified": true, "source": "local deterministic QA"},
+        "manifest.finalize": {"verified": true, "source": "local deterministic QA"}
+      }
+    }
+  }
+}

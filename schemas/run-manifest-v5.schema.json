@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.run_manifest.v5",
+  "type": "object",
+  "required": ["schema", "preflight_status", "build_status", "round_trip_status", "structure_status", "serialization_status", "visual_status", "overall_status"],
+  "properties": {
+    "schema": {"const": "originplot.run_manifest.v5"},
+    "preflight_status": {"type": "string"},
+    "build_status": {"type": "string"},
+    "round_trip_status": {"type": "string"},
+    "structure_status": {"type": "string"},
+    "serialization_status": {"type": "string"},
+    "visual_status": {"type": "string"},
+    "overall_status": {"type": "string"}
+  }
+}

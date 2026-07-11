@@ -1,0 +1,29 @@
+{
+  "schema": "originplot.capability_profile.v1",
+  "origin_version": "2024",
+  "policy": "fail_closed_until_verified_on_receiving_machine",
+  "status_values": ["documented", "available", "verified", "unsupported"],
+  "operations": [
+    {
+      "operation": "mcp_doctor",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "Ge-Shun/origin-mcp tool profile",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "view_graph_preview",
+      "adapter": "origin-mcp",
+      "status": "documented",
+      "source": "origin_view_graph style workflow",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "create_workbook_graph_export",
+      "adapter": "originpro",
+      "status": "documented",
+      "source": "originlab/Python-Samples",
+      "must_verify_locally": true
+    }
+  ]
+}

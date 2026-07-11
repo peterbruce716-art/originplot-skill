@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.figurespec.v5",
+  "type": "object",
+  "required": ["schema", "figure", "runtime", "origin", "data", "page", "layers", "plots", "contracts"],
+  "properties": {
+    "schema": {"const": "originplot.figurespec.v5"},
+    "figure": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "family": {
+          "type": "string",
+          "enum": [
+            "line",
+            "multi_panel_contour",
+            "dual_panel_curve_schematic",
+            "grouped_stacked_column_schematic"
+          ]
+        },
+        "recipe": {
+          "type": "string",
+          "enum": [
+            "recipe.schematic.dual_panel_curve.v1",
+            "recipe.bar.grouped_stacked_three_panel.v1",
+            "recipe.contour.discrete_three_panel.v1"
+          ]
+        }
+      }
+    },
+    "runtime": {"type": "object", "required": ["project_path"]},
+    "origin": {"type": "object", "required": ["target_version", "adapter_policy", "primary_graph", "capability_profile"]},
+    "data": {"type": "array"},
+    "page": {
+      "type": "object",
+      "required": ["size_mm"],
+      "properties": {
+        "size_mm": {"type": "array", "minItems": 2, "maxItems": 2},
+        "panel_layout": {"type": "object"},
+        "expected_graph_pages": {"type": "integer", "minimum": 1}
+      }
+    },
+    "layers": {"type": "array"},
+    "plots": {"type": "array"},
+    "annotations": {"type": "array"},
+    "required_objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "expected_count"],
+        "properties": {
+          "role": {"type": "string"},
+          "expected_count": {"type": "integer", "minimum": 0},
+          "critical": {"type": "boolean"}
+        }
+      }
+    },
+    "rois": {"type": "array"},
+    "benchmark": {"type": "object"},
+    "contracts": {"type": "object", "required": ["primary_graph", "expected"]}
+  }
+}

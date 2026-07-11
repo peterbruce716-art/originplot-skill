@@ -1,0 +1,43 @@
+{
+  "open_status": "ok",
+  "second_export_status": "ok",
+  "rescale_after_annotations": false,
+  "workbooks": [
+    {
+      "name": "Fig01_Data",
+      "sheets": [
+        {
+          "name": "Data"
+        }
+      ]
+    }
+  ],
+  "graph_pages": [
+    {
+      "name": "Fig01_Main",
+      "raster_source_image_count": 0,
+      "unnamed_object_count": 0,
+      "placeholder_plot_count": 0,
+      "layers": [
+        {
+          "id": "panel_a",
+          "name": "Layer1",
+          "plots": [
+            {
+              "name": "curve_1",
+              "type": "line",
+              "data_ref": "ds_main"
+            }
+          ],
+          "objects": [
+            {
+              "name": "ann_threshold_arrow",
+              "type": "line_arrow",
+              "attach_to": "layer_scales"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "originpro": {
+    "execution_mode": "live",
+    "attach_existing": false,
+    "export_width_px": 1600
+  },
+  "inspection": {
+    "execution_mode": "live",
+    "export_width_px": 1600
+  },
+  "evidence_qa": {
+    "execution_mode": "live"
+  }
+}

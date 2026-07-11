@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.capabilities.v5",
+  "type": "object",
+  "required": ["schema", "environment", "adapters"],
+  "properties": {
+    "schema": {"const": "originplot.capabilities.v5"},
+    "environment": {"type": "object"},
+    "adapters": {"type": "object"}
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.qa_report.v1",
+  "type": "object",
+  "required": ["schema", "checks", "status"],
+  "properties": {
+    "schema": {"const": "originplot.qa_report.v1"},
+    "status": {"type": "string", "enum": ["pass", "failed", "incomplete"]},
+    "checks": {"type": "array"}
+  }
+}

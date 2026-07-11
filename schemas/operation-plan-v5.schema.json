@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.operation_plan.v5",
+  "type": "object",
+  "required": ["schema", "environment_contract", "operations"],
+  "properties": {
+    "schema": {"const": "originplot.operation_plan.v5"},
+    "status": {"type": "string"},
+    "compiled_ir_schema": {"type": "string"},
+    "environment_contract": {"type": "object"},
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["seq", "operation_id", "adapter_route", "worker"],
+        "properties": {
+          "seq": {"type": "integer"},
+          "operation_id": {"type": "string"},
+          "adapter_route": {"type": "string"},
+          "worker": {"enum": ["build", "inspect", "qa"]}
+        }
+      }
+    }
+  }
+}

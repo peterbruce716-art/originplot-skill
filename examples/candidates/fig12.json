@@ -1,0 +1,20 @@
+{
+  "candidate_id": "portable_fig12_native_xyz",
+  "figure": "fig12",
+  "route": "worksheet_xyz_source_calibrated_three_panel_contour",
+  "reproduction_mode": "reconstructed_approximate",
+  "strict_parameter_validation": true,
+  "source_crop": "source/fig12_source_canonical.png",
+  "fig12_matrix_resolution_scale": 0.5,
+  "fig12_matrix_smoothing_sigma": 0.3,
+  "fig12_y_minor_ticks": 0,
+  "fig12_matrix_biases": {"PSC": -1.5, "UC": 0.0, "TR": 0.0},
+  "fig12_matrix_contrasts": {"PSC": 1.0, "UC": 1.0, "TR": 1.0},
+  "fig12_label_sizes": {
+    "panel": 14.0,
+    "contour": 9.2,
+    "mechanism": 13.0,
+    "colorbar_title": 10.0,
+    "colorbar_tick": 8.0
+  }
+}

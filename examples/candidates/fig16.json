@@ -1,0 +1,9 @@
+{
+  "candidate_id": "portable_fig16_gid399",
+  "figure": "fig16",
+  "route": "gid399_stackcolumn_213_with_gid1652_layout",
+  "reproduction_mode": "reconstructed_approximate",
+  "source_crop": "source/fig16_source.png",
+  "fig16_column_gap_percent": 15.0,
+  "fig16_group_frame_width": 0.5
+}
