@@ -1,0 +1,126 @@
+{
+  "schema": "originplot.template_search_record.v1",
+  "status": "ok",
+  "audit_date": "2026-07-12",
+  "scope": "Sanitized metadata from an administrator Origin 2022 SR1 inspection; no OriginLab project assets are redistributed.",
+  "official_sources": [
+    {
+      "url": "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
+      "status_code": 200,
+      "reachable": true
+    },
+    {
+      "url": "https://docs.originlab.com/zh/",
+      "status_code": 200,
+      "reachable": true
+    },
+    {
+      "url": "https://www.originlab.com/videos/index.aspx?CID=11",
+      "status_code": 200,
+      "reachable": true
+    },
+    {
+      "url": "https://docs.originlab.com/quick-help/graphing/zh/",
+      "status_code": 200,
+      "reachable": true
+    }
+  ],
+  "local_search": {
+    "workspace_catalog_checked": true,
+    "installed_templates_checked": true,
+    "catalog_policy": "Search the workspace official-template catalog and installed Origin templates before builder selection."
+  },
+  "inspection": {
+    "origin_version": "Origin 2022 SR1",
+    "administrator_python": true,
+    "visible_origin": true,
+    "editable_open_verified": true,
+    "release": "op.detach()",
+    "source_report_schema": "originplot.official_template_inspection.v1"
+  },
+  "figures": {
+    "fig12": ["GID499", "GID459", "GID27"],
+    "fig15": ["GID1609", "GID27"],
+    "fig16": ["GID399", "GID1652"]
+  },
+  "templates": {
+    "GID499": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=499",
+      "project_sha256": "04c94dc7840f4960f9d7d3421d53b7754a85b82cbb670e8c8d1f72854cc823b1",
+      "archive_sha256": "0b90f4b42b645d5f1a50a8bbdba413e90a127c035041fa514289af80c115bf2d",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 307,
+      "plot_types": [243],
+      "direct_bindings_count": 1,
+      "figures": ["fig12"],
+      "decision": "selected_reference",
+      "selection_reason": "Primary XYZ contour data, level, fill, and color-scale reference; reconstruction remains native rather than donor transplantation."
+    },
+    "GID459": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=459",
+      "project_sha256": "1580877334630241a7ca1f268278a720ea42d7a349d21fd88b8459a627a9d888",
+      "archive_sha256": "bd21b969e39b19a021492151d547eea7f314686b4c487b890c9262c5bf910cc4",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 203,
+      "plot_types": [201, 243],
+      "direct_bindings_count": 2,
+      "figures": ["fig12"],
+      "decision": "selected_reference",
+      "selection_reason": "Supplementary categorical contour and discrete-region reference."
+    },
+    "GID1609": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=1609",
+      "project_sha256": "af07ffbf31f086120648b452db49766a303b12c92407f1b5f2a202e00f86882a",
+      "archive_sha256": "7088fbdf4460927baa034af75cf0403cd45a900129648193cb3c752fff98b1a5",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 32,
+      "plot_types": [200],
+      "direct_bindings_count": 1,
+      "figures": ["fig15"],
+      "decision": "selected_reference",
+      "selection_reason": "Primary editable curve-annotation and label-semantics reference."
+    },
+    "GID27": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=27",
+      "project_sha256": "d774493f064c5ade9cd0d0859ea5c4ed6a6786230d0bab909d97acd69d4b4800",
+      "archive_sha256": "314be5f7582097a0dffb1622012a1890b6b3492f4b88f953d462a2915373e626",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 4050,
+      "plot_types": [200, 201],
+      "direct_bindings_count": 24,
+      "figures": ["fig12", "fig15"],
+      "decision": "selected_reference",
+      "selection_reason": "Multi-panel layer and spacing reference for Fig12 and Fig15."
+    },
+    "GID399": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=399",
+      "project_sha256": "a4b3ba55ebe2d195e6ca4b15afb1745619ea23469bedbb60490b976aa9f097b6",
+      "archive_sha256": "02b962e8d00a818b9d69731aa29315e28ba8e83788d13c206d8b04faf75ab5cd",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 32,
+      "plot_types": [213],
+      "direct_bindings_count": 6,
+      "figures": ["fig16"],
+      "decision": "selected_reference",
+      "selection_reason": "Primary grouped stacked-column semantics and native Plot type reference."
+    },
+    "GID1652": {
+      "gallery_url": "https://www.originlab.com/www/products/GraphGallery.aspx?GID=1652",
+      "project_sha256": "6ca5fd0602eaa6dd8a50731a2c8e40408cc62c54737b89583b5c114c80d5f1c9",
+      "archive_sha256": "862ad31ee9d42c3e561c3467ab07abf688aa47ca1e25e73e20e59729ad488dee",
+      "compatible_open": true,
+      "opened_editable": true,
+      "worksheet_rows_total": 110,
+      "plot_types": [203],
+      "direct_bindings_count": 2,
+      "figures": ["fig16"],
+      "decision": "selected_reference",
+      "selection_reason": "Supplementary facet and grouped-panel layout reference."
+    }
+  }
+}

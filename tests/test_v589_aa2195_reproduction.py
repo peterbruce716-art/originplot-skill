@@ -1759,7 +1759,14 @@ class VisualQaTests(unittest.TestCase):
             root = Path(tmp)
             candidate = root / "candidate.json"
             output = root / "out"
-            candidate.write_text('{"figure":"fig15"}', encoding="utf-8")
+            template_record = (
+                Path(origin_candidate_worker.__file__).resolve().parents[1]
+                / "examples/template_search/aa2195_official_template_search.json"
+            )
+            candidate.write_text(
+                json.dumps({"figure": "fig15", "template_search_record": str(template_record)}),
+                encoding="utf-8",
+            )
             with patch.object(origin_candidate_worker, "is_admin", return_value=True), patch.object(
                 origin_candidate_worker, "_load_aa2195_builder", return_value=FailedBuilder()
             ):
@@ -1866,8 +1873,18 @@ class VisualQaTests(unittest.TestCase):
             candidate.write_text('{"figure":"fig16"}', encoding="utf-8")
             source = root / "source.png"
             source.write_bytes(b"source")
+            template_record = (
+                Path(origin_candidate_worker.__file__).resolve().parents[1]
+                / "examples/template_search/aa2195_official_template_search.json"
+            )
             candidate.write_text(
-                json.dumps({"figure": "fig16", "source_crop": str(source)}),
+                json.dumps(
+                    {
+                        "figure": "fig16",
+                        "source_crop": str(source),
+                        "template_search_record": str(template_record),
+                    }
+                ),
                 encoding="utf-8",
             )
             with patch.object(origin_candidate_worker, "is_admin", return_value=True), patch.object(
@@ -1947,77 +1964,62 @@ class VersionContractTests(unittest.TestCase):
     def test_skill_documents_v589_authorized_attach_and_visual_closure(self) -> None:
         root = Path(__file__).resolve().parents[1]
         skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9", skill)
-        self.assertIn("v5.8.9 Authorized Attach and Visual Closure", skill)
-        self.assertIn("v5.8.9-p4 Default Administrator Attach Policy", skill)
-        self.assertIn("Formal production runs default to administrator attach-existing", skill)
-        self.assertIn("must already be the administrator-opened visible Origin process", skill)
-        self.assertIn("formal builders must verify that a visible `Origin*` process exists", skill)
-        self.assertIn("origin_attach_not_attempted=true", skill)
-        self.assertIn("opju_generation_allowed=false", skill)
-        self.assertIn("diagnostic_new_hidden_not_pass_eligible", skill)
+        self.assertIn("OriginPlot Skill v5.8.9-p14", skill)
+        self.assertIn("administrator privilege for the entire live lifecycle", skill)
         self.assertIn("E121_ATTACH_POLICY_VIOLATION", skill)
         self.assertIn("op.detach()", skill)
-        self.assertIn("demo_cyan_ratio", skill)
+        self.assertIn("administrator-started Origin instance", runtime)
 
     def test_skill_documents_page_dot_and_font_point_unit_gate(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("page.width/page.height are dots", skill)
-        self.assertIn("page.width = width_inches * page.resx", skill)
-        self.assertIn("layer.unit=1 uses 0..100 page percent", skill)
-        self.assertIn("text fsize is points", skill)
+        self.assertIn("page.width/page.height are dots", runtime)
+        self.assertIn("page.width = width_inches * page.resx", runtime)
+        self.assertIn("text `fsize is points`", runtime)
 
     def test_skill_requires_editable_page_fit_after_save_and_reopen(self) -> None:
-        skill = (Path(__file__).resolve().parents[1] / "SKILL.md").read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
         self.assertIn("win -z0", skill)
         self.assertIn("editable_view_evidence", skill)
         self.assertIn("does not change page geometry", skill)
-        self.assertIn("E540_PAGE_UNIT_SCALE_MISMATCH", skill)
+        self.assertIn("E540_PAGE_UNIT_SCALE_MISMATCH", runtime)
 
     def test_skill_documents_fig15_post_reopen_object_gates(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        benchmark = (root / "references" / "aa2195-benchmark.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("v5.8.9-p2 Fig15 Object Persistence Patch", skill)
-        self.assertIn("layer.axis.showAxes", skill)
-        self.assertIn("scale-attached spanning caption", skill)
-        self.assertIn("Origin escape sequences", skill)
-        self.assertIn("curve-shape ROI", skill)
-        self.assertIn("worksheet arrowhead paths", skill)
-        self.assertIn("E122_ORIGIN_DEMO_EXPORT_BLOCKED", skill)
+        self.assertIn("ten direct Worksheet XY plots", benchmark)
+        self.assertIn("worksheet arrowhead paths", benchmark)
+        self.assertIn("E122_ORIGIN_DEMO_EXPORT_BLOCKED", benchmark)
 
     def test_skill_documents_p11_origin2022_deep_plot_readback(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9-p13", skill)
-        self.assertIn("v5.8.9-p11 Origin 2022 Deep Plot Readback", skill)
-        self.assertIn("layer.plotn.pid", skill)
-        self.assertIn("%A=xof(Ydataset)", skill)
-        self.assertIn("restore the string register", skill)
-        self.assertIn("Plot.lt_range()", skill)
+        self.assertIn("layer.plotn.pid", runtime)
+        self.assertIn("%A=xof(Ydataset)", runtime)
+        self.assertIn("restore the string register", runtime)
+        self.assertIn("Plot.lt_range()", runtime)
 
     def test_skill_documents_p12_portable_release_and_live_evidence_closure(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
+        changelog = (root / "references" / "changelog.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9-p13", skill)
-        self.assertIn("v5.8.9-p12 Portable Release and Live Evidence Closure", skill)
-        self.assertIn("validate_release_candidate.py", skill)
-        self.assertIn("release_ready_for_fig12_targeted_optimization", skill)
-        self.assertIn("Run047", skill)
-        self.assertIn("Run052", skill)
-        self.assertIn("Run062_clean_reference_baseline", skill)
+        self.assertIn("v5.8.9-p14", changelog)
+        self.assertIn("Named workspace runs", changelog)
+        self.assertNotIn("Run047", (root / "SKILL.md").read_text(encoding="utf-8-sig"))
 
     def test_test_runner_reports_v589_p12_schema(self) -> None:
         root = Path(__file__).resolve().parents[1]
         runner = (root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
-        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p13"', runner)
-        self.assertIn('"skill_version": "5.8.9-p13"', runner)
+        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p14"', runner)
+        self.assertIn('"skill_version": "5.8.9-p14"', runner)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
   "route": "worksheet_backed_two_layer_arrowhead_paths_scale_text",
   "coordinate_mode": "normalized_source_calibrated_layer_coordinates",
   "reproduction_mode": "reconstructed_approximate",
+  "template_search_record": "../template_search/aa2195_official_template_search.json",
   "curve_method": "digitized_source_centerline_control_points",
   "axis_route": "worksheet_arrowhead_paths_default_axes_hidden",
   "text_route": "named_scale_attached_origin_escape_labels_role_anchor_offsets",

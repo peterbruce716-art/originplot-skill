@@ -3,6 +3,7 @@
   "figure": "fig16",
   "route": "gid399_stackcolumn_213_with_gid1652_layout",
   "reproduction_mode": "reconstructed_approximate",
+  "template_search_record": "../template_search/aa2195_official_template_search.json",
   "source_crop": "source/fig16_source.png",
   "fig16_column_gap_percent": 15.0,
   "fig16_group_frame_width": 0.5

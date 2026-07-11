@@ -6,12 +6,12 @@ import zipfile
 from pathlib import Path
 
 
-SKIP_PARTS = {"__pycache__", ".pytest_cache", "tmp_v5_validation", "local_python", "runs", "comparison_boards", "outputs"}
+SKIP_PARTS = {"__pycache__", ".pytest_cache", ".git", "tmp_v5_validation", "local_python", "runs", "comparison_boards", "outputs", "data", "raw_data", "private"}
 SKIP_NAMES = {"FIGURESPEC_PROTOCOL.md", "FIGURESPEC_V4_PROTOCOL.md", "originplot_runtime_v4.py", "image_qa.py", "image_qa_v2.py", "image_qa_v3.py", "validate_shareable_package_v4.py", "validate_figurespec_v2.py", "origin_only_minimal_figurespec_v2.json", "compiled_ir_v4_example.json", "editable_reproduction_v4.json", "operation_plan_v4_example.json", "origin-2022-capabilities-v4.example.json", "adapter_modules_v5_1.example.json", "adapter_configs_v5_1.example.json"}
 
 
 def should_include(path: Path) -> bool:
-    forbidden_suffixes = {".pyc", ".pyo", ".opju", ".opj", ".ogwu", ".oggu", ".xlsx", ".xls", ".pdf", ".png", ".jpg", ".jpeg", ".lck", ".log"}
+    forbidden_suffixes = {".pyc", ".pyo", ".opju", ".opj", ".ogwu", ".oggu", ".xlsx", ".xls", ".csv", ".pdf", ".png", ".jpg", ".jpeg", ".zip", ".rar", ".lck", ".log", ".env"}
     return path.name not in SKIP_NAMES and not any(part in SKIP_PARTS for part in path.parts) and path.suffix.lower() not in forbidden_suffixes
 
 
@@ -21,9 +21,10 @@ def build_zip(skill_dir: Path, zip_out: Path) -> dict[str, object]:
     entries = []
     with zipfile.ZipFile(zip_out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(skill_dir.rglob("*")):
-            if not file.is_file() or not should_include(file):
+            relative = file.relative_to(skill_dir)
+            if not file.is_file() or not should_include(relative):
                 continue
-            arcname = f"originplot-skill/{file.relative_to(skill_dir).as_posix()}"
+            arcname = f"originplot-skill/{relative.as_posix()}"
             archive.write(file, arcname=arcname)
             entries.append(arcname)
     return {"schema": "originplot.package_build.v5.5", "zip": str(zip_out), "entry_count": len(entries), "entries": entries}

@@ -3,6 +3,7 @@
   "figure": "fig12",
   "route": "worksheet_xyz_source_calibrated_three_panel_contour",
   "reproduction_mode": "reconstructed_approximate",
+  "template_search_record": "../template_search/aa2195_official_template_search.json",
   "strict_parameter_validation": true,
   "source_crop": "source/fig12_source_canonical.png",
   "fig12_matrix_resolution_scale": 0.5,

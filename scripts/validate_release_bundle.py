@@ -86,7 +86,7 @@ def validate_release_bundle(path: Path) -> dict[str, Any]:
     path = Path(path)
     if path.is_dir():
         return _validate_directory(path)
-    with tempfile.TemporaryDirectory(prefix="originplot_p13_bundle_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="originplot_p14_bundle_") as tmp:
         with zipfile.ZipFile(path) as archive:
             unsafe = [name for name in archive.namelist() if Path(name).is_absolute() or ".." in Path(name).parts]
             if unsafe:

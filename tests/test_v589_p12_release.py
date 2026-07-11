@@ -45,12 +45,12 @@ class PortableRootRegressionTests(unittest.TestCase):
             if original is not None:
                 os.environ["ORIGINPLOT_SKILL_ROOT"] = original
 
-    def test_run_all_tests_defaults_to_p13_minimum_of_117(self) -> None:
+    def test_run_all_tests_preserves_p13_baseline_count(self) -> None:
         runner = load_module(
             "originplot_run_all_tests_p12_minimum_test",
             ROOT / "scripts" / "run_all_tests.py",
         )
-        self.assertEqual(117, runner.EXPECTED_MIN_TESTS)
+        self.assertEqual(165, runner.EXPECTED_MIN_TESTS)
 
 
 class CanonicalSourceCropTests(unittest.TestCase):
@@ -135,12 +135,12 @@ class ReleaseValidatorContractTests(unittest.TestCase):
             "inspection.json": {
                 "run_id": "run-p12-canary",
                 "figure_id": "fig15",
-                "skill_version": "5.8.9-p13",
+                "skill_version": "5.8.9-p14",
             },
             "qa_report.json": {
                 "run_id": "run-p12-canary",
                 "figure_id": "fig15",
-                "skill_version": "5.8.9-p13",
+                "skill_version": "5.8.9-p14",
             },
         }
         self.assertEqual([], self.evidence.identity_consistency_failures(payloads))
@@ -261,7 +261,7 @@ class EvidenceDirectoryContractTests(unittest.TestCase):
                 output_dir=output,
                 run_id="run-p12-test",
                 figure_id="fig15",
-                skill_version="5.8.9-p13",
+                skill_version="5.8.9-p14",
                 source_crop=source,
                 opju=opju,
                 pre_save=pre,
@@ -299,7 +299,7 @@ class EvidenceDirectoryContractTests(unittest.TestCase):
                 payload = json.loads(path.read_text(encoding="utf-8-sig"))
                 self.assertEqual("run-p12-test", payload["run_id"])
                 self.assertEqual("fig15", payload["figure_id"])
-                self.assertEqual("5.8.9-p13", payload["skill_version"])
+                self.assertEqual("5.8.9-p14", payload["skill_version"])
                 self.assertNotIn(str(root), json.dumps(payload))
             validation = validator.validate(output)
             self.assertEqual("ok", validation["status"], validation["failures"])
