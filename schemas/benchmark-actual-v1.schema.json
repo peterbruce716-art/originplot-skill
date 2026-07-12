@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.benchmark-actual-v1.schema.json",
+  "title": "OriginPlot materialized benchmark actual",
+  "type": "object",
+  "required": ["schema", "run_id", "structure", "actual_source", "field_sources"],
+  "properties": {
+    "schema": {"const": "originplot.benchmark_actual.v1"},
+    "figure_id": {"type": ["string", "null"]},
+    "recipe": {"type": ["string", "null"]},
+    "run_id": {"type": ["string", "null"]},
+    "structure": {"type": "object"},
+    "data": {"type": "object"},
+    "geometry": {"type": "object"},
+    "style": {"type": "object"},
+    "objects": {"type": "array"},
+    "actual_source": {"type": "object"},
+    "field_sources": {"type": "array"}
+  },
+  "additionalProperties": true
+}

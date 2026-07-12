@@ -1,0 +1,70 @@
+{
+  "schema": "originplot.recipe_index.v2",
+  "purpose": "Index official OriginLab Python-Samples as Origin operation recipes and regression-test seeds. These recipes document Origin/originpro operations only; they are not Python/R redraw backends.",
+  "source_policy": {
+    "preferred_order": [
+      "installed Origin Graph Gallery project",
+      "official OriginLab docs or quick-help page",
+      "originlab/Python-Samples path pinned by commit",
+      "originlab/originpro API source path pinned by commit"
+    ],
+    "required_fields": [
+      "source_repo",
+      "source_commit",
+      "source_path",
+      "operation_ids",
+      "adapter_implementation",
+      "verified_environments"
+    ]
+  },
+  "recipes": [
+    {
+      "recipe_id": "workbook.import.table.v2",
+      "operation_family": "worksheet",
+      "source_repo": "originlab/Python-Samples",
+      "source_commit": "UNPINNED_LOCAL_REVIEW_REQUIRED",
+      "source_path": "External Python Code Samples / worksheet or data-exchange examples",
+      "operation_ids": ["workbook.create", "worksheet.import"],
+      "adapter_implementation": "adapters/originpro/adapter.py",
+      "status": "documented",
+      "verified_environments": [],
+      "required_checks": ["workbook_exists", "sheet_exists", "column_bindings_recorded"]
+    },
+    {
+      "recipe_id": "graph.line.basic.v2",
+      "operation_family": "graphing",
+      "source_repo": "originlab/Python-Samples",
+      "source_commit": "UNPINNED_LOCAL_REVIEW_REQUIRED",
+      "source_path": "Graphing / line plot examples",
+      "operation_ids": ["graph.create", "layer.configure", "plot.add.line", "plot.style.apply", "axis.configure", "project.save"],
+      "adapter_implementation": "adapters/originpro/adapter.py",
+      "status": "documented",
+      "verified_environments": [],
+      "required_checks": ["graph_page_exists", "layer_count", "plot_count", "data_binding", "export_png", "save_reopen"]
+    },
+    {
+      "recipe_id": "graph.object.schematic.v2",
+      "operation_family": "editable_objects",
+      "source_repo": "originlab/originpro",
+      "source_commit": "UNPINNED_LOCAL_REVIEW_REQUIRED",
+      "source_path": "originpro graph/object API sources and official docs",
+      "operation_ids": ["graph.create", "layer.configure", "object.create", "axis.configure", "project.save"],
+      "adapter_implementation": "adapters/originpro/adapter.py plus verified LabTalk fallback",
+      "status": "documented",
+      "verified_environments": [],
+      "required_checks": ["object_count", "object_type", "object_geometry", "text_content", "save_reopen"]
+    },
+    {
+      "recipe_id": "graph.contour.heatmap.v2",
+      "operation_family": "matrix_graphing",
+      "source_repo": "originlab/Python-Samples",
+      "source_commit": "UNPINNED_LOCAL_REVIEW_REQUIRED",
+      "source_path": "Matrix / contour graphing examples",
+      "operation_ids": ["workbook.create", "worksheet.import", "graph.create", "layer.configure", "plot.style.apply", "axis.configure", "project.save"],
+      "adapter_implementation": "adapters/originpro/adapter.py plus verified LabTalk fallback",
+      "status": "documented",
+      "verified_environments": [],
+      "required_checks": ["matrix_or_sheet_exists", "levels", "colorbar", "export_png", "save_reopen"]
+    }
+  ]
+}

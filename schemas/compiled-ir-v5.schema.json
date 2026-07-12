@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.compiled_ir.v5",
+  "type": "object",
+  "required": ["schema", "compiled_at", "resolved_environment", "resources", "resolved_data", "resolved_layers", "resolved_plots", "contracts", "operation_ids"],
+  "properties": {
+    "schema": {"const": "originplot.compiled_ir.v5"},
+    "compiled_at": {"type": "string"},
+    "resolved_environment": {"type": "object"},
+    "resources": {"type": "object"},
+    "resolved_data": {"type": "array", "maxItems": 1},
+    "resolved_layers": {"type": "array", "maxItems": 1},
+    "resolved_plots": {"type": "array", "maxItems": 1},
+    "resolved_annotations": {"type": "array"},
+    "contracts": {"type": "object"},
+    "operation_ids": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

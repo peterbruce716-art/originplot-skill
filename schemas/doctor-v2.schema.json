@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.doctor.v2",
+  "type": "object",
+  "required": ["schema", "created_at", "status", "mode", "environment_fingerprint", "fingerprint_components", "checks", "verified_routes"],
+  "properties": {
+    "schema": {"const": "originplot.doctor.v2"},
+    "created_at": {"type": "string"},
+    "status": {"type": "string"},
+    "mode": {"type": "string"},
+    "environment_fingerprint": {"type": "string"},
+    "fingerprint_components": {"type": "object"},
+    "checks": {"type": "array"},
+    "verified_routes": {"type": "array"},
+    "generated_capabilities": {"type": "string"}
+  }
+}

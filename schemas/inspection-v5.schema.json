@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.inspection.v5",
+  "type": "object",
+  "required": ["schema", "project", "process", "workbooks", "matrices", "graph_pages", "exports", "warnings", "errors", "status"],
+  "properties": {
+    "schema": {"const": "originplot.inspection.v5"},
+    "project": {"type": "object"},
+    "process": {"type": "object"},
+    "workbooks": {"type": "array"},
+    "matrices": {"type": "array"},
+    "graph_pages": {"type": "array"},
+    "exports": {"type": "object"},
+    "warnings": {"type": "array"},
+    "errors": {"type": "array"},
+    "status": {"type": "string"}
+  }
+}

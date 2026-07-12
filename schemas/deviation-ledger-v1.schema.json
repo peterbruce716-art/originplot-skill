@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.deviation_ledger.v1",
+  "type": "object",
+  "required": ["schema", "figure_id", "blocking", "non_blocking"],
+  "properties": {
+    "schema": {"const": "originplot.deviation_ledger.v1"},
+    "figure_id": {"type": "string", "minLength": 1},
+    "recipe": {"type": "string"},
+    "blocking": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "code", "expected", "actual"],
+        "properties": {
+          "category": {"type": "string"},
+          "code": {"type": "string"},
+          "panel": {"type": "string"},
+          "expected": {},
+          "actual": {},
+          "next_action": {"type": "string"}
+        }
+      }
+    },
+    "non_blocking": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "code", "expected", "actual"],
+        "properties": {
+          "category": {"type": "string"},
+          "code": {"type": "string"},
+          "panel": {"type": "string"},
+          "expected": {},
+          "actual": {},
+          "next_action": {"type": "string"}
+        }
+      }
+    }
+  }
+}

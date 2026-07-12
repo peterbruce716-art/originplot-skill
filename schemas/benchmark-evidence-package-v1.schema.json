@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.benchmark-evidence-package-v1.schema.json",
+  "title": "OriginPlot benchmark evidence package",
+  "type": "object",
+  "required": ["source_crop.png", "result.opju", "post_reopen.png", "run_artifacts.json", "inspection.json", "qa_report.json", "benchmark_actual.json"],
+  "additionalProperties": true
+}

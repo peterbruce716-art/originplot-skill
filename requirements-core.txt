@@ -1,0 +1,5 @@
+# Offline contracts, builders, image metrics, and YAML input support (Python 3.10+)
+numpy>=1.23,<3
+Pillow>=9.5,<12
+scikit-image>=0.20,<1
+PyYAML>=6,<7

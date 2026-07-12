@@ -1,0 +1,5 @@
+{
+  "originpro": "adapters/originpro/adapter.py",
+  "inspection": "adapters/inspection/adapter.py",
+  "evidence_qa": "adapters/evidence_qa/adapter.py"
+}

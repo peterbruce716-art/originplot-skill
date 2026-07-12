@@ -1,0 +1,17 @@
+{
+  "schema": "originplot.figurespec.v5",
+  "figure": {"id": "public_synthetic_line", "title": "Public synthetic line", "family": "line"},
+  "runtime": {"project_path": "outputs/public_synthetic_line.opju"},
+  "origin": {
+    "target_version": "2022",
+    "adapter_policy": "capability_driven",
+    "primary_graph": "PublicSyntheticLine",
+    "capability_profile": "capabilities/origin-2022-v5.json"
+  },
+  "data": [{"id": "synthetic", "source": "synthetic_line.csv", "roles": {"x": "x", "y": "response"}}],
+  "page": {"size_mm": [120, 80]},
+  "layers": [{"id": "main", "origin_name": "Main", "x": {"label": "x"}, "y": {"label": "response"}}],
+  "plots": [{"id": "line", "layer": "main", "data_ref": "synthetic", "type": "line", "map": {"x": "x", "y": "response"}}],
+  "annotations": [],
+  "contracts": {"primary_graph": "PublicSyntheticLine", "expected": {"graph_pages": 1, "layers": 1, "plots": 1, "workbooks": 1}}
+}

@@ -1,0 +1,8 @@
+{
+  "candidate_id": "public_synthetic_line_plan",
+  "builder_id": "generic_line",
+  "figure": "public_synthetic_line",
+  "reproduction_mode": "synthetic_public_demo",
+  "data_source": "generated_by_examples/public_demo/generate_source.py",
+  "pass_eligible": false
+}

@@ -1,0 +1,94 @@
+{
+  "schema": "originplot.capabilities.v5",
+  "environment": {
+    "origin_version": "2022",
+    "fingerprint": "origin-2022-v5-3-semantic-benchmark-template",
+    "policy": "fail_closed_until_origin_doctor_verifies_routes"
+  },
+  "adapters": {
+    "originpro": {
+      "origin_version": "2022",
+      "module": "adapters/originpro/adapter.py",
+      "operations": {
+        "session.start_clean": {"verified": false, "source": "origin_doctor required"},
+        "session.assert_capabilities": {"verified": false, "source": "origin_doctor required"},
+        "workbook.create": {"verified": false, "source": "originlab/Python-Samples recipe required"},
+        "worksheet.import": {"verified": false, "source": "originlab/Python-Samples recipe required"},
+        "matrix.create": {"verified": false, "source": "OriginLab matrix sample and local probe required"},
+        "matrix.import": {"verified": false, "source": "OriginLab matrix import sample and local probe required"},
+        "matrix.xyz_gridding": {"verified": false, "source": "OriginLab gridding sample and local probe required"},
+        "page.configure": {"verified": false, "source": "local page geometry probe required"},
+        "graph.create": {"verified": false, "source": "originlab/Python-Samples recipe required"},
+        "layer.add": {"verified": false, "source": "local multi-layer probe required"},
+        "layer.configure": {"verified": false, "source": "local layer probe required"},
+        "layer.geometry.apply": {"verified": false, "source": "local layer geometry probe required"},
+        "layer.geometry.verify": {"verified": false, "source": "local layer geometry readback probe required"},
+        "layer.link_axes": {"verified": false, "source": "local linked-axis probe required"},
+        "plot.add.line": {"verified": false, "source": "originlab/Python-Samples recipe required"},
+        "plot.add.contour": {"verified": false, "source": "OriginLab contour sample and local probe required"},
+        "plot.add.column": {"verified": false, "source": "OriginLab column sample and local probe required"},
+        "plot.add.stacked_column": {"verified": true, "source": "GID399 readonly inspection plus local STACKCOLUMN/type-213 save-reopen direct-binding probe"},
+        "plot.add.grouped_stacked_column": {"verified": false, "source": "OriginLab grouped stacked column sample and local probe required"},
+        "plot.stack.configure": {"verified": false, "source": "local stack readback probe required"},
+        "plot.group.configure": {"verified": false, "source": "local group readback probe required"},
+        "plot.gap.configure": {"verified": false, "source": "local gap readback probe required"},
+        "plot.style.apply": {"verified": false, "source": "local style probe required"},
+        "contour.fill.configure": {"verified": false, "source": "local contour fill readback probe required"},
+        "contour.lines.configure": {"verified": false, "source": "local contour line readback probe required"},
+        "contour.labels.configure": {"verified": false, "source": "local contour label readback probe required"},
+        "colormap.discrete.configure": {"verified": false, "source": "local discrete colormap probe required"},
+        "colorbar.create": {"verified": false, "source": "local colorbar creation probe required"},
+        "colorbar.configure": {"verified": false, "source": "local colorbar readback probe required"},
+        "axis.configure": {"verified": false, "source": "local axis probe required"},
+        "category_axis.configure": {"verified": false, "source": "local category axis probe required"},
+        "axis.verify_final": {"verified": false, "source": "local axis readback probe required"},
+        "graph.export.presave": {"verified": false, "source": "local export probe required"},
+        "graph.export.postreopen": {"verified": false, "source": "inspect worker export probe required"},
+        "project.save": {"verified": false, "source": "local save probe required"},
+        "session.release": {"verified": false, "source": "local cleanup probe required"}
+      }
+    },
+    "originpro_labtalk": {
+      "origin_version": "2022",
+      "module": "adapters/labtalk/adapter.py",
+      "operations": {
+        "plot.style.apply": {"verified": false, "source": "verified LabTalk command required"},
+        "axis.configure": {"verified": false, "source": "verified LabTalk command required"},
+        "axis.verify_final": {"verified": false, "source": "verified LabTalk command required"},
+        "object.create": {"verified": false, "source": "verified LabTalk command required"},
+        "object.text.create": {"verified": false, "source": "verified LabTalk text-object command required"},
+        "object.line.create": {"verified": false, "source": "verified LabTalk line-object command required"},
+        "object.arrow.create": {"verified": false, "source": "verified LabTalk arrow-object command required"},
+        "object.rectangle.create": {"verified": false, "source": "verified LabTalk rectangle-object command required"},
+        "object.ellipse.create": {"verified": false, "source": "verified LabTalk ellipse-object command required"},
+        "object.group.create": {"verified": false, "source": "verified LabTalk group-object command required"},
+        "object.style.apply": {"verified": false, "source": "verified LabTalk object style command required"},
+        "legend.create": {"verified": false, "source": "verified LabTalk legend command required"},
+        "legend.entry.configure": {"verified": false, "source": "verified LabTalk legend entry command required"},
+        "legend.position.configure": {"verified": false, "source": "verified LabTalk legend position command required"}
+      }
+    },
+    "inspection": {
+      "origin_version": "2022",
+      "module": "adapters/inspection/adapter.py",
+      "operations": {
+        "project.reopen.clean": {"verified": false, "source": "inspect worker probe required"},
+        "project.inspect": {"verified": false, "source": "inspect worker probe required"},
+        "graph.export.postreopen": {"verified": false, "source": "inspect worker export probe required"},
+        "layer.geometry.verify": {"verified": false, "source": "inspect worker layer geometry probe required"},
+        "object.geometry.verify": {"verified": false, "source": "inspect worker object geometry probe required"}
+      }
+    },
+    "evidence_qa": {
+      "module": "adapters/evidence_qa/adapter.py",
+      "operations": {
+        "qa.structure.compare": {"verified": true, "source": "local deterministic validator"},
+        "qa.serialization.compare": {"verified": true, "source": "local deterministic validator"},
+        "qa.image.compare": {"verified": true, "source": "local deterministic validator"},
+        "qa.semantic_benchmark": {"verified": true, "source": "local deterministic semantic benchmark validator"},
+        "qa.deviation_ledger.generate": {"verified": true, "source": "local deterministic deviation ledger generator"},
+        "manifest.finalize": {"verified": true, "source": "runtime manifest controller"}
+      }
+    }
+  }
+}

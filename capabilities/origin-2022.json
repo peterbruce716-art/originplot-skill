@@ -1,0 +1,43 @@
+{
+  "schema": "originplot.capability_profile.v1",
+  "origin_version": "2022",
+  "policy": "fail_closed_until_verified_on_receiving_machine",
+  "status_values": ["documented", "available", "verified", "unsupported"],
+  "operations": [
+    {
+      "operation": "attach_existing_or_new_hidden",
+      "adapter": "originpro",
+      "status": "available",
+      "source": "installed originpro smoke test required",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "create_workbook",
+      "adapter": "originpro",
+      "status": "documented",
+      "source": "originlab/Python-Samples recipe index",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "create_graph_page",
+      "adapter": "originpro_or_labtalk",
+      "status": "documented",
+      "source": "originlab/Python-Samples Graphing recipes",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "export_graph_png_pdf",
+      "adapter": "originpro_or_labtalk",
+      "status": "documented",
+      "source": "originpro API index and local export probe",
+      "must_verify_locally": true
+    },
+    {
+      "operation": "origin_mcp_execute_figurespec",
+      "adapter": "origin-mcp",
+      "status": "unsupported",
+      "source": "Origin 2022 compatibility must be probed before enabling",
+      "must_verify_locally": true
+    }
+  ]
+}

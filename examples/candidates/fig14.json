@@ -1,0 +1,9 @@
+{
+  "candidate_id": "portable_fig14_source_calibrated_errorbar",
+  "figure": "fig14",
+  "route": "worksheet_backed_source_calibrated_line_symbol_error_paths",
+  "reproduction_mode": "source_calibrated_reconstructed_approximate",
+  "template_search_record": "../template_search/aa2195_official_template_search.json",
+  "source_crop": "AUTHORIZED_LOCAL_SOURCE_REQUIRED",
+  "source_crop_policy": "supply_an_authorized_local_path_before_live_execution"
+}

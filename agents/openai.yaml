@@ -1,0 +1,4 @@
+interface:
+  display_name: "originplot"
+  short_description: "Build and verify editable Origin/OriginPro OPJU figures."
+  default_prompt: "Use $originplot to reproduce this figure as an editable Origin OPJU, reopen it, verify native structure and bindings, export from Origin, and report visual QA."
