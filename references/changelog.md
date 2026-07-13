@@ -1,7 +1,45 @@
 # Changelog
 
+## v5.8.9-p18
+
+- Corrected Fig14 fresh-source marker extraction so the 250 degrees C data points are not averaged with same-x legend symbols.
+- Replaced the same-x black-pixel union with marker-local connected-component selection for Fig14 error bars; marker occlusion now uses the largest visible one-sided extent instead of collapsing or merging error ranges.
+- Added synthetic regressions for same-x series separation, legend exclusion, and one-sided marker occlusion.
+- Added registration-normalized foreground F1 and edge F1 to visual evidence and made both blocking gates for Fig3, Fig12, Fig14, Fig15, and Fig16, together with per-figure foreground-density limits.
+- Bumped the Fig14 geometry/data route identity to `aa2195_fig14_component_errorbars_native_scatter_dash_v4`. Marker overlays now use native scatter plots so Origin cannot render a zero-width connecting hairline over the dashed series. Prior p17 evidence remains historical and is not promoted as p18 evidence.
+- Added `validated_crop_reextract`, a fail-closed lineage route that applies the corrected Fig14 extractor to a promoted source crop without reopening the PDF; it rejects parent-hash drift, failed prior quality evidence, any unrelated data change, or a missing corrected extraction method.
+- Added a Fig16 color-component boundary audit over all 21 WH/DRV/DRX segments. Missing segments, maximum boundary error above 1 px, or mean boundary error above 0.5 px now block promotion.
+- Removed the stale Fig16 DRX height reduction and stage-local S-slot left shifts that caused 2 px top-boundary and 1-3 px horizontal-boundary errors; bumped the route identity to `aa2195_fig16_segment_boundary_calibrated_v7`.
+- Recorded the final same-run administrator Origin 2022 p18 batch: Fig3, Fig12, Fig14, Fig15, and Fig16 all passed with one stable visible Origin PID and zero audit findings. Fig14 native scatter markers reopened with shapes 1/2/3 and retained the three dashed source series; Fig16 detected all 21 bar segments with zero missing, 1 px maximum boundary error, and 0.476190 px mean boundary error.
+
+## v5.8.9-p17
+
+- Replaced the blanket same-run data-extraction rule with explicit `fresh_extract` and `validated_reuse` source-data policies.
+- Added `build_validated_data_reuse_record.py`; it authorizes reuse only when the prior five-figure audit has no findings and every figure passed live Origin, structure, visual, provenance, and release gates.
+- Reused curves, markers, error bars, fields, bar segments, and source crops remain hash-verified. Missing, failed, or drifted reuse evidence stops before Origin attach with `E128_SOURCE_DATA_REUSE_REJECTED`.
+- Kept construction evidence strict: a reuse run creates new Worksheets and OPJUs and repeats save/detach/reopen/readback/export/visual QA. Prior OPJUs, exports, readbacks, and metric files remain forbidden as pass evidence.
+- Extended the five-figure audit and offline behavior tests to require a passing source-data gate for either policy.
+
+## v5.8.9-p16
+
+- Added same-run AA2195 PDF crop and scientific-data extraction for Fig3, Fig12, Fig14, Fig15, and Fig16.
+- Required `-SourcePdf`, `fresh_source_required=true`, and crop/data hash verification before Origin attach.
+- Retained validated local layout, typography, editable-object, and calibration routes as references while preventing inherited scientific data, OPJUs, exports, and readbacks from entering a fresh batch.
+- Added fresh-source digests to builder routes, readback, and render identity; Fig12 analytic fallback is forbidden for the five-figure fresh rebuild.
+- Updated offline tests with explicit synthetic fresh-source fixtures; production builders remain fail-closed.
+- Fixed relocated live candidates by resolving the official template-search record before copying; batch completion now also requires five zero worker exit codes.
+- Fig14 now uses freshly digitized anchors with Origin-native dashed lines and fails closed when post-reopen line-style readback falls back to solid.
+- Fig16 retains the 15% native column gap and uses an editable `#fefefe` layer background to match the PDF raster mean while preserving exact freshly extracted WH/DRV/DRX colors.
+
+## 2026-07-14 Graph Gallery discovery and basic-data intake update
+
+- Added bounded keyword or Gallery-URL discovery that resolves GID detail pages, records structured retry evidence, and extracts only official Graph Gallery ZIP links.
+- Reused the existing archive validator and retriever for optional downloads, added official-detail `Referer` support, retained the 20-candidate hard limit, and avoided overwriting existing archives unless explicitly requested.
+- Expanded skill triggering and intake guidance for template matching and Excel/CSV scatter, line, or line-symbol requests while keeping `generic_line` offline-only and making no new live-builder or Origin-evidence claim.
+
 ## v5.8.9-p15
 
+- The five-figure live runner now accepts one visible `Origin64`, `Origin_64`, `Origin_32`, or `Origin` process while preserving the same-PID attach and batch audit policy.
 - Added fail-closed post-reopen `plot_style_contracts` for the three Fig14 PID 202 marker overlays, including persisted Origin 2022 symbol-shape and symbol-size readback.
 - Extended the five-figure batch audit so Fig14 marker-style drift fails the batch release gate.
 - Hardened the live batch runner to require one Python 3.10 executable and an administrator preflight before Origin attachment, then reuse that executable for every worker and the final audit.

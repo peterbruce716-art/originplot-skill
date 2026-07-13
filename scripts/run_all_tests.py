@@ -26,6 +26,8 @@ CRITICAL_SCRIPTS = [
     "scripts/audit_dependencies.py",
     "scripts/validate_publication_contract.py",
     "scripts/inspect_official_templates.py",
+    "scripts/retrieve_official_template.py",
+    "scripts/search_official_templates.py",
     "scripts/operation_maturity.py",
     "scripts/originplot_runtime_v5.py",
     "runtime/artifact_manifest.py",
@@ -33,6 +35,9 @@ CRITICAL_SCRIPTS = [
     "scripts/origin_calibration_probe.py",
     "scripts/origin_calibration_inspect_worker.py",
     "scripts/origin_candidate_worker.py",
+    "scripts/extract_aa2195_fresh_source_bundle.py",
+    "scripts/reextract_validated_source_bundle.py",
+    "scripts/build_validated_data_reuse_record.py",
     "scripts/materialize_live_evidence.py",
     "scripts/visual_qa.py",
     "scripts/audit_five_figure_batch.py",
@@ -40,6 +45,7 @@ CRITICAL_SCRIPTS = [
     "builders/aa2195/session.py",
     "builders/aa2195/geometry.py",
     "builders/aa2195/source_reference.py",
+    "builders/aa2195/fresh_source_data.py",
     "builders/aa2195/fig12_builder.py",
     "builders/aa2195/fig15_builder.py",
     "builders/aa2195/fig16_builder.py",
@@ -78,7 +84,7 @@ def run_unittest():
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run OriginPlot v5.8.9-p15 full test suite.")
+    parser = argparse.ArgumentParser(description="Run OriginPlot v5.8.9-p18 full test suite.")
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--expected-min-tests", type=int, default=EXPECTED_MIN_TESTS)
     args = parser.parse_args()
@@ -87,7 +93,7 @@ def main() -> int:
     discovery_failures = []
     if tests_run < args.expected_min_tests:
         discovery_failures.append({"code": "TEST_DISCOVERY_INCOMPLETE", "expected_min_tests": args.expected_min_tests, "actual": tests_run})
-    payload = {"schema": "originplot.run_all_tests.v5.8.9-p15", "skill_version": "5.8.9-p15", "status": "ok" if not compile_failures and not test_errors and skipped == 0 and not discovery_failures else "failed", "compile_failures": compile_failures, "tests_run": tests_run, "expected_min_tests": args.expected_min_tests, "skipped": skipped, "test_errors": test_errors, "discovery_failures": discovery_failures}
+    payload = {"schema": "originplot.run_all_tests.v5.8.9-p18", "skill_version": "5.8.9-p18", "status": "ok" if not compile_failures and not test_errors and skipped == 0 and not discovery_failures else "failed", "compile_failures": compile_failures, "tests_run": tests_run, "expected_min_tests": args.expected_min_tests, "skipped": skipped, "test_errors": test_errors, "discovery_failures": discovery_failures}
     text = json.dumps(payload, ensure_ascii=False, indent=2)
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)

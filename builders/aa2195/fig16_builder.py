@@ -14,6 +14,7 @@ from .common_origin_utils import (
     reveal_graph_page,
 )
 from .geometry import fig16_geometry
+from .fresh_source_data import load_fresh_figure_data
 from .source_geometry import source_geometry_contract
 
 
@@ -423,8 +424,29 @@ def _add_text(layer: Any, name: str, text: str, x: float, y: float, size: float,
             pass
 
 
-def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+def _fresh_fig16_geometry(candidate_params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    fresh_source = load_fresh_figure_data(candidate_params, "fig16")
     geometry = fig16_geometry()
+    data = fresh_source["data"]
+    colors = {str(key): str(value) for key, value in data["colors"].items()}
+    geometry["colors"] = colors
+    geometry["bars"] = [
+        {
+            "family": family,
+            "bbox": tuple(float(value) for value in bbox),
+            "color": colors[family],
+            "name": f"{family.lower()}_{index + 1:02d}",
+        }
+        for family in ("WH", "DRV", "DRX")
+        for index, bbox in enumerate(data["bars"][family])
+    ]
+    for record in geometry["legend"]:
+        record["color"] = colors[record["label"]]
+    return geometry, fresh_source
+
+
+def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+    geometry, fresh_source = _fresh_fig16_geometry(candidate_params)
     effective_colors = _apply_fig16_color_candidate(geometry, candidate_params)
     tuning = _fig16_tuning(candidate_params)
     text_sizes = _fig16_text_sizes(candidate_params)
@@ -689,7 +711,15 @@ def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict
         "required_graphobject_contracts": required_graphobject_contracts,
         "axis_contract": axis_contract,
         "construction_visibility": construction_visibility,
-        "reproduction_mode": geometry["provenance"],
+        "reproduction_mode": (
+            geometry["provenance"]
+            if fresh_source["source_data_policy"] == "fresh_extract"
+            else "validated_reuse_reconstructed_approximate"
+        ),
+        "source_data_policy": fresh_source["source_data_policy"],
+        "fresh_source_data_sha256": fresh_source["data_sha256"],
+        "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
+        "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
         "candidate_params": candidate_params,
     }
 
@@ -773,6 +803,12 @@ def _fig16_group_frame_width(candidate_params: dict[str, Any]) -> float:
         return 0.5
 
 
+def _fig16_background_color(candidate_params: dict[str, Any]) -> str | None:
+    if not isinstance(candidate_params, dict):
+        return None
+    return _valid_hex_color(candidate_params.get("fig16_background_color"))
+
+
 def _style_float_column(plot: Any, color: str, gap_percent: float | None = None) -> None:
     red, green, blue = _rgb(color)
     _style_native_plot(plot, color, 1.0)
@@ -787,18 +823,22 @@ def _style_float_column(plot: Any, color: str, gap_percent: float | None = None)
 
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     """Build Fig16 from the verified GID399/STACKCOLUMN native plot family."""
-    geometry = fig16_geometry()
+    geometry, fresh_source = _fresh_fig16_geometry(candidate_params)
     effective_colors = _apply_fig16_color_candidate(geometry, candidate_params)
     tuning = _fig16_tuning(candidate_params)
     text_sizes = _fig16_text_sizes(candidate_params)
     column_gap_percent = _fig16_column_gap(candidate_params)
     group_frame_width = _fig16_group_frame_width(candidate_params)
+    background_color = _fig16_background_color(candidate_params)
     page_size_inches = (7.2, 3.75)
     page = create_hidden_graph_page(op, lname="Fig16_gid399_native_stackcolumn", template="STACKCOLUMN")
     page.lt_exec(page_dot_command(*page_size_inches, page.get_float("resx"), page.get_float("resy")))
     disable_speed_mode(page)
     layer = page[0]
     layer.lt_exec(page_percent_layer_command((0.0, 0.0, 100.0, 100.0)))
+    if background_color is not None:
+        red, green, blue = _rgb(background_color)
+        layer.lt_exec(f"layer.color=color({red},{green},{blue});")
     layer.set_xlim(0.0, 720.0)
     layer.set_ylim(-40.0, 335.0)
     remove_default_labels(layer)
@@ -825,10 +865,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     wh_values: list[float] = []
     drv_values: list[float] = []
     drx_values: list[float] = []
-    # Stage-local calibration is required because Origin's stacked-column
-    # centering differs by slot after grouping. CP1 moves left while TR1 moves
-    # right; applying one global correction would worsen one of the two.
-    s_slot_x_offsets = (0.5, -1.5, -2.5, -1.0, -1.5, -0.5, -2.5)
+    # The source-derived S-slot centers already include the required local
+    # placement. Additional legacy shifts moved several boundaries 1-3 px left.
+    s_slot_x_offsets = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     for stage_index in range(1, 8):
         wh = bars_by_name[f"wh_{stage_index:02d}"]
         drv = bars_by_name[f"drv_{stage_index:02d}"]
@@ -842,7 +881,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         ])
         wh_values.extend([float(wh_box[3] - wh_box[1]), 0.0])
         drv_values.extend([0.0, float(drv_box[3] - drv_box[1])])
-        drx_values.extend([0.0, max(0.0, float(drx_box[3] - drx_box[1]) - 2.0)])
+        drx_values.extend([0.0, max(0.0, float(drx_box[3] - drx_box[1]))])
         bar_inventory.extend([
             {**wh, "bbox": wh_box, "worksheet_family": "WH"},
             {**drv, "bbox": drv_box, "worksheet_family": "DRV"},
@@ -1092,6 +1131,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fig16_tuning": tuning, "fig16_colors": effective_colors, "fig16_text_sizes": text_sizes,
         "fig16_column_gap_percent": column_gap_percent,
         "fig16_group_frame_width": group_frame_width,
+        "fig16_background_color": background_color,
         "fig16_text_font_route": "origin_rich_text_times_new_roman_parenthesized",
         "fig16_stage_glyph_centering": {
             "anchor_x_base": -4.0,
@@ -1113,7 +1153,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fig16_native_stack_calibration": {
             "layer_y_limits": [-40.0, 335.0],
             "official_gid399_column_line_width": 1.0,
-            "drx_height_correction": -2.0,
+            "drx_height_correction": 0.0,
             "s_slot_x_offsets": list(s_slot_x_offsets),
             "header_source_y_correction": -5.0,
             "psc_relation_source_y_corrections": [-8.0, -17.0],
@@ -1126,5 +1166,14 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             {**axis_contract[0], "layer_index": 1},
         ],
         "construction_visibility": construction_visibility,
-        "reproduction_mode": geometry["provenance"], "candidate_params": candidate_params,
+        "reproduction_mode": (
+            geometry["provenance"]
+            if fresh_source["source_data_policy"] == "fresh_extract"
+            else "validated_reuse_reconstructed_approximate"
+        ),
+        "source_data_policy": fresh_source["source_data_policy"],
+        "fresh_source_data_sha256": fresh_source["data_sha256"],
+        "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
+        "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
+        "candidate_params": candidate_params,
     }

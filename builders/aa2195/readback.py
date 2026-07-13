@@ -254,6 +254,7 @@ def validate_plot_style_contracts(
             "layer_index": layer_index,
             "plot_index": plot_index,
             "plot_type_code": actual.get("plot_type_code"),
+            "line_style": style.get("line_style", actual.get("line_style")),
             "symbol_shape": style.get("symbol_shape", actual.get("symbol_shape")),
             "symbol_size": style.get("symbol_size", actual.get("symbol_size")),
         }
@@ -272,6 +273,19 @@ def validate_plot_style_contracts(
                     "property": prop,
                     "expected": expected[prop],
                     "actual": record.get(prop),
+                })
+        if "line_style" in expected:
+            try:
+                matches = int(record.get("line_style")) == int(expected["line_style"])
+            except (TypeError, ValueError):
+                matches = False
+            if not matches:
+                mismatches.append({
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "property": "line_style",
+                    "expected": expected["line_style"],
+                    "actual": record.get("line_style"),
                 })
         if "symbol_size" in expected:
             try:

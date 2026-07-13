@@ -16,7 +16,7 @@ from typing import Any
 
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_SKILL_VERSION = "5.8.9-p15"
+EXPECTED_SKILL_VERSION = "5.8.9-p18"
 EXPECTED_MIN_TESTS = 117
 REQUIRED_FIGURES = ("fig12", "fig15", "fig16")
 RELEASE_GATE_ORDER = [
@@ -331,7 +331,7 @@ def final_release_bundle_gate(skill_root: Path, release_bundle: Path | None) -> 
     if release_bundle is None:
         return {"status": "failed", "failures": [{"code": "final_release_bundle_missing"}]}
     validator = load_module(
-        "originplot_p15_release_bundle_validator", skill_root / "scripts" / "validate_release_bundle.py"
+        "originplot_p18_release_bundle_validator", skill_root / "scripts" / "validate_release_bundle.py"
     )
     result = validator.validate_release_bundle(release_bundle)
     return {
@@ -373,7 +373,7 @@ def validate_release(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate OriginPlot v5.8.9-p15 release readiness.")
+    parser = argparse.ArgumentParser(description="Validate OriginPlot v5.8.9-p18 release readiness.")
     parser.add_argument("--skill-dir", type=Path, default=SKILL_ROOT)
     parser.add_argument(
         "--evidence-dir",

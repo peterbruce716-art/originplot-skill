@@ -393,7 +393,7 @@ def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | 
                 detail["line_style"] = line_style
                 detail.setdefault("style", {})["line_style"] = line_style
                 detail["line_style_readback_route"] = "labtalk_get_dash"
-            if detail.get("plot_type_code") == 202:
+            if detail.get("plot_type_code") in {201, 202}:
                 symbol_style = _labtalk_plot_symbol_style(op, plot)
                 if symbol_style:
                     detail.setdefault("style", {}).update(symbol_style)

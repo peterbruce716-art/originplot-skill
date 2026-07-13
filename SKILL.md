@@ -1,17 +1,17 @@
 ---
 name: originplot
-description: "Use for planning, constructing, auditing, or reproducing publication figures as editable Origin/OriginPro OPJU projects, including conclusion-first panel and evidence design, journal-style profiles, canonical source groups, native plots and Worksheet bindings, save/reopen inspection, Origin-rendered visual QA, and authorized Origin 2022 automation. Trigger for Origin figures, manuscript multi-panel figures that must be delivered in Origin, OPJU reproduction, Origin template selection, and journal-ready Origin export bundles."
+description: "Use for planning, constructing, auditing, or reproducing publication figures as editable Origin/OriginPro OPJU projects, including conclusion-first panel design, Excel/CSV scatter-line intake, Graph Gallery template discovery or image matching, journal profiles, canonical source groups, native Worksheet-bound plots, save/reopen inspection, Origin-rendered visual QA, and authorized Origin 2022 automation. Trigger for Origin figures, OPJU reproduction, Origin template searches/downloads, basic scientific plots that must remain editable in Origin, and journal-ready Origin export bundles."
 ---
 
-# OriginPlot Skill v5.8.9-p15 + Publication Contract v1
+# OriginPlot Skill v5.8.9-p18 + Publication Contract v1
 
-OriginPlot is a Verified Origin Runtime for producing and validating an editable Origin project. It includes specialized AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 builders and an extensible registry; it does not automatically reproduce arbitrary figures. Each named AA2195 route has administrator Origin 2022 save/reopen evidence within its declared benchmark scope. This is not a claim of arbitrary-input completion, cross-machine pixel identity, or raw-data recovery. Fig12 keeps native XYZ Worksheet bindings, applies a constrained TR region-anchor remap, and adds editable source-vectorized type-34 regions plus editable page-coordinate axis titles. Origin 2022 supports these SVG path objects through plain `draw -paths objName SVGPath`; the tested `-s/-d` variants did not create objects.
+OriginPlot is a Verified Origin Runtime for producing and validating an editable Origin project. It includes specialized AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 builders and an extensible registry; it does not automatically reproduce arbitrary figures. Each named AA2195 route has administrator Origin 2022 save/reopen evidence within its declared benchmark scope. This is not a claim of arbitrary-input completion, cross-machine pixel identity, or raw-data recovery. Fig12 keeps native XYZ Worksheet bindings, applies a constrained TR region-anchor remap, and adds editable source-vectorized type-34 regions plus editable page-coordinate axis titles. Origin 2022 supports these SVG path objects through plain `draw -paths objName SVGPath`; the tested `-s/-d` variants did not create objects. For the five-figure benchmark, validated local reproductions may be reused for layout, typography, object routes, calibration, curves, markers, error bars, fields, and bar segments when the originating live batch passed structure, visual, and release gates. Only missing, unvalidated, hash-drifted, or visually inadequate parts require fresh extraction or reconstruction.
 
 ## Use this skill when
 
 - The required deliverable is an editable `.opju` with Origin workbooks, native plots, layers, axes, legends, or annotations.
 - The task needs Origin 2022 automation, authorized attach, OPJU save/reopen inspection, or Origin-rendered evidence.
-- The user asks to reproduce, inspect, debug, package, or regression-test an Origin figure.
+- The user asks to reproduce, inspect, debug, package, regression-test, or find official templates for an Origin figure.
 
 ## Do not use it when
 
@@ -38,7 +38,7 @@ Do not read unrelated local documents or private data. Never embed the source im
 
 ### FigureSpec intake
 
-Normalize a requested figure through the upstream-compatible hierarchy `DataSpec -> PageSpec/LayerSpec -> PlotSpec/AnnotationSpec -> StyleSpec/ExportSpec`, then resolve it to a registered local builder. Confirm the normalized structure before a new or materially changed build. This hierarchy is an intake and review aid; it is not evidence that arbitrary YAML or arbitrary source images can be executed automatically. The local V5 schema, registry, capability profile, and live gates remain authoritative.
+Normalize a requested figure through the upstream-compatible hierarchy `DataSpec -> PageSpec/LayerSpec -> PlotSpec/AnnotationSpec -> StyleSpec/ExportSpec`, then resolve it to a registered local builder. For Excel/CSV scatter, line, or line-symbol requests, map the named sheet, X column, Y columns, axis scales, labels, and output contract explicitly; `generic_line` remains offline-only until a live builder declares and tests that route. Confirm the normalized structure before a new or materially changed build. This hierarchy is an intake and review aid; it is not evidence that arbitrary YAML or arbitrary source images can be executed automatically. The local V5 schema, registry, capability profile, and live gates remain authoritative.
 
 For a new builder or material restyle, read [references/figure-contract-and-style.md](references/figure-contract-and-style.md), create the publication contract from [examples/publication_contract.example.json](examples/publication_contract.example.json), and validate it with `python scripts/validate_publication_contract.py <contract>`. Use `source_fidelity` for the five AA2195 visual benchmarks. Journal profiles are explicit derivatives, not silent replacements for the source-matching route.
 
@@ -75,6 +75,7 @@ For offline work:
 For formal live work:
 
 - Require Windows, Origin 2022 with a valid license, Python 3.10, and `originpro`.
+- Accept a single visible supported Origin process named `Origin64`, `Origin_64`, `Origin_32`, or `Origin`; the available executable depends on the local Origin installation. Keep that same PID for the complete batch.
 - Before the first task action that can feed a live run, execute `python scripts/assert_admin_preflight.py --json-out <run-root>/admin_preflight.json`. This includes template retrieval/inspection, contract materialization, candidate creation, and every Origin phase. If it fails, do not create or reuse live-run artifacts; relaunch the entire workflow from this preflight in an elevated PowerShell process.
 - Require administrator Python and a visible administrator-started Origin process before the live workflow begins. Starting unelevated and elevating only the final worker is forbidden because it breaks the single privilege envelope.
 - Keep administrator privilege for the entire live lifecycle: preflight, template-project open/inspection, build, save, release, reopen, readback, export, and cleanup. Do not mix elevated and non-elevated Origin/Python phases.
@@ -102,7 +103,7 @@ Do not conclude that an OriginLab page or template is unavailable after one sear
 1. When an official entrance or candidate URL fails, retry it with bounded backoff for at least three total attempts; stop retrying that URL as soon as one attempt succeeds. Record the UTC timestamp, URL, retrieval method, HTTP status or error, response bytes, and final resolved URL for every attempt.
 2. When a search backend or HTML parser fails, bypass it: request the official page directly, inspect the raw HTML, use another available HTTP client or the in-app browser, and follow only official redirects. A tool decoding error is not evidence that OriginLab is down.
 3. Search at least three semantically close Gallery candidates when they exist. Continue until one closest candidate archive passes validation, or until the official entrances, candidate GID pages, direct official download URLs, local official-template catalog, and installed templates are all exhausted.
-4. Use `python scripts/retrieve_official_template.py --url <official-zip-url> --output <archive.zip> --attempts 3 --log <attempts.json>` for repeatable downloads. Multiple `--url` values provide official mirrors or alternate candidate archives.
+4. Use `python scripts/search_official_templates.py --search-terms "<keywords>" --max-items 5 --download-dir <dir> --manifest <search.json>` for bounded Gallery discovery, or `python scripts/retrieve_official_template.py --url <official-zip-url> --referer <detail-url> --output <archive.zip> --attempts 3 --log <attempts.json>` for a known archive. Multiple `--url` values provide official mirrors.
 5. Accept a download only when it is non-HTML content, has a ZIP signature, passes `zipfile.testzip()`, contains no unsafe extraction path, and has a recorded SHA256. Extract only data/template files; never execute downloaded binaries.
 6. Open the extracted `.opj` or `.opju` in the compatible administrator-run Origin instance and inspect its structure. A valid archive that cannot be opened in the target Origin version is a rejected candidate, not a reusable template.
 7. Report `E131_TEMPLATE_RETRIEVAL_EXHAUSTED` only after the recorded retry matrix shows at least two retrieval methods, three failed attempts per exhausted official URL, alternate official candidates where available, and both local searches. Preserve the attempt log with the template-search record.
@@ -167,7 +168,7 @@ If inspection reports zero plots where plots are expected, compare `plot_list()`
 
 ## Provenance and status
 
-Only `live_same_run` evidence can pass. Seed OPJUs, copied files, prior exports, and cross-run reports are `inherited_diagnostic` and not pass-eligible.
+Only `live_same_run` construction evidence can pass. Seed OPJUs, copied projects, prior exports, readbacks, and cross-run reports are `inherited_diagnostic` and not pass-eligible. Quality-validated scientific data may be reused under `source_data_policy=validated_reuse`. When an extraction bug is corrected without reading the source PDF again, `validated_crop_reextract` may re-extract only the declared figure from a hash-verified, quality-promoted source crop while requiring every unrelated data hash to remain unchanged. Neither route promotes inherited OPJUs or visual evidence; every candidate must still be built, reopened, exported, and scored in the current run.
 
 Keep these fields independent:
 
@@ -196,9 +197,9 @@ Argument errors exit 2. Worker/build errors exit nonzero. A valid but visually u
 
 Run structure and nonblank gates before scalar visual metrics. Compare source and post-reopen Origin export, record registration and ROI evidence, and use a bounded clean-rebuild loop. Identical consecutive signatures stop with `E510_NO_IMPROVEMENT`.
 
-For the named AA2195 set, run `scripts/audit_five_figure_batch.py` on the completed batch directory after all five routes finish. The audit is a release gate: it requires exactly Fig3/Fig12/Fig14/Fig15/Fig16, one stable visible Origin PID, `live_same_run` provenance, matching skill versions, and `structure_pass`, `visual_pass`, and `overall_release_pass` for every figure. It also requires Fig14 `plot_style_validation=ok`. A scalar score from one figure or an inherited manifest cannot promote the five-figure set.
+For the named AA2195 set, run `scripts/audit_five_figure_batch.py` on the completed batch directory after all five routes finish. The audit is a release gate: it requires exactly Fig3/Fig12/Fig14/Fig15/Fig16, one stable visible Origin PID, `live_same_run` provenance, matching skill versions, and `structure_pass`, `visual_pass`, and `overall_release_pass` for every figure. It also requires Fig14 `plot_style_validation=ok`. Fig16 additionally requires detection of all 21 WH/DRV/DRX segments, no boundary more than 1 px from the source, and mean absolute boundary error no greater than 0.5 px. A scalar score from one figure or an inherited manifest cannot promote the five-figure set.
 
-Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path>` from an elevated PowerShell process to build the five named routes in one visible Origin session. Give it a new or empty output directory; it fails with `E126_STALE_OUTPUT_ROOT` before Origin attach when prior files are present. The runner resolves or accepts `-PythonExe`, rejects non-3.10 Python, writes `admin_preflight.json` before Origin attach, and uses the same executable for every worker and the final audit. Do not copy an old OPJU, export, Worksheet, or readback into a fresh batch. The runner records fresh-output preflight, per-figure output, and PID stability, continues through visual non-promotion so the full gap is observable, and invokes the batch audit at the end.
+Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path> -SourceDataPolicy fresh_extract -SourcePdf <paper.pdf>` for a new extraction, `-SourceDataPolicy validated_reuse -ReuseBatchRoot <promoted-batch>` to reuse scientific data that already reproduced well, or `-SourceDataPolicy validated_crop_reextract -ReuseBatchRoot <promoted-batch>` to apply the declared Fig14 extraction correction to its validated crop. Reuse routes first build `originplot.aa2195_validated_data_reuse.v1`, require the prior five-figure audit plus every structure, visual, live, and release gate to pass, then verify parent manifest, crop, and data hashes before Origin attach. The re-extraction route permits only Fig14 data to change and records both parent and new hashes. Missing or failed evidence returns `E128_SOURCE_DATA_REUSE_REJECTED`. Every route requires a new or empty output root, Python 3.10, one stable visible Origin PID, and new OPJU construction/save/reopen/export/readback/visual evidence. Reuse never copies an old OPJU, Origin export, readback, or metric file; only the verified source bundle is materialized into the new run.
 
 Fig3's four-panel route keeps the top PSC/UC/TR legend editable without a legend-only Worksheet: each legend row uses Origin `\l(plot)` references to the actual temperature curves, so its colors and line modes follow the plotted series after save/reopen. Fig3 labels and axes explicitly use Times New Roman and the temperature labels retain their source color and bold weight; these typography and legend details are part of the live visual check rather than raster decoration.
 
@@ -232,7 +233,7 @@ Use [references/troubleshooting.md](references/troubleshooting.md) for attach fa
 
 ## Legacy and maintenance
 
-V2/V3/V4 artifacts are legacy inputs and require explicit migration to current V5 contracts. Read [references/legacy-and-migration.md](references/legacy-and-migration.md); do not present legacy runtime scripts as the p15 execution path.
+V2/V3/V4 artifacts are legacy inputs and require explicit migration to current V5 contracts. Read [references/legacy-and-migration.md](references/legacy-and-migration.md); do not present legacy runtime scripts as the p18 execution path.
 
 Version history and named-run records live in [references/changelog.md](references/changelog.md). Do not append project run diaries to this file.
 

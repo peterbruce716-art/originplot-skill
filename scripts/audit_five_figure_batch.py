@@ -65,6 +65,9 @@ def audit_batch(root: Path) -> dict[str, Any]:
             .get("plot_style_validation", {})
             .get("status")
         )
+        source_data_gate = readback.get("source_data_gate") or readback.get("fresh_source_gate")
+        source_data_status = source_data_gate.get("status") if isinstance(source_data_gate, dict) else None
+        source_data_policy = source_data_gate.get("policy") if isinstance(source_data_gate, dict) else None
         records[figure] = {
             "skill_version": manifest.get("skill_version"),
             "run_id": run_manifest.get("run_id"),
@@ -77,6 +80,8 @@ def audit_batch(root: Path) -> dict[str, Any]:
             "subplot_worksheet_validation": subplot_worksheet_status,
             "legend_plot_reference_validation": legend_plot_reference_status,
             "plot_style_validation": plot_style_status,
+            "source_data_gate": source_data_status,
+            "source_data_policy": source_data_policy,
         }
         if run_manifest.get("provenance") != "live_same_run":
             findings.append({"code": "INHERITED_OR_NONLIVE_EVIDENCE", "figure": figure})
@@ -94,6 +99,13 @@ def audit_batch(root: Path) -> dict[str, Any]:
             findings.append({"code": "PLOT_DERIVED_LEGEND_FAILED", "figure": figure, "status": legend_plot_reference_status})
         if figure == "fig14" and plot_style_status != "ok":
             findings.append({"code": "PLOT_STYLE_FAILED", "figure": figure, "status": plot_style_status})
+        if source_data_status != "pass" or source_data_policy not in {"fresh_extract", "validated_reuse", "validated_crop_reextract"}:
+            findings.append({
+                "code": "SOURCE_DATA_GATE_FAILED",
+                "figure": figure,
+                "status": source_data_status,
+                "policy": source_data_policy,
+            })
 
     versions = {record["skill_version"] for record in records.values()}
     if len(versions) != 1:

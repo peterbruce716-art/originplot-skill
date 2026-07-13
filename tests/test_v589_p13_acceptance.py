@@ -182,6 +182,7 @@ class TargetVisualGateTests(unittest.TestCase):
             "source_content_bbox": [23, 45, 802, 585],
             "actual_content_bbox": [53, 50, 801, 580],
             "source_nonwhite_ratio": 0.4, "actual_nonwhite_ratio": 0.4,
+            "foreground_f1": 0.99, "edge_f1": 0.99,
         }
 
     def test_fig12_requires_all_target_metrics_not_only_mae_and_layout(self) -> None:
@@ -190,6 +191,15 @@ class TargetVisualGateTests(unittest.TestCase):
         gate = self.acceptance.evaluate_target_visual_gate("fig12", metrics)
         self.assertFalse(gate["visual_baseline_promoted"])
         self.assertIn("edge_score", gate["failures"])
+
+    def test_missing_foreground_overlap_is_not_promotable(self) -> None:
+        metrics = self.baseline_metrics()
+        del metrics["foreground_f1"]
+
+        gate = self.acceptance.evaluate_target_visual_gate("fig12", metrics)
+
+        self.assertFalse(gate["visual_baseline_promoted"])
+        self.assertIn("foreground_f1", gate["failures"])
 
     def test_fig12_near_threshold_margin_is_explicitly_reported(self) -> None:
         metrics = self.baseline_metrics()
@@ -223,7 +233,10 @@ class TargetVisualGateTests(unittest.TestCase):
         metrics = self.baseline_metrics()
         metrics.update({"mae_0_1": 0.06591, "ssim_score": 0.69917, "layout_score": 0.99039,
                         "edge_score": 0.59916, "color_score": 0.95742,
-                        "registration_shift": {"dx_px": 2.5, "dy_px": -0.5}})
+                        "registration_shift": {"dx_px": 2.5, "dy_px": -0.5},
+                        "fig16_bar_boundary_max_error_px": 1.0,
+                        "fig16_bar_boundary_mean_error_px": 0.4,
+                        "fig16_bar_boundary_missing_segments": 0})
         gate = self.acceptance.evaluate_target_visual_gate("fig16", metrics)
         self.assertEqual("not_promoted", gate["visual_baseline_status"])
         self.assertFalse(gate["visual_baseline_promoted"])
@@ -273,9 +286,11 @@ class CandidateWorkerIntegrationTests(unittest.TestCase):
             "page_size_inches": [7.2, 3.75],
             "fig16_column_gap_percent": 15.0,
             "fig16_group_frame_width": 0.5,
+            "fig16_background_color": "#fefefe",
         }})
         self.assertEqual(15.0, route["fig16_column_gap_percent"])
         self.assertEqual(0.5, route["fig16_group_frame_width"])
+        self.assertEqual("#fefefe", route["fig16_background_color"])
         thin = self.worker.render_parameter_fingerprint(
             self.worker._render_identity_payload("fig16", route, "a" * 64)
         )["fingerprint"]
@@ -285,9 +300,9 @@ class CandidateWorkerIntegrationTests(unittest.TestCase):
         )["fingerprint"]
         self.assertNotEqual(thin, thick)
 
-    def test_live_evidence_run_id_uses_p15_prefix(self) -> None:
+    def test_live_evidence_run_id_uses_p18_prefix(self) -> None:
         run_id = self.worker.make_run_id("fig15", {"figure": "fig15"})
-        self.assertTrue(run_id.startswith("p15-fig15-"), run_id)
+        self.assertTrue(run_id.startswith("p18-fig15-"), run_id)
 
     def test_relative_source_crop_resolves_from_candidate_directory_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

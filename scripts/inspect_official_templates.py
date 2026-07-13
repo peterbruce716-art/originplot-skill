@@ -92,7 +92,7 @@ def inspect_templates(manifest_path: Path, output_path: Path, project_root: Path
 
     report: dict[str, Any] = {
         "schema": "originplot.official_template_inspection.v1",
-        "skill_version": "5.8.9-p15",
+        "skill_version": "5.8.9-p18",
         "source_manifest": str(manifest_path.resolve()),
         "administrator_python": True,
         "visible_administrator_origin_required": True,

@@ -18,7 +18,15 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
         self.assertIn("E126_STALE_OUTPUT_ROOT", text)
         self.assertIn("Get-ChildItem -LiteralPath $OutputRoot -Force", text)
         self.assertIn("fresh_output_root_verified = $true", text)
-        self.assertLess(text.index("E126_STALE_OUTPUT_ROOT"), text.index("Get-Process -Name Origin64"))
+        self.assertIn("[string]$SourcePdf = $null", text)
+        self.assertIn('[ValidateSet("fresh_extract", "validated_reuse", "validated_crop_reextract")]', text)
+        self.assertIn("extract_aa2195_fresh_source_bundle.py", text)
+        self.assertIn("source_data_policy", text)
+        self.assertIn("$baseCandidate.template_search_record = $templateSearchPath", text)
+        self.assertIn("$failedRuns = @($runs | Where-Object { $_.exit_code -ne 0 -or -not $_.pid_stable })", text)
+        self.assertIn("$runs.Count -eq 5 -and $failedRuns.Count -eq 0", text)
+        self.assertLess(text.index("& $PythonExe $extractor"), text.index("Get-Process -Name $originProcessNames"))
+        self.assertLess(text.index("E126_STALE_OUTPUT_ROOT"), text.index("Get-Process -Name $originProcessNames"))
 
     def test_live_batch_runner_records_admin_preflight_before_origin_attach(self):
         root = Path(__file__).resolve().parents[1]
@@ -26,7 +34,7 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
         self.assertIn('"scripts\\assert_admin_preflight.py"', text)
         self.assertIn('"admin_preflight.json"', text)
         self.assertIn("& $PythonExe $preflight", text)
-        self.assertLess(text.index("& $PythonExe $preflight"), text.index("Get-Process -Name Origin64"))
+        self.assertLess(text.index("& $PythonExe $preflight"), text.index("Get-Process -Name $originProcessNames"))
 
     def test_live_batch_runner_requires_python310_for_every_worker_and_audit(self):
         root = Path(__file__).resolve().parents[1]
@@ -35,6 +43,13 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
         self.assertIn('$pythonVersion.StartsWith("3.10.")', text)
         self.assertIn("Start-Process -FilePath $PythonExe", text)
         self.assertIn("& $PythonExe $audit", text)
+
+    def test_live_batch_runner_accepts_supported_32_and_64_bit_origin_processes(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "scripts" / "run_five_figure_live_batch.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('$originProcessNames = @("Origin64", "Origin_64", "Origin_32", "Origin")', text)
+        self.assertEqual(2, text.count("Get-Process -Name $originProcessNames"))
+        self.assertIn("exactly one visible supported Origin process is required", text)
 
     def _write_batch(self, root: Path, *, visual_pass: bool = True, shared_pid: bool = True) -> None:
         pid_values = [23780] * 5 if shared_pid else [23780, 23781, 23780, 23780, 23780]
@@ -46,7 +61,7 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
             evidence = root / figure / "evidence"
             evidence.mkdir(parents=True)
             (root / figure / "candidate_manifest.json").write_text(json.dumps({
-                "skill_version": "5.8.9-p15", "live_origin_verified": True,
+                "skill_version": "5.8.9-p18", "live_origin_verified": True,
                 "structure_pass": True, "visual_pass": visual_pass,
             }), encoding="utf-8")
             (root / figure / "candidate_readback.json").write_text(json.dumps({
@@ -55,10 +70,11 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
                     "subplot_worksheet_validation": {"status": "ok"},
                     "legend_plot_reference_validation": {"status": "not_required"},
                     "plot_style_validation": {"status": "ok" if figure == "fig14" else "not_required"},
-                }
+                },
+                "source_data_gate": {"status": "pass", "policy": "fresh_extract"},
             }), encoding="utf-8")
             (evidence / "run_manifest.json").write_text(json.dumps({
-                "run_id": f"p15-{figure}-test", "provenance": "live_same_run",
+                "run_id": f"p18-{figure}-test", "provenance": "live_same_run",
                 "release_status": {"overall_release_pass": visual_pass},
             }), encoding="utf-8")
 
@@ -125,3 +141,15 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
             result = audit_batch(root)
             self.assertEqual("fail", result["status"])
             self.assertIn("PLOT_STYLE_FAILED", {item["code"] for item in result["findings"]})
+
+    def test_rejects_missing_source_data_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_batch(root)
+            readback_path = root / "fig3" / "candidate_readback.json"
+            readback = json.loads(readback_path.read_text(encoding="utf-8"))
+            readback.pop("source_data_gate")
+            readback_path.write_text(json.dumps(readback), encoding="utf-8")
+            result = audit_batch(root)
+            self.assertEqual("fail", result["status"])
+            self.assertIn("SOURCE_DATA_GATE_FAILED", {item["code"] for item in result["findings"]})

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -378,6 +379,22 @@ class ReadbackCalibrationV588Tests(unittest.TestCase):
 
         self.assertEqual({"symbol_shape": 3, "symbol_size": 10.5}, result)
         self.assertEqual(["get p1 -k __opsk; get p1 -z __opsz;"], commands)
+
+    def test_scatter_plot_readback_keeps_symbol_shape_and_size(self) -> None:
+        origin = FakeSemanticOrigin()
+        with patch.object(
+            self.inspection,
+            "_labtalk_plot_symbol_style",
+            return_value={"symbol_shape": 2, "symbol_size": 10.5},
+        ) as reader:
+            result = self.inspection.inspect_layer_plots(FakeLayer(), labtalk_count=2, op=origin)
+
+        scatter = result["plot_details"][1]
+        self.assertEqual(201, scatter["plot_type_code"])
+        self.assertEqual(2, scatter["symbol_shape"])
+        self.assertEqual(10.5, scatter["symbol_size"])
+        self.assertEqual("labtalk_get_shape_size", scatter["symbol_style_readback_route"])
+        reader.assert_called_once()
 
     def test_plot_readback_records_labtalk_disagreement(self) -> None:
         result = self.inspection.inspect_layer_plots(FakeLayer(), labtalk_count=1)

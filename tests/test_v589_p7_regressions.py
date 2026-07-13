@@ -5,6 +5,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SKILL_ROOT = Path(
@@ -96,7 +97,9 @@ class Fig16ObjectRegressionTests(unittest.TestCase):
         spec.loader.exec_module(module)
         op = module.FakeBuilderOrigin()
 
-        result = fig16_builder.build(op, {})
+        from tests.fresh_source_fixture import fresh_builder_record
+        with patch.object(fig16_builder, "load_fresh_figure_data", return_value=fresh_builder_record("fig16")):
+            result = fig16_builder.build(op, {})
 
         self.assertEqual(2, len(result["axis_contract"]))
         self.assertEqual({0, 1}, {item["layer_index"] for item in result["axis_contract"]})

@@ -15,6 +15,7 @@ from .common_origin_utils import (
     reveal_graph_page,
 )
 from .geometry import fig15_geometry
+from .fresh_source_data import load_fresh_figure_data
 from .source_geometry import source_geometry_contract
 
 
@@ -167,7 +168,11 @@ def _add_panel(op: Any, layer: Any, panel: dict[str, Any]) -> int:
 
 
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+    fresh_source = load_fresh_figure_data(candidate_params, "fig15")
     geometry = fig15_geometry()
+    fresh_panels = fresh_source["data"]["panels"]
+    for panel in geometry["panels"]:
+        panel["curve"] = dict(fresh_panels[panel["name"]]["curve"])
     page_size_inches = (8.5, 3.35)
     page = create_hidden_graph_page(
         op,
@@ -275,8 +280,12 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         {
             "group_id": f"fig15.{panel['name']}.{path_name}",
             "canonical_source": {
-                "source_id": f"fig15_geometry.panels.{panel['name']}.{path_name}",
-                "kind": "source_calibrated_panel_geometry",
+                "source_id": (
+                    f"fresh_source_bundle.fig15.{panel['name']}.curve"
+                    if path_name == "curve"
+                    else f"fig15_geometry.panels.{panel['name']}.{path_name}"
+                ),
+                "kind": "fresh_crop_curve_geometry" if path_name == "curve" else "source_calibrated_panel_geometry",
             },
             "continuity": "single_xy" if path_name == "curve" else "nan_separated_xy",
             "same_worksheet": True,
@@ -336,7 +345,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "expected_graphobject_count": len(required_graphobject_contracts),
         "construction_visibility": construction_visibility,
         "unexpected_legend_expected": 0,
-        "reproduction_mode": geometry["provenance"],
+        "reproduction_mode": (
+            "fresh_source_reconstructed_approximate"
+            if fresh_source["source_data_policy"] == "fresh_extract"
+            else "validated_reuse_reconstructed_approximate"
+        ),
+        "source_data_policy": fresh_source["source_data_policy"],
+        "fresh_source_data_sha256": fresh_source["data_sha256"],
+        "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
+        "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
         "text_calibration": {
             "text_scale": _candidate_float(candidate_params.get("text_scale"), 1.0),
             "text_role_scales": candidate_params.get("text_role_scales", {}),

@@ -87,6 +87,24 @@ class OriginOnlyPackageTests(unittest.TestCase):
         self.assertEqual("AUTHORIZED_LOCAL_SOURCE_REQUIRED", candidate["source_crop"])
         self.assertIn("authorized", candidate["source_crop_policy"])
 
+    def test_shareable_builder_materializes_source_authorization_marker(self) -> None:
+        builder = load_module("build_shareable_package_marker_test", SCRIPTS / "build_shareable_package.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            candidate_dir = root / "examples" / "candidates"
+            candidate_dir.mkdir(parents=True)
+            (candidate_dir / "fig12.json").write_text(
+                json.dumps({"source_crop": "local-only-source.png"}),
+                encoding="utf-8",
+            )
+            archive_path = Path(tmp) / "originplot-skill.zip"
+            builder.build_zip(root, archive_path)
+            with zipfile.ZipFile(archive_path) as archive:
+                names = archive.namelist()
+                self.assertIn("originplot-skill/AUTHORIZED_LOCAL_SOURCE_REQUIRED", names)
+                marker = archive.read("originplot-skill/AUTHORIZED_LOCAL_SOURCE_REQUIRED").decode("utf-8")
+        self.assertIn("local source authorization contract", marker)
+
     def test_v5_compiler_and_runtime_fail_closed(self) -> None:
         compiler = load_module("originplot_compile_v5", SCRIPTS / "originplot_compile_v5.py")
         runtime = load_module("originplot_runtime_v5", SCRIPTS / "originplot_runtime_v5.py")

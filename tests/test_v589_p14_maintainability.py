@@ -86,7 +86,7 @@ class DocumentationContractTests(unittest.TestCase):
         if v4_path.is_file():
             v4_protocol = v4_path.read_text(encoding="utf-8-sig").lower()
             self.assertIn("legacy protocol", v4_protocol)
-            self.assertIn("not a supported p15 execution route", v4_protocol)
+            self.assertIn("not a supported p18 execution route", v4_protocol)
             self.assertNotIn("from `scripts/originplot_runtime_v4.py error-codes`", v4_protocol)
         legacy = (ROOT / "references" / "legacy-and-migration.md").read_text(encoding="utf-8-sig")
         self.assertIn("legacy inputs", legacy)
@@ -405,8 +405,14 @@ class ReproducibilityTests(unittest.TestCase):
             result = builder.build_zip(skill_dir, package)
             with zipfile.ZipFile(package) as archive:
                 entries = set(archive.namelist())
-        self.assertEqual(1, result["entry_count"])
-        self.assertIn("originplot-skill/SKILL.md", entries)
+        self.assertEqual(2, result["entry_count"])
+        self.assertEqual(
+            {
+                "originplot-skill/AUTHORIZED_LOCAL_SOURCE_REQUIRED",
+                "originplot-skill/SKILL.md",
+            },
+            entries,
+        )
 
 
 if __name__ == "__main__":

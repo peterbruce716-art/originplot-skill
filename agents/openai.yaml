@@ -1,4 +1,4 @@
 interface:
   display_name: "originplot"
-  short_description: "Plan and build source-traceable, publication-ready Origin OPJU figures."
-  default_prompt: "Use $originplot to define the figure conclusion and panel evidence, validate the publication contract, build an editable Origin OPJU with canonical source groups, reopen it, verify native structure and bindings, export from Origin, and report source-fidelity and publication QA separately."
+  short_description: "Discover templates and build verified, editable Origin OPJU figures."
+  default_prompt: "Use $originplot to find official template candidates or plan and build a source-traceable editable Origin OPJU, then reopen it, verify native Worksheet bindings, export from Origin, and report source-fidelity and publication QA separately."

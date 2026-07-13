@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from .common_origin_utils import create_hidden_graph_page, disable_speed_mode, page_dot_command, page_percent_layer_command, remove_default_labels, reveal_graph_page
-from .fig3_data import COLORS, LINE_STYLES, PANELS
+from .fig3_data import COLORS, LINE_STYLES
+from .fresh_source_data import load_fresh_figure_data
 from .source_geometry import source_geometry_contract
 
 
@@ -112,8 +113,8 @@ def _add_panel(
             source_groups.append({
                 "group_id": f"fig3.{panel['name']}.{temperature}.{mode}.curve",
                 "canonical_source": {
-                    "source_id": f"fig3_data.PANELS.{panel['name']}.{temperature}.{mode}",
-                    "kind": "digitized_curve_anchors",
+                    "source_id": f"fresh_source_bundle.fig3.{panel['name']}.{temperature}.{mode}",
+                    "kind": "fresh_pdf_vector_curve_anchors",
                 },
                 "continuity": "single_xy",
                 "same_worksheet": True,
@@ -183,6 +184,8 @@ def _add_panel(
 
 
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+    fresh_source = load_fresh_figure_data(candidate_params, "fig3")
+    panels = fresh_source["data"]["panels"]
     page_size_inches = (12.45, 9.0)
     page = create_hidden_graph_page(op, lname="Fig3_source_calibrated_four_panel", template="LINE")
     page.lt_exec(page_dot_command(*page_size_inches, page.get_float("resx"), page.get_float("resy")))
@@ -195,7 +198,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     source_groups: list[dict[str, Any]] = []
     subplot_contracts: list[dict[str, Any]] = []
     legend_contracts: list[dict[str, Any]] = []
-    for index, (layer, panel) in enumerate(zip(layers, PANELS)):
+    for index, (layer, panel) in enumerate(zip(layers, panels)):
         count, panel_books, names, panel_plot_contracts, panel_source_groups, panel_legend_contracts = _add_panel(op, layer, panel, index)
         counts[index] = count
         books.extend(panel_books)
@@ -229,8 +232,16 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "expected_graphobject_count": len(contracts),
         "axis_contract": [],
         "construction_visibility": visibility,
-        "reproduction_mode": "source_calibrated_reconstructed_approximate",
-        "data_provenance": "manual source-curve anchors from AA2195 Fig. 3 vector render",
+        "reproduction_mode": (
+            "fresh_source_reconstructed_approximate"
+            if fresh_source["source_data_policy"] == "fresh_extract"
+            else "validated_reuse_reconstructed_approximate"
+        ),
+        "source_data_policy": fresh_source["source_data_policy"],
+        "data_provenance": "hash-verified AA2195 Fig. 3 source-bundle data",
+        "fresh_source_data_sha256": fresh_source["data_sha256"],
+        "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
+        "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
         "font_profile": FIG3_FONT,
         "font_sizes": {"axis_tick": 32.0, "axis_title": 38.0, "panel": 38.0, "legend": 31.0, "temperature": 31.0},
         "candidate_params": candidate_params,

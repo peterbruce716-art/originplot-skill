@@ -20,6 +20,7 @@ from .geometry import (
     _fig12_threshold_centered_region_values,
     fig12_panels,
 )
+from .fresh_source_data import load_fresh_figure_data
 from .source_geometry import source_geometry_contract
 
 
@@ -701,13 +702,14 @@ def _add_colorbar_overlay(
 
 
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+    fresh_source = load_fresh_figure_data(candidate_params, "fig12")
     matrix_mode = _fig12_matrix_mode(candidate_params)
+    if matrix_mode == "analytic_fallback":
+        raise RuntimeError("E127_FRESH_SOURCE_REQUIRED: Fig12 analytic fallback is forbidden in a fresh rebuild")
     matrix_nx, matrix_ny, matrix_resolution_scale = _fig12_matrix_resolution(candidate_params)
     matrix_smoothing_sigma = _fig12_matrix_smoothing_sigma(candidate_params)
     y_minor_ticks = _fig12_y_minor_ticks(candidate_params)
-    matrix_source_crop = None if matrix_mode == "analytic_fallback" else (
-        candidate_params.get("_runtime_source_crop") or candidate_params.get("source_crop")
-    )
+    matrix_source_crop = fresh_source["source_crop"]
     panels = fig12_panels(
         matrix_source_crop,
         nx=matrix_nx,
@@ -1129,7 +1131,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "required_graphobject_contracts": required_graphobject_contracts,
         "expected_graphobject_count": len(required_graphobject_contracts),
         "construction_visibility": construction_visibility,
-        "reproduction_mode": "reconstructed_approximate",
+        "reproduction_mode": (
+            "fresh_source_reconstructed_approximate"
+            if fresh_source["source_data_policy"] == "fresh_extract"
+            else "validated_reuse_reconstructed_approximate"
+        ),
+        "source_data_policy": fresh_source["source_data_policy"],
+        "fresh_source_data_sha256": fresh_source["data_sha256"],
+        "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
+        "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
         "candidate_params": {
             key: value for key, value in candidate_params.items() if not str(key).startswith("_")
         },

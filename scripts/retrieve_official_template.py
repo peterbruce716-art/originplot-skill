@@ -89,8 +89,16 @@ def safe_extract(path: Path, destination: Path) -> list[str]:
     return extracted
 
 
-def fetch_once(url: str, temporary: Path, timeout: float) -> dict[str, object]:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def fetch_once(
+    url: str,
+    temporary: Path,
+    timeout: float,
+    referer: str | None = None,
+) -> dict[str, object]:
+    headers = {"User-Agent": USER_AGENT}
+    if referer:
+        headers["Referer"] = referer
+    request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=timeout) as response:
         status = getattr(response, "status", None) or response.getcode()
         final_url = response.geturl()
@@ -113,12 +121,15 @@ def retrieve(
     timeout: float,
     backoff: float,
     extract_dir: Path | None,
+    referer: str | None = None,
 ) -> dict[str, object]:
     if attempts < 3:
         raise ValueError("attempts must be at least 3")
     for url in urls:
         if not is_allowed_url(url):
             raise ValueError(f"URL is not an allowed official HTTPS host: {url}")
+    if referer and not is_allowed_url(referer):
+        raise ValueError(f"Referer is not an allowed official HTTPS host: {referer}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_name(output.name + f".part.{os.getpid()}")
@@ -135,7 +146,7 @@ def retrieve(
             try:
                 if temporary.exists():
                     temporary.unlink()
-                response = fetch_once(url, temporary, timeout)
+                response = fetch_once(url, temporary, timeout, referer)
                 validation = validate_archive(temporary)
                 temporary.replace(output)
                 record.update(response)
@@ -179,6 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--backoff", type=float, default=2.0)
     parser.add_argument("--extract-dir", type=Path)
+    parser.add_argument("--referer", help="Official detail page used as the HTTP Referer")
     parser.add_argument("--log", type=Path, required=True)
     return parser
 
@@ -192,6 +204,7 @@ def main() -> int:
         args.timeout,
         args.backoff,
         args.extract_dir.resolve() if args.extract_dir else None,
+        args.referer,
     )
     args.log.parent.mkdir(parents=True, exist_ok=True)
     args.log.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

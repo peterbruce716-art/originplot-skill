@@ -1,4 +1,4 @@
-# OriginPlot Skill v5.8.9-p15
+# OriginPlot Skill v5.8.9-p18
 
 OriginPlot is a verification framework for editable Origin/OriginPro projects. It includes AA2195-specific builders for Fig3, Fig12, Fig14, Fig15, and Fig16. It is not a universal system that converts any input image into a high-fidelity OPJU automatically.
 
@@ -92,6 +92,28 @@ python scripts/origin_candidate_worker.py --figure fig15 `
   --output-dir outputs/fig15-live --live --require-live-success
 ```
 
+Five-figure live run with a fresh PDF extraction:
+
+```powershell
+.\scripts\run_five_figure_live_batch.ps1 `
+  -OutputRoot outputs\aa2195-fresh `
+  -SourceDataPolicy fresh_extract `
+  -SourcePdf path\to\paper.pdf
+```
+
+Reuse scientific data from a prior promoted batch whose reproduction already passed:
+
+```powershell
+.\scripts\run_five_figure_live_batch.ps1 `
+  -OutputRoot outputs\aa2195-reuse `
+  -SourceDataPolicy validated_reuse `
+  -ReuseBatchRoot outputs\prior-promoted-batch
+```
+
+The reuse route is limited to hash-verified curves, markers, error bars, fields, bar segments, and source crops. It validates the prior batch before Origin attach, then builds new Worksheets and OPJUs and repeats save/reopen/readback/export/visual QA. It never promotes copied OPJUs, exports, readbacks, or old metrics.
+
+To apply the corrected Fig14 extraction without reopening the PDF, use the same command with `-SourceDataPolicy validated_crop_reextract`. This lineage route re-extracts Fig14 from its promoted source crop and fails if any other figure data hash changes.
+
 Registry-based public demo:
 
 ```powershell
@@ -161,8 +183,8 @@ python -m compileall .
 python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
-python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p15.zip"
-python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p15.zip"
+python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p18.zip"
+python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p18.zip"
 ```
 
 None of these offline commands proves live Origin E2E.
@@ -186,4 +208,4 @@ Code and repository-authored documentation are MIT licensed. Origin, OriginPro, 
 - Fig12 contour data remains backed by native XYZ Worksheet plots. Plain `draw -paths objName SVGPath` creates editable type-34 overlay objects; each overlay now uses a unique cleaned temporary directory and must pass post-reopen type-34 plus X/Y/DX/DY geometry checks. The canonical Origin 2022 run passed every strict visual gate (MAE 0.035472, SSIM 0.801507, layout 0.992431, edge 0.745290, color 0.977127), but edge is explicitly reported as near-threshold and is not a cross-machine portability claim.
 - Fig15's frozen regression evidence does not generalize to arbitrary dual-panel schematics.
 - A generic registry reduces hard-coding; it does not remove the need for figure-specific engineering and validation.
-- The source tree retains legacy V4 migration tools, but p15 execution and shareable packaging use V5 contracts.
+- The source tree retains legacy V4 migration tools, but p18 execution and shareable packaging use V5 contracts.

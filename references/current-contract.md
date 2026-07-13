@@ -1,6 +1,6 @@
 # Current Contract
 
-This is the active OriginPlot v5.8.9-p15 contract. Older protocol files are inputs only where a current script or schema explicitly consumes them.
+This is the active OriginPlot v5.8.9-p18 contract. Older protocol files are inputs only where a current script or schema explicitly consumes them.
 
 ## Result semantics
 
@@ -17,13 +17,15 @@ Every candidate manifest exposes these independent fields:
 
 ## Batch audit
 
-The five named AA2195 routes have a batch-level gate in `scripts/audit_five_figure_batch.py`. It rejects incomplete figure sets, Origin PID drift, mixed skill versions, inherited provenance, and any figure whose reopened structure, visual gate, or release status is false. This audit supplements per-figure metrics; it does not relax them.
+The five named AA2195 routes have a batch-level gate in `scripts/audit_five_figure_batch.py`. It rejects incomplete figure sets, Origin PID drift, mixed skill versions, inherited construction evidence, a missing/invalid source-data gate, and any figure whose reopened structure, visual gate, or release status is false. This audit supplements per-figure metrics; it does not relax them.
 
 ## Provenance
 
 - `live_same_run` is eligible only when one run creates the OPJU, pre-save export, post-reopen export, readback, visual metrics, and manifest with consistent IDs and hashes.
 - `inherited_diagnostic` covers copied OPJUs, seed files, old exports, and cross-run comparisons. It cannot pass.
 - The five-figure live runner accepts only a new or empty output root. It records `fresh_output_root_verified=true` and fails with `E126_STALE_OUTPUT_ROOT` before Origin attach when prior files are present. Old OPJUs, exports, Worksheets, and readbacks may be comparators only; they cannot enter the new run directory.
+- The five-figure runner declares `source_data_policy` as `fresh_extract`, `validated_reuse`, or `validated_crop_reextract`. Fresh extraction requires `-SourcePdf`. Both reuse modes require `-ReuseBatchRoot`; `build_validated_data_reuse_record.py` accepts only a prior batch with a clean five-figure audit and per-figure structure, visual, live, provenance, and release passes. `validated_crop_reextract` additionally runs `reextract_validated_source_bundle.py`, which may change only Fig14 data using the hash-verified Fig14 crop and must retain every unrelated data hash. The worker verifies parent manifest, bundle, crop, reuse-record, and per-figure data hashes before Origin attach, otherwise it fails with `E128_SOURCE_DATA_REUSE_REJECTED`.
+- Validated reuse applies only to curves, markers, error bars, fields, bar segments, and their source crops. The current run must still build new Worksheets/OPJUs, save, detach, reopen, read back, export, and pass visual gates. Old OPJUs, exports, readbacks, and metrics cannot enter the new run as pass evidence.
 - Approximate reconstruction must be labelled `digitized_approximate`, `semantic_reconstruction`, or `reconstructed_approximate`, never `source_exact`.
 
 ## Editable route gate
@@ -53,7 +55,7 @@ The five named AA2195 routes have a batch-level gate in `scripts/audit_five_figu
 
 Fail or remain incomplete when required inputs are missing, the requested builder is unknown, session policy is violated, OPJU reopen fails, a declared plot is unbound, a declared Fig12 contour level drifts after reopen, the row budget is exceeded, evidence is inherited, exports are blank, or required visual/semantic gates fail. A demo-watermark result invalidates the entire run. Its manifest must require a new-run administrator restart from preflight and must prohibit reuse of that run's OPJU, exports, readback, run ID, and output root.
 
-Stable codes include `E100_SCHEMA_INVALID`, `E120_ENVIRONMENT_MISMATCH`, `E121_ATTACH_POLICY_VIOLATION`, `E122_ORIGIN_DEMO_EXPORT_BLOCKED`, `E126_STALE_OUTPUT_ROOT`, `E130_TEMPLATE_SEARCH_REQUIRED`, `E131_TEMPLATE_RETRIEVAL_EXHAUSTED`, `E220_BUILD_FAILED`, `E300_ORIGIN_ATTACH_FAILED`, `E400_STRUCTURE_MISMATCH`, `E410_SERIALIZATION_DRIFT`, `E420_VISUAL_MISMATCH`, `E440_PLOT_FAMILY_NOT_IMPLEMENTED`, `E470_LIVE_SAME_RUN_REQUIRED`, `E480_EVIDENCE_PACKAGE_INCOMPLETE`, `E510_NO_IMPROVEMENT`, `E540_PAGE_UNIT_SCALE_MISMATCH`, and `E541_LAYER_UNIT_SCALE_MISMATCH`.
+Stable codes include `E100_SCHEMA_INVALID`, `E120_ENVIRONMENT_MISMATCH`, `E121_ATTACH_POLICY_VIOLATION`, `E122_ORIGIN_DEMO_EXPORT_BLOCKED`, `E126_STALE_OUTPUT_ROOT`, `E127_FRESH_SOURCE_REQUIRED`, `E128_SOURCE_DATA_REUSE_REJECTED`, `E130_TEMPLATE_SEARCH_REQUIRED`, `E131_TEMPLATE_RETRIEVAL_EXHAUSTED`, `E220_BUILD_FAILED`, `E300_ORIGIN_ATTACH_FAILED`, `E400_STRUCTURE_MISMATCH`, `E410_SERIALIZATION_DRIFT`, `E420_VISUAL_MISMATCH`, `E440_PLOT_FAMILY_NOT_IMPLEMENTED`, `E470_LIVE_SAME_RUN_REQUIRED`, `E480_EVIDENCE_PACKAGE_INCOMPLETE`, `E510_NO_IMPROVEMENT`, `E540_PAGE_UNIT_SCALE_MISMATCH`, and `E541_LAYER_UNIT_SCALE_MISMATCH`.
 
 ## Required live outputs
 

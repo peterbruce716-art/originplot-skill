@@ -1,6 +1,10 @@
 # AA2195 Benchmark Contract
 
-The packaged AA2195 builders are specialized implementations, not proof that arbitrary source images can be converted automatically.
+The packaged AA2195 builders are specialized implementations, not proof that arbitrary source images can be converted automatically. Existing successful local reproductions may be reused for layout, typography, Origin object structure, plot types, calibration, curves, markers, error bars, fields, and bar segments when their prior live batch passed all structure, visual, provenance, and release gates and their hashes still match. Only missing, unvalidated, drifted, or visually inadequate parts require new extraction or reconstruction.
+
+The p18 Fig14 fresh-source route clusters colored marker rows before selecting the data point, preventing the 250 degrees C markers from being averaged with the legend. Black error-bar pixels are selected by marker-local connected components at each shared x coordinate, and one-sided marker occlusion uses the maximum center-to-endpoint extent. Marker overlays use Origin's native scatter plot so a zero-width hairline cannot cover the dashed series. The route identity is `aa2195_fig14_component_errorbars_native_scatter_dash_v4`; it requires a new same-run Origin save/reopen validation before promotion.
+
+The final p18 administrator-Origin 2022 batch completed all five figures against one visible Origin process with no audit findings. Every worker exited zero and passed live-Origin, save/reopen structure, source-data, visual, and release gates. The sanitized run hashes and scalar metrics are recorded in `aa2195-release-evidence.json`; local rasters and Origin projects remain outside the shareable package.
 
 ## Fig3
 
@@ -12,11 +16,11 @@ The packaged AA2195 builders are specialized implementations, not proof that arb
 
 ## Fig14
 
-- One native XY page with nine direct Worksheet plots: three editable NaN-separated line plots, three independent marker overlays, and three editable error paths.
-- The line/marker split is deliberate: Origin 2022 can overwrite grouped line styles when line-symbol plots are inserted. Reopened readback must report type-200 line and error plots, type-202 marker overlays with zero line width, nine direct Worksheet bindings, and the declared NaN dash runs.
+- One native XY page with nine direct Worksheet plots: three editable anchor line plots, three independent marker overlays, and three editable error paths.
+- The line/marker split is deliberate: Origin 2022 can overwrite grouped line styles when line-symbol plots are inserted. Reopened readback must report type-200 line and error plots, type-201 native scatter marker overlays, nine direct Worksheet bindings, and native line-style code 1 for all three source-dashed series. A type-202 zero-width line-symbol overlay is forbidden because Origin may export its nominally zero-width connection as a hairline over the dashed series.
 - PSC/UC/TR markers, source-calibrated values, error extents, axes, legend, and Times New Roman typography survive save/reopen readback.
 - The current same-run Origin 2022 route passes structure and visual gates; it is an editable reconstruction of the published raster, not raw experimental data recovery.
-- Each PSC/UC/TR family is one canonical source group. The dense NaN-patterned line, anchor-marker view, and error path are deterministic views in the same reopened Worksheet.
+- Each PSC/UC/TR family is one canonical source group. Its hash-verified anchor line, anchor-marker view, and error path are deterministic views in the same reopened Worksheet, whether freshly extracted or quality-validated for reuse.
 
 ## Template-first gate
 
@@ -74,8 +78,11 @@ Official entrances:
 - Verify the post-reopen legend at exported pixels: the first black border is not clipped, WH and DRV share a 2 px border, and DRV and DRX are separated by exactly 3 white pixels at the 720 x 375 benchmark export.
 - The native stack layer and geometry overlay declare subplot/layer-to-Worksheet contracts; all five data/geometry plots reopen against the declared stack-data Workbook.
 - Do not duplicate the native column bottom edge with a second baseline.
-- Calibrate stage-local S offsets and numeral glyph centering from the reopened export.
-- Promotion requires all live visual gates plus the frozen source hash, effective builder route, geometry version, Origin version, and export profile. Metrics without that identity remain non-promoted.
+- Use the source-derived S-slot centers directly; legacy stage-local left shifts are forbidden because they move individual DRV/DRX boundaries by up to 3 px. Keep numeral glyph centering calibrated from the reopened export.
+- Detect all 21 WH/DRV/DRX colored segments after reopen and compare each left/top/right/bottom boundary with the source crop. Promotion requires no missing segment, maximum absolute boundary error at most 1 px, and mean absolute boundary error at most 0.5 px. The route identity is `aa2195_fig16_segment_boundary_calibrated_v7`.
+- The final p18 live export detected all 21 source and 21 reconstructed segments with zero missing segments, 1 px maximum absolute boundary error, and 0.476190 px mean absolute boundary error. Its global visual metrics were MAE 0.045066, SSIM 0.792995, layout 0.987722, edge 0.676016, color 0.986775, foreground F1 0.987996, and edge F1 0.942612 at 720 x 375.
+- Keep the 15% native column gap. Use the explicit Origin layer background `#fefefe` to match the current PDF raster's near-white antialiased mean without changing WH/DRV/DRX scientific colors or post-processing the PNG.
+- Promotion requires all live visual gates plus a passing `source_data_gate`, source crop/data hashes, effective builder route, geometry version, Origin version, and export profile. A reused data bundle additionally requires a passing `originplot.aa2195_validated_data_reuse.v1` record. Metrics without that identity remain non-promoted.
 
 ## Official-template evidence
 

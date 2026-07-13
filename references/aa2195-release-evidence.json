@@ -1,60 +1,78 @@
 {
   "schema": "originplot.aa2195_release_evidence_index.v1",
-  "skill_version": "5.8.9-p14",
+  "skill_version": "5.8.9-p18",
   "scope": "sanitized_hash_and_metric_index_only",
-  "artifact_policy": "source images, Origin projects, and rendered exports are not redistributed",
+  "artifact_policy": "source images, Origin projects, rendered exports, and local absolute paths are not redistributed",
   "environment": "Origin 2022 on the authorized Windows reference environment",
+  "batch": {
+    "completed_at": "2026-07-14T05:40:41+08:00",
+    "status": "pass",
+    "figure_count": 5,
+    "findings_count": 0,
+    "single_visible_origin_pid_verified": true,
+    "source_data_policy": "validated_crop_reextract"
+  },
   "routes": [
     {
       "figure": "fig3",
-      "created_at": "2026-07-12T13:07:50",
+      "created_at": "2026-07-14T05:38:12",
+      "run_id": "p18-fig3-e4b76e6de594-20260714T053907",
       "status": "built_real_candidate_pass_eligible",
-      "candidate_sha256": "8125fae639a94f4cbda3bfb919f3c3ca1557bff62a2c7aa36498575a9b3f0475",
-      "render_fingerprint": "c871ccfe83d3f6a5d76bbd5ee483996d3be93b14b84fcca90fe01f3ff69295fc",
-      "metrics": {"mae_0_1": 0.06687843799591064, "ssim_score": 0.6630508303642273, "layout_score": 0.9845649263721553, "edge_score": 0.6401553601026535, "color_score": 0.9510031938552856},
-      "manifest_sha256": "bf995798c6fb66d33e445ff1f585c815a8e048ac46ee145695014a080b9a5523",
-      "visual_metrics_sha256": "71c56fefe743be09ecb8a45bcc14914f00bc69a27063d1fa8a886212c0cd4731"
+      "candidate_sha256": "e4b76e6de594a372e7ede0ccdf17ed59bf1d3efcf180a7f09e7e392134ff92e0",
+      "render_fingerprint": "681680de8edcb0890c480e961dffb4ebc4e0cb191adb628546dbecb45ed12e96",
+      "geometry_table_version": "aa2195_fig3_continuous_native_line_styles_v2",
+      "metrics": {"mae_0_1": 0.053661953657865524, "ssim_score": 0.7328551411628723, "layout_score": 0.9887014725568942, "edge_score": 0.6808245405554771, "color_score": 0.9288729811087251, "foreground_f1": 0.5301294656986966, "edge_f1": 0.5652288011017527, "nonwhite_delta": 0.02695760821062025},
+      "manifest_sha256": "b72909d1a8c3f249507a57edd83b367d1455cfab3fba0f6316726d3593f7895e",
+      "visual_metrics_sha256": "0156dfbdcd1d8eeae1dc981f252ab26820c40b3159976ade6b97de23cc4d191c"
     },
     {
       "figure": "fig12",
-      "created_at": "2026-07-12T15:12:31",
+      "created_at": "2026-07-14T05:39:08",
+      "run_id": "p18-fig12-da866080630f-20260714T054000",
       "status": "built_real_candidate_pass_eligible",
-      "candidate_sha256": "6acf92857ea51984524dc4e148c7839a02c5b70e1346f8ab2bf58ded1abb0d4f",
-      "render_fingerprint": "0ab74272ddcf0b5e88b9b868e8306d85898678c39df680bacfea3d4c07de0776",
-      "metrics": {"mae_0_1": 0.03547220304608345, "ssim_score": 0.8015066981315613, "layout_score": 0.9924307821875987, "edge_score": 0.74528968334198, "color_score": 0.977126915473491},
-      "near_threshold_metrics": ["edge_score"],
-      "manifest_sha256": "8e5cca39d4c2d4d2df5185a0e8871dd171d6ff7af7575366331160f4c9bbd935",
-      "visual_metrics_sha256": "2af406920d98afb1dea7ef9e8136fe154a1dd8ce32562eb3d8f359afb336aa07"
+      "candidate_sha256": "da866080630f81616079e0464b9d43210be3e6bff988aac30a3bec1b9175a24e",
+      "render_fingerprint": "93e02c7e1244c916986948bdf67f5ea3ac552d5f4f4707a005e95020d686afc1",
+      "geometry_table_version": "aa2195_fig12_loggrid_threshold_centered_v22",
+      "metrics": {"mae_0_1": 0.03547220304608345, "ssim_score": 0.8015066981315613, "layout_score": 0.9924307821875987, "edge_score": 0.74528968334198, "color_score": 0.977126915473491, "foreground_f1": 0.9813438266175751, "edge_f1": 0.8194976333326598, "nonwhite_delta": 0.005587956627013391},
+      "manifest_sha256": "23f1106ce038026aee8d9857c777a373e3fe61861a5bb479c3a8201587cd1d78",
+      "visual_metrics_sha256": "43b879c8d2280ae0b015b2ae1480efaba9f85d091238329ff0a88d7dea48c20f"
     },
     {
       "figure": "fig14",
-      "created_at": "2026-07-12T13:09:09",
+      "created_at": "2026-07-14T05:40:01",
+      "run_id": "p18-fig14-02d3cceda6fe-20260714T054010",
       "status": "built_real_candidate_pass_eligible",
-      "candidate_sha256": "813e1934a8188412285a46dd5e67d6357657e29f41aefece1095e9f8bf7de509",
-      "render_fingerprint": "0b0f2393f4d40d8e71fc31a048d9ebd324e71d7d991f3ad6052b8b762d9ce450",
-      "metrics": {"mae_0_1": 0.03834747150540352, "ssim_score": 0.838898241519928, "layout_score": 0.983546511627907, "edge_score": 0.7835428453981876, "color_score": 0.9693117546848953},
-      "manifest_sha256": "11744546fabd2610f39716542493fc692c4446e4e0d746ae003272b45bf3818c",
-      "visual_metrics_sha256": "6e0894aa56f890755b9f11e89384550acac53dc767cf59fd95d36e48a2315675"
+      "candidate_sha256": "02d3cceda6fe3f8e6ae1927fc3d212c281db6b0bc50f83f7853fc636d9f8cd16",
+      "render_fingerprint": "53b183305e7d8c17bab785eb4176c5921adb4fd3ba565c9d42fc8d18c9d13fe3",
+      "geometry_table_version": "aa2195_fig14_component_errorbars_native_scatter_dash_v4",
+      "metrics": {"mae_0_1": 0.038561753928661346, "ssim_score": 0.8438660502433777, "layout_score": 0.9741957364341085, "edge_score": 0.7936690971255302, "color_score": 0.9717807769775391, "foreground_f1": 0.44865815068093007, "edge_f1": 0.45384717079403275, "nonwhite_delta": 0.00968410852713178},
+      "manifest_sha256": "23c4137e5df4a673396e821876c0abaee1aea650a914d151867c617d436f6f6c",
+      "visual_metrics_sha256": "c8b160de429095e7f3cefeac63e5d1ef9f21b6284358eaef50f5062c7758ee17"
     },
     {
       "figure": "fig15",
-      "created_at": "2026-07-12T13:09:17",
+      "created_at": "2026-07-14T05:40:12",
+      "run_id": "p18-fig15-f04d0c45fe55-20260714T054026",
       "status": "built_real_candidate_pass_eligible",
-      "candidate_sha256": "398b2b9cacf40d9b795880e234d712ec4716f1c6af96bbfebe69deb2e7277911",
-      "render_fingerprint": "abd77f6663045ee7b33bd4120f5c94dc932897e14f4547641a5788a5c4047c64",
-      "metrics": {"mae_0_1": 0.033342763781547546, "ssim_score": 0.8478049635887146, "layout_score": 0.9887796312554873, "edge_score": 0.7473618574440479, "color_score": 0.9937959510134533},
-      "manifest_sha256": "803e5716a408e9381a0542bed044bbbcd55e6ab070b3c9d4159c8f4867a646bd",
-      "visual_metrics_sha256": "7f53b74dbaf917fb94406e10259bb5a453852a8dadf9548c0e73b4844e343bbe"
+      "candidate_sha256": "f04d0c45fe5584860912ce5b3b6193ee91e70934dfaae4c5479138b90b5e9a61",
+      "render_fingerprint": "269a72ca9260c382cd191ea15f19d86136e6330540b32c49cdf05f0665623649",
+      "geometry_table_version": "aa2195_fig15_run047_v1",
+      "metrics": {"mae_0_1": 0.033400148153305054, "ssim_score": 0.8476769328117371, "layout_score": 0.9887796312554873, "edge_score": 0.7478151135146618, "color_score": 0.9939900636672974, "foreground_f1": 0.722345681522123, "edge_f1": 0.7488893629583335, "nonwhite_delta": 0.031164179104477607},
+      "manifest_sha256": "e9ad607a47e38a0a5a233e1aa3d4d8e1e767561cea4212f6b5220afee3665443",
+      "visual_metrics_sha256": "af3c1a957243ce631140c3db0ba3cdb4bef4cd5baf34db753450ea989b79c15e"
     },
     {
       "figure": "fig16",
-      "created_at": "2026-07-12T13:09:31",
+      "created_at": "2026-07-14T05:40:28",
+      "run_id": "p18-fig16-94233d1b4a87-20260714T054040",
       "status": "built_real_candidate_pass_eligible",
-      "candidate_sha256": "2c65b195befd50b4fc2d6c020645788ad610d5c61842202ee012e216f22384be",
-      "render_fingerprint": "c81afc0a91cba9445671c9598e258c6cea0569c58711cfcf1ba5e0ce93ebd77b",
-      "metrics": {"mae_0_1": 0.049104467034339905, "ssim_score": 0.7775306701660156, "layout_score": 0.9877222222222222, "edge_score": 0.657323956489563, "color_score": 0.9701869487762451},
-      "manifest_sha256": "d7a79ea981a894f7a3602e958c52e845d62fd811ba569580761ea9ffbafca687",
-      "visual_metrics_sha256": "ab6d026a0fb5bdb93b68aa5e7d0b40084e6a27e78c21112eb4b39ebf6d25c443"
+      "candidate_sha256": "94233d1b4a87fb45ecc105ae418baf85a96f3f2ba5c85563022e54429093e6a9",
+      "render_fingerprint": "a36cf0e9b1f81b30f2f927232d63e90a33dc79b9fea1e69c67805cff0c4ce51d",
+      "geometry_table_version": "aa2195_fig16_segment_boundary_calibrated_v7",
+      "metrics": {"mae_0_1": 0.04506637901067734, "ssim_score": 0.7929954528808594, "layout_score": 0.9877222222222222, "edge_score": 0.6760159730911255, "color_score": 0.986774722347036, "foreground_f1": 0.9879960981112318, "edge_f1": 0.9426121593579092, "nonwhite_delta": 0.04832962962962961},
+      "bar_boundary": {"expected_segment_count": 21, "source_segment_count": 21, "actual_segment_count": 21, "missing_segments": 0, "max_abs_boundary_error_px": 1.0, "mean_abs_boundary_error_px": 0.47619047619047616},
+      "manifest_sha256": "d781020e094976da3464456a0f3e7efca9985010d7613c0e9abf901363030d51",
+      "visual_metrics_sha256": "6c394516b6b4a09541a4cb9bedf991bff780d1f827dcd05afc321ad966735df4"
     }
   ]
 }

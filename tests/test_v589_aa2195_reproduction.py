@@ -1098,6 +1098,23 @@ class GeometryContractTests(unittest.TestCase):
 
 
 class FigureBuilderContractTests(unittest.TestCase):
+    def setUp(self) -> None:
+        from builders.aa2195 import fig3_builder, fig12_builder, fig14_builder, fig15_builder, fig16_builder
+        from tests.fresh_source_fixture import fresh_builder_record
+
+        self._fresh_tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._fresh_tmp.cleanup)
+        source_crop = Path(self._fresh_tmp.name) / "synthetic_fig12_source.png"
+        Image.new("RGB", (805, 590), (252, 191, 110)).save(source_crop)
+        for module in (fig3_builder, fig12_builder, fig14_builder, fig15_builder, fig16_builder):
+            mock = patch.object(
+                module,
+                "load_fresh_figure_data",
+                side_effect=lambda params, figure, crop=str(source_crop): fresh_builder_record(figure, crop),
+            )
+            mock.start()
+            self.addCleanup(mock.stop)
+
     def test_fig3_preserves_continuous_curves_and_native_legend_line_styles(self) -> None:
         from builders.aa2195 import fig3_builder
 
@@ -1130,27 +1147,35 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual(3, len(result["series_plot_contracts"]))
         self.assertEqual(
             [
-                {"layer_index": 0, "plot_index": 1, "plot_type_code": 202, "symbol_shape": 1, "symbol_size": 10.5},
-                {"layer_index": 0, "plot_index": 4, "plot_type_code": 202, "symbol_shape": 2, "symbol_size": 10.5},
-                {"layer_index": 0, "plot_index": 7, "plot_type_code": 202, "symbol_shape": 3, "symbol_size": 10.5},
+                {"layer_index": 0, "plot_index": 0, "plot_type_code": 200, "line_style": 1},
+                {"layer_index": 0, "plot_index": 1, "plot_type_code": 201, "symbol_shape": 1, "symbol_size": 10.5},
+                {"layer_index": 0, "plot_index": 3, "plot_type_code": 200, "line_style": 1},
+                {"layer_index": 0, "plot_index": 4, "plot_type_code": 201, "symbol_shape": 2, "symbol_size": 10.5},
+                {"layer_index": 0, "plot_index": 6, "plot_type_code": 200, "line_style": 1},
+                {"layer_index": 0, "plot_index": 7, "plot_type_code": 201, "symbol_shape": 3, "symbol_size": 10.5},
             ],
             result["plot_style_contracts"],
         )
-        self.assertEqual([200, 202, 200] * 3, [item["plot_type_code"] for item in result["direct_worksheet_plot_contracts"]])
+        self.assertEqual([200, 201, 200] * 3, [item["plot_type_code"] for item in result["direct_worksheet_plot_contracts"]])
         for marker_index, symbol_shape in ((1, 1), (4, 2), (7, 3)):
             self.assertEqual(
                 (f"-k {symbol_shape}", "-z 10.5"),
                 op.page.layers[0].plots[marker_index].properties["commands"],
             )
         self.assertTrue(any("xb.fsize=22" in command for command in op.page.layers[0].commands))
-        for mode in ("UC", "TR"):
+        from tests.fresh_source_fixture import fresh_builder_record
+        fresh_data = fresh_builder_record("fig14")["data"]
+        for mode in ("PSC", "UC", "TR"):
             x_values, y_values = fig14_builder._patterned_series(
-                fig14_builder.TEMPERATURE,
-                fig14_builder.SERIES[mode]["y"],
+                fresh_data["temperature"],
+                fresh_data["series"][mode]["y"],
                 mode,
             )
             self.assertEqual(len(x_values), len(y_values))
-            self.assertTrue(any(isinstance(value, float) and value != value for value in y_values))
+            self.assertEqual(fresh_data["temperature"], x_values)
+            self.assertFalse(any(isinstance(value, float) and value != value for value in y_values))
+        for line_index in (0, 3, 6):
+            self.assertEqual(("-d 1",), op.page.layers[0].plots[line_index].properties["commands"])
         self.assertTrue(any("font(Times New Roman)" in command for command in op.page.layers[0].commands))
 
     def test_plot_style_contract_validation_fails_closed_on_wrong_symbol_shape(self) -> None:
@@ -1181,6 +1206,30 @@ class FigureBuilderContractTests(unittest.TestCase):
         failed = validate_plot_style_contracts(readback, contract)
         self.assertEqual("failed", failed["status"])
         self.assertEqual("symbol_shape", failed["mismatches"][0]["property"])
+
+    def test_plot_style_contract_validation_fails_closed_on_wrong_line_style(self) -> None:
+        from builders.aa2195.readback import validate_plot_style_contracts
+
+        readback = {
+            "layers": [{
+                "index": 0,
+                "plot_details": [{
+                    "index": 0,
+                    "plot_type_code": 200,
+                    "style": {"line_style": 0},
+                }],
+            }],
+        }
+        contract = [{
+            "layer_index": 0,
+            "plot_index": 0,
+            "plot_type_code": 200,
+            "line_style": 1,
+        }]
+
+        failed = validate_plot_style_contracts(readback, contract)
+        self.assertEqual("failed", failed["status"])
+        self.assertEqual("line_style", failed["mismatches"][0]["property"])
 
     def test_formal_builders_construct_hidden_graph_page_then_reveal(self) -> None:
         from builders.aa2195 import fig12_builder, fig15_builder, fig16_builder
@@ -1273,7 +1322,7 @@ class FigureBuilderContractTests(unittest.TestCase):
             )
         )
         self.assertGreaterEqual(len(result["label_inventory"]), 20)
-        self.assertEqual("reconstructed_approximate", result["reproduction_mode"])
+        self.assertEqual("fresh_source_reconstructed_approximate", result["reproduction_mode"])
         self.assertEqual(0, result["unexpected_legend_expected"])
         self.assertEqual("worksheet_arrowhead_paths", result["axis_route"])
         self.assertEqual(2, len(result["axis_contract"]))
@@ -1397,7 +1446,7 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertTrue(
             all(record["name"].startswith("fig12_label_") for record in result["label_inventory"])
         )
-        self.assertEqual("reconstructed_approximate", result["reproduction_mode"])
+        self.assertEqual("fresh_source_reconstructed_approximate", result["reproduction_mode"])
         self.assertTrue(any("page.width=4830" in command and "page.height=3540" in command for command in op.page.commands))
         self.assertTrue(all(any("layer.unit=1" in command for command in layer.commands) for layer in op.page.layers))
         self.assertTrue(any("page.speedMode=0" in command for command in op.page.commands))
@@ -1454,7 +1503,7 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual((60.7, 9.0, 27.8, 36.5), result["panel_inventory"][1]["layout_percent"])
         self.assertEqual((36.9, 52.5, 27.8, 37.5), result["panel_inventory"][2]["layout_percent"])
 
-    def test_fig12_builder_can_keep_source_crop_while_using_analytic_matrix_mode(self) -> None:
+    def test_fig12_builder_rejects_analytic_matrix_mode_in_fresh_rebuild(self) -> None:
         from PIL import Image
 
         from builders.aa2195 import fig12_builder
@@ -1464,24 +1513,18 @@ class FigureBuilderContractTests(unittest.TestCase):
             Image.new("RGB", (805, 590), (252, 191, 110)).save(source)
 
             default_result = fig12_builder.build(FakeBuilderOrigin(), {"source_crop": str(source)})
-            analytic_result = fig12_builder.build(
-                FakeBuilderOrigin(),
-                {
-                    "source_crop": str(source),
-                    "fig12_matrix_mode": "analytic_fallback",
-                },
-            )
+            with self.assertRaisesRegex(RuntimeError, "E127_FRESH_SOURCE_REQUIRED"):
+                fig12_builder.build(
+                    FakeBuilderOrigin(),
+                    {
+                        "source_crop": str(source),
+                        "fig12_matrix_mode": "analytic_fallback",
+                    },
+                )
 
         self.assertEqual("source_palette_digitized", default_result["fig12_matrix_mode"])
         self.assertTrue(
             all(panel["matrix_source"] == "source_palette_digitized" for panel in default_result["panel_inventory"])
-        )
-        self.assertEqual("analytic_fallback", analytic_result["fig12_matrix_mode"])
-        self.assertTrue(
-            all(panel["matrix_source"] == "analytic_fallback" for panel in analytic_result["panel_inventory"])
-        )
-        self.assertTrue(
-            all(panel["matrix_mode"] == "analytic_fallback" for panel in analytic_result["panel_inventory"])
         )
 
     def test_fig12_builder_applies_bounded_matrix_resolution_scale(self) -> None:
@@ -1731,13 +1774,13 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertIn("fig16_relation_text_07", result["required_graphobject_contracts"])
         self.assertEqual(-1.0, result["fig16_tuning"]["bar_top_dy"])
         self.assertEqual(1.0, result["fig16_tuning"]["bar_bottom_dy"])
-        self.assertEqual({"WH": "#ff9830", "DRV": "#00ff98", "DRX": "#d098ff"}, result["fig16_colors"])
+        self.assertEqual({"WH": "#ff9933", "DRV": "#00ff99", "DRX": "#cc99ff"}, result["fig16_colors"])
         self.assertEqual(
             {"header": 10.0, "legend": 9.5, "group_label": 12.0, "stage": 9.0, "relation": 10.0},
             result["fig16_text_sizes"],
         )
-        self.assertEqual("#ff9830", result["bar_inventory"][0]["color"])
-        self.assertEqual((24, 147, 63, 335), result["bar_inventory"][0]["bbox"])
+        self.assertEqual("#ff9933", result["bar_inventory"][0]["color"])
+        self.assertEqual((24, 147, 62, 335), result["bar_inventory"][0]["bbox"])
         self.assertEqual("H: Hardening level", result["required_graphobject_contracts"]["fig16_header_h"]["text_contains"])
         self.assertEqual(
             [1, 2, 3],
@@ -1859,6 +1902,19 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual(0.25, clamped_result["fig16_group_frame_width"])
         self.assertEqual(0.5, thin_op.page.layers[1].plots[0].properties["line.width"])
 
+    def test_fig16_builder_applies_explicit_neutral_background_candidate_only(self) -> None:
+        from builders.aa2195 import fig16_builder
+
+        default_op = FakeBuilderOrigin()
+        default_result = fig16_builder.build(default_op, {})
+        candidate_op = FakeBuilderOrigin()
+        candidate_result = fig16_builder.build(candidate_op, {"fig16_background_color": "#fefefe"})
+
+        self.assertIsNone(default_result["fig16_background_color"])
+        self.assertEqual("#fefefe", candidate_result["fig16_background_color"])
+        self.assertFalse(any("layer.color=" in command for command in default_op.page.layers[0].commands))
+        self.assertTrue(any("layer.color=color(254,254,254)" in command for command in candidate_op.page.layers[0].commands))
+
     def test_fig16_builder_applies_explicit_text_size_candidate_without_changing_default(self) -> None:
         from builders.aa2195 import fig16_builder
 
@@ -1911,19 +1967,19 @@ class FigureBuilderContractTests(unittest.TestCase):
         )
 
         self.assertEqual(-2.0, result["fig16_tuning"]["header_dy"])
-        self.assertEqual((24, 147, 63, 335), result["bar_inventory"][0]["bbox"])
+        self.assertEqual((24, 147, 62, 335), result["bar_inventory"][0]["bbox"])
         wh_x = op.books[0].sheet.columns[0][1]
         wh_values = op.books[0].sheet.columns[1][1]
         drv_values = op.books[0].sheet.columns[2][1]
         drx_values = op.books[0].sheet.columns[3][1]
-        self.assertAlmostEqual(43.5, wh_x[0])
-        self.assertAlmostEqual(85.0, wh_x[1])
+        self.assertAlmostEqual(43.0, wh_x[0])
+        self.assertAlmostEqual(84.0, wh_x[1])
         self.assertAlmostEqual(188.0, wh_values[0])
         self.assertAlmostEqual(0.0, drv_values[0])
         self.assertAlmostEqual(0.0, drx_values[0])
         self.assertAlmostEqual(0.0, wh_values[1])
-        self.assertAlmostEqual(134.0, drv_values[1])
-        self.assertAlmostEqual(14.0, drx_values[1])
+        self.assertAlmostEqual(135.0, drv_values[1])
+        self.assertAlmostEqual(13.0, drx_values[1])
         self.assertEqual((602, -2, 640, 8), result["legend_inventory"][0]["bbox"])
         header_labels = [
             label
@@ -1969,6 +2025,25 @@ class VisualQaTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "E122_ORIGIN_DEMO_EXPORT_BLOCKED"):
                 gate(image_path)
 
+    def test_fig16_bar_boundary_metric_requires_all_twenty_one_segments(self) -> None:
+        from scripts.visual_qa import _fig16_bar_boundary_metrics
+
+        image = np.full((375, 720, 3), 255, dtype=np.uint8)
+        colors = {"WH": (255, 153, 51), "DRV": (0, 255, 153), "DRX": (204, 153, 255)}
+        for stage in range(7):
+            x = 20 + stage * 95
+            image[100:200, x:x + 35] = colors["WH"]
+            image[200:330, x + 38:x + 73] = colors["DRV"]
+            image[150:200, x + 38:x + 73] = colors["DRX"]
+
+        result = _fig16_bar_boundary_metrics(image, image.copy())
+
+        self.assertEqual(21, result["source_segment_count"])
+        self.assertEqual(21, result["actual_segment_count"])
+        self.assertEqual(0, result["missing_segments"])
+        self.assertEqual(0.0, result["max_abs_boundary_error_px"])
+        self.assertEqual(0.0, result["mean_abs_boundary_error_px"])
+
     def test_identical_images_have_complete_nonblocking_metrics(self) -> None:
         from PIL import Image
 
@@ -1989,11 +2064,14 @@ class VisualQaTests(unittest.TestCase):
         required = {
             "canvas_size_match", "mae_0_1", "rmse_0_1", "ssim_score", "layout_score",
             "edge_score", "color_score", "source_content_bbox", "actual_content_bbox",
-            "registration_shift", "nonwhite_delta", "demo_cyan_ratio", "blocking_reasons",
+            "registration_shift", "foreground_f1", "edge_f1", "nonwhite_delta",
+            "demo_cyan_ratio", "blocking_reasons",
         }
         self.assertTrue(required.issubset(result))
         self.assertEqual(0.0, result["mae_0_1"])
         self.assertEqual(1.0, result["ssim_score"])
+        self.assertEqual(1.0, result["foreground_f1"])
+        self.assertEqual(1.0, result["edge_f1"])
         self.assertEqual([], result["blocking_reasons"])
 
     def test_canvas_mismatch_and_demo_cyan_are_blocking(self) -> None:
@@ -2132,6 +2210,17 @@ class VisualQaTests(unittest.TestCase):
             )
             with patch.object(origin_candidate_worker, "is_admin", return_value=True), patch.object(
                 origin_candidate_worker, "_load_aa2195_builder", return_value=FailedBuilder()
+            ), patch.object(
+                origin_candidate_worker,
+                "_validate_fresh_source_gate",
+                return_value={
+                    "status": "pass",
+                    "manifest_path": str(root / "synthetic.json"),
+                    "source_crop_sha256": "1" * 64,
+                    "data_sha256": "2" * 64,
+                    "bundle_data_sha256": "3" * 64,
+                    "source_pdf_sha256": "4" * 64,
+                },
             ):
                 result = origin_candidate_worker.run_live("fig15", candidate, output)
 
@@ -2254,6 +2343,17 @@ class VisualQaTests(unittest.TestCase):
                 origin_candidate_worker, "_load_aa2195_builder", return_value=SuccessfulBuilder()
             ), patch.object(
                 origin_candidate_worker,
+                "_validate_fresh_source_gate",
+                return_value={
+                    "status": "pass",
+                    "manifest_path": str(root / "synthetic.json"),
+                    "source_crop_sha256": "1" * 64,
+                    "data_sha256": "2" * 64,
+                    "bundle_data_sha256": "3" * 64,
+                    "source_pdf_sha256": "4" * 64,
+                },
+            ), patch.object(
+                origin_candidate_worker,
                 "evaluate_visual_metrics",
                 return_value={"pass_eligible": True, "blocking_reasons": []},
             ), patch.object(
@@ -2329,7 +2429,7 @@ class VersionContractTests(unittest.TestCase):
         skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
         runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9-p15", skill)
+        self.assertIn("OriginPlot Skill v5.8.9-p18", skill)
         self.assertIn("administrator privilege for the entire live lifecycle", skill)
         self.assertIn("E121_ATTACH_POLICY_VIOLATION", skill)
         self.assertIn("op.detach()", skill)
@@ -2381,8 +2481,8 @@ class VersionContractTests(unittest.TestCase):
     def test_test_runner_reports_v589_p12_schema(self) -> None:
         root = Path(__file__).resolve().parents[1]
         runner = (root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
-        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p15"', runner)
-        self.assertIn('"skill_version": "5.8.9-p15"', runner)
+        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p18"', runner)
+        self.assertIn('"skill_version": "5.8.9-p18"', runner)
 
 
 if __name__ == "__main__":

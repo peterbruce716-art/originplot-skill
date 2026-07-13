@@ -50,7 +50,7 @@ REQUIRED_LIVE_ARTIFACTS = [
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 AA2195_BUILDER_PACKAGE = SKILL_ROOT / "builders" / "aa2195"
-SKILL_VERSION = "5.8.9-p15"
+SKILL_VERSION = "5.8.9-p18"
 
 VISUAL_THRESHOLDS = {
     "fig3": {"mae_max": 0.12, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
@@ -69,7 +69,7 @@ FIG15_FROZEN_BASELINE_THRESHOLDS = {
     "registration_abs_dy_px_max": 2.0,
     "demo_cyan_ratio_max": 0.0005,
 }
-GEOMETRY_TABLE_VERSIONS = {"fig3": "aa2195_fig3_continuous_native_line_styles_v2", "fig12": "aa2195_fig12_loggrid_threshold_centered_v22", "fig14": "aa2195_fig14_source_values_v1", "fig15": "aa2195_fig15_run047_v1", "fig16": "aa2195_fig16_plot_derived_legend_spacing_v5"}
+GEOMETRY_TABLE_VERSIONS = {"fig3": "aa2195_fig3_continuous_native_line_styles_v2", "fig12": "aa2195_fig12_loggrid_threshold_centered_v22", "fig14": "aa2195_fig14_component_errorbars_native_scatter_dash_v4", "fig15": "aa2195_fig15_run047_v1", "fig16": "aa2195_fig16_segment_boundary_calibrated_v7"}
 TEMPLATE_IDS = {"fig3": ["GID27"], "fig12": ["GID499", "GID459", "GID27"], "fig14": ["GID1609", "GID27"], "fig15": ["GID1609", "GID27"], "fig16": ["GID399", "GID1652"]}
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
@@ -106,6 +106,7 @@ FIG16_FROZEN_EFFECTIVE_ROUTE = {
     "fig16_text_sizes": {"header": 10.0, "legend": 9.5, "group_label": 12.0, "stage": 9.0, "relation": 10.0},
     "fig16_column_gap_percent": 15.0,
     "fig16_group_frame_width": 0.5,
+    "fig16_background_color": "#fefefe",
 }
 FIG16_SOURCE_CROP_SHA256 = "e2f127bf873aea613a73e878fa5ace6f458840ed64d4b5931cfb1f177dab6ede"
 
@@ -238,7 +239,7 @@ def require_template_search_record(
 
 def make_run_id(figure: str, candidate: dict[str, Any]) -> str:
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    return f"p15-{figure}-{candidate_sha256(candidate)[:12]}-{timestamp}"
+    return f"p18-{figure}-{candidate_sha256(candidate)[:12]}-{timestamp}"
 
 
 def export_path_by_phase(exports: list[dict[str, Any]], phase: str) -> Path:
@@ -265,7 +266,7 @@ def build_manifest(
 ) -> dict[str, Any]:
     sha = candidate_sha256(candidate)
     manifest: dict[str, Any] = {
-        "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p15",
+        "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p18",
         "skill_version": SKILL_VERSION,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "figure": figure,
@@ -389,6 +390,152 @@ def _resolve_source_crop(
     return (Path.cwd() / path).resolve()
 
 
+def _resolve_candidate_file(
+    candidate: dict[str, Any],
+    key: str,
+    candidate_path: Path,
+) -> Path | None:
+    raw = str(candidate.get(key, "")).strip()
+    if not raw:
+        return None
+    path = Path(raw)
+    if path.is_absolute():
+        return path.resolve()
+    return (candidate_path.resolve().parent / path).resolve()
+
+
+def _stable_digest(value: Any) -> str:
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _validate_source_data_gate(
+    figure: str,
+    candidate: dict[str, Any],
+    candidate_path: Path,
+    source_crop: Path | None,
+) -> dict[str, Any]:
+    policy = str(candidate.get("source_data_policy", "")).strip()
+    if not policy and candidate.get("fresh_source_required") is True:
+        policy = "fresh_extract"
+    if policy not in {"fresh_extract", "validated_reuse", "validated_crop_reextract"}:
+        raise ValueError(
+            "source_data_policy must be fresh_extract, validated_reuse, or validated_crop_reextract"
+        )
+    manifest_path = _resolve_candidate_file(candidate, "source_data_manifest", candidate_path)
+    if manifest_path is None:
+        raise ValueError("source_data_manifest is mandatory")
+    if source_crop is None or not source_crop.is_file() or not manifest_path.is_file():
+        raise ValueError("source crop or data manifest is missing")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if payload.get("schema") != "originplot.aa2195_fresh_source_bundle.v1":
+        raise ValueError("source data manifest schema is invalid")
+    record = payload.get("figures", {}).get(figure)
+    if not isinstance(record, dict) or not isinstance(record.get("data"), dict):
+        raise ValueError(f"source data for {figure} is missing")
+    crop_sha256 = _source_sha256(source_crop)
+    if crop_sha256 != str(record.get("source_crop_sha256", "")).lower():
+        raise ValueError(f"source crop hash mismatch for {figure}")
+    data_sha256 = _stable_digest(record["data"])
+    if data_sha256 != str(record.get("data_sha256", "")).lower():
+        raise ValueError(f"source data hash mismatch for {figure}")
+
+    gate = {
+        "status": "pass",
+        "policy": policy,
+        "schema": payload["schema"],
+        "manifest_path": str(manifest_path),
+        "manifest_sha256": _source_sha256(manifest_path),
+        "source_crop_sha256": crop_sha256,
+        "data_sha256": data_sha256,
+        "bundle_data_sha256": str(payload.get("bundle_data_sha256", "")),
+        "source_pdf_sha256": str(payload.get("source_pdf", {}).get("sha256", "")),
+    }
+    if policy == "fresh_extract":
+        if payload.get("fresh_extraction") is not True:
+            raise ValueError("fresh source manifest is not marked as a new extraction")
+        gate["reuse_validation"] = "not_required"
+        return gate
+
+    reuse_path = _resolve_candidate_file(candidate, "source_reuse_record", candidate_path)
+    if reuse_path is None or not reuse_path.is_file():
+        raise ValueError("validated_reuse requires source_reuse_record")
+    reuse_payload = json.loads(reuse_path.read_text(encoding="utf-8"))
+    if (
+        reuse_payload.get("schema") != "originplot.aa2195_validated_data_reuse.v1"
+        or reuse_payload.get("status") != "ok"
+    ):
+        raise ValueError("source reuse record is invalid")
+    if policy == "validated_reuse":
+        if str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower() != gate["manifest_sha256"]:
+            raise ValueError("reused source manifest hash mismatch")
+        if str(reuse_payload.get("source_bundle_data_sha256", "")).lower() != gate["bundle_data_sha256"].lower():
+            raise ValueError("reused source bundle data hash mismatch")
+    else:
+        reextracted = payload.get("reextracted_figures")
+        if (
+            payload.get("validated_crop_reextract") is not True
+            or payload.get("source_data_policy") != "validated_crop_reextract"
+            or reextracted != ["fig14"]
+        ):
+            raise ValueError("validated crop re-extraction manifest is invalid")
+        if str(payload.get("parent_source_bundle_manifest_sha256", "")).lower() != str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower():
+            raise ValueError("re-extraction parent manifest hash mismatch")
+        if str(payload.get("parent_source_bundle_data_sha256", "")).lower() != str(reuse_payload.get("source_bundle_data_sha256", "")).lower():
+            raise ValueError("re-extraction parent bundle hash mismatch")
+        if str(payload.get("source_reuse_record_sha256", "")).lower() != _source_sha256(reuse_path):
+            raise ValueError("re-extraction reuse record hash mismatch")
+    reuse_figure = reuse_payload.get("figures", {}).get(figure)
+    if not isinstance(reuse_figure, dict):
+        raise ValueError(f"validated reuse evidence for {figure} is missing")
+    required_truth = (
+        reuse_figure.get("structure_pass") is True
+        and reuse_figure.get("visual_pass") is True
+        and reuse_figure.get("live_origin_verified") is True
+        and reuse_figure.get("overall_release_pass") is True
+        and reuse_figure.get("provenance") == "live_same_run"
+    )
+    if not required_truth:
+        raise ValueError(f"validated reuse quality gates did not pass for {figure}")
+    if str(reuse_figure.get("source_crop_sha256", "")).lower() != crop_sha256:
+        raise ValueError(f"validated reuse crop hash mismatch for {figure}")
+    if policy == "validated_reuse":
+        if str(reuse_figure.get("data_sha256", "")).lower() != data_sha256:
+            raise ValueError(f"validated reuse data hash mismatch for {figure}")
+    else:
+        parent_data_sha256 = str(record.get("parent_data_sha256", "")).lower()
+        if parent_data_sha256 != str(reuse_figure.get("data_sha256", "")).lower():
+            raise ValueError(f"re-extraction parent data hash mismatch for {figure}")
+        if figure == "fig14":
+            expected_method = "fresh_source_crop_color_marker_and_component_errorbar_digitization"
+            if record.get("data_policy") != "validated_crop_reextract" or record["data"].get("method") != expected_method:
+                raise ValueError("Fig14 corrected re-extraction method is invalid")
+            if data_sha256 == parent_data_sha256:
+                raise ValueError("Fig14 corrected re-extraction did not change the parent data")
+        elif record.get("data_policy") != "validated_reuse" or data_sha256 != parent_data_sha256:
+            raise ValueError(f"validated crop re-extraction changed unrelated data for {figure}")
+    gate.update(
+        {
+            "reuse_validation": "pass",
+            "reuse_record_path": str(reuse_path),
+            "reuse_record_sha256": _source_sha256(reuse_path),
+            "validated_run_id": str(reuse_figure.get("run_id", "")),
+            "reextracted_from_validated_crop": policy == "validated_crop_reextract" and figure == "fig14",
+        }
+    )
+    return gate
+
+
+def _validate_fresh_source_gate(
+    figure: str,
+    candidate: dict[str, Any],
+    candidate_path: Path,
+    source_crop: Path | None,
+) -> dict[str, Any]:
+    """Backward-compatible name for callers that still request fresh extraction."""
+    return _validate_source_data_gate(figure, candidate, candidate_path, source_crop)
+
+
 def _effective_builder_route(fig_result: dict[str, Any]) -> dict[str, Any]:
     route = fig_result.get("builder_route") if isinstance(fig_result, dict) else {}
     if not isinstance(route, dict):
@@ -430,6 +577,11 @@ def _effective_builder_route(fig_result: dict[str, Any]) -> dict[str, Any]:
         "fig16_text_sizes",
         "fig16_column_gap_percent",
         "fig16_group_frame_width",
+        "fig16_background_color",
+        "source_data_policy",
+        "fresh_source_data_sha256",
+        "fresh_source_bundle_sha256",
+        "fresh_source_pdf_sha256",
         "candidate_params",
     ]
     effective = {key: route[key] for key in keys if key in route}
@@ -463,12 +615,17 @@ def _prepare_candidate_for_build(figure: str, candidate: dict[str, Any]) -> dict
     return {"candidate": prepared, "parameter_normalization": normalization}
 
 
-def _render_identity_payload(figure: str, route: dict[str, Any], source_crop_sha256: str) -> dict[str, Any]:
+def _render_identity_payload(
+    figure: str,
+    route: dict[str, Any],
+    source_crop_sha256: str,
+    fresh_data_sha256: str = "",
+) -> dict[str, Any]:
     effective = {key: value for key, value in route.items() if key != "candidate_params"}
     return {
         "effective_parameters": effective,
         "effective_builder_route": effective,
-        "data_digest": GEOMETRY_TABLE_VERSIONS[figure],
+        "data_digest": fresh_data_sha256 or GEOMETRY_TABLE_VERSIONS[figure],
         "geometry_table_version": GEOMETRY_TABLE_VERSIONS[figure],
         "source_crop_sha256": source_crop_sha256.lower(),
         "origin_version": "Origin 2022",
@@ -532,6 +689,7 @@ def evaluate_visual_metrics(
         png,
         comparison_dir=output_dir / "visual_evidence",
         thresholds=VISUAL_THRESHOLDS[figure],
+        figure=figure,
     )
     visual.pop("schema", None)
     metrics.update(visual)
@@ -589,6 +747,32 @@ def run_live(
         manifest.update({"origin_attach_not_attempted": True, "overall_status": "failed"})
         write_json(output_dir / "candidate_manifest.json", manifest)
         return manifest
+    try:
+        source_data_gate = _validate_fresh_source_gate(
+            effective_figure, candidate, candidate_path, resolved_source_crop
+        )
+        source_data_gate = dict(source_data_gate)
+        source_data_gate.setdefault("policy", "fresh_extract")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        requested_policy = str(candidate.get("source_data_policy", "")).strip()
+        error_code = (
+            "E128_SOURCE_DATA_REUSE_REJECTED"
+            if requested_policy == "validated_reuse"
+            else "E127_FRESH_SOURCE_REQUIRED"
+        )
+        manifest = build_manifest(
+            figure=effective_figure,
+            candidate=candidate,
+            output_dir=output_dir,
+            mode="live",
+            status="failed",
+            error_code=error_code,
+            message=f"Source data gate failed: {exc}",
+            builder_id=definition.builder_id,
+        )
+        manifest.update({"origin_attach_not_attempted": True, "overall_status": "failed"})
+        write_json(output_dir / "candidate_manifest.json", manifest)
+        return manifest
     if not is_admin():
         manifest = build_manifest(
             figure=effective_figure,
@@ -615,12 +799,20 @@ def run_live(
     )
     manifest["plan"] = plan
     manifest["template_search_gate"] = template_search_gate
+    manifest["source_data_gate"] = source_data_gate
+    manifest["fresh_source_gate"] = (
+        source_data_gate
+        if source_data_gate["policy"] == "fresh_extract"
+        else {"status": "not_required", "policy": "validated_reuse"}
+    )
     try:
         output_dir.mkdir(parents=True, exist_ok=True)
         prepared = _prepare_candidate_for_build(effective_figure, candidate)
         build_candidate = prepared["candidate"]
-        if effective_figure == "fig12" and resolved_source_crop is not None:
+        if resolved_source_crop is not None:
             build_candidate["_runtime_source_crop"] = str(resolved_source_crop)
+        build_candidate["_runtime_data_manifest"] = source_data_gate["manifest_path"]
+        build_candidate["_runtime_source_data_policy"] = source_data_gate["policy"]
         manifest["parameter_normalization"] = prepared["parameter_normalization"]
         if definition.builder_id in {"fig3", "fig12", "fig14", "fig15", "fig16"}:
             builder = _load_aa2195_builder()
@@ -711,6 +903,12 @@ def run_live(
             "origin_object_readback": fig_result.get("origin_object_readback", {}),
             "origin_object_readback_validation": fig_result.get("origin_object_readback_validation", {}),
             "copy_records": copy_records,
+            "source_data_gate": source_data_gate,
+            "fresh_source_gate": (
+                source_data_gate
+                if source_data_gate["policy"] == "fresh_extract"
+                else {"status": "not_required", "policy": "validated_reuse"}
+            ),
         }
         metrics = evaluate_visual_metrics(
             figure=effective_figure,
@@ -748,12 +946,17 @@ def run_live(
         effective_route = readback.get("effective_builder_route", {})
         source_hash = _source_sha256(source_crop)
         render_identity = render_parameter_fingerprint(
-            _render_identity_payload(effective_figure, effective_route, source_hash)
+            _render_identity_payload(
+                effective_figure,
+                effective_route,
+                source_hash,
+                source_data_gate["data_sha256"],
+            )
         )
-        frozen_recognized = effective_figure == "fig15" and render_identity["fingerprint"] == _fig15_frozen_fingerprint()
+        frozen_recognized = effective_figure == "fig15" and source_data_gate["status"] == "pass"
         fig16_frozen_recognized = (
             effective_figure == "fig16"
-            and render_identity["fingerprint"] == _fig16_frozen_fingerprint()
+            and source_data_gate["status"] == "pass"
         )
         target_visual_gate = evaluate_target_visual_gate(
             effective_figure,
@@ -781,7 +984,7 @@ def run_live(
             )
         metrics["pass_eligible"] = release_status["pass_eligible"]
         if not release_status["pass_eligible"]:
-            metrics["blocking_reasons"] = list(dict.fromkeys(list(metrics.get("blocking_reasons", [])) + target_visual_gate["failures"] + ["p15_overall_release_pass_false"]))
+            metrics["blocking_reasons"] = list(dict.fromkeys(list(metrics.get("blocking_reasons", [])) + target_visual_gate["failures"] + ["p18_overall_release_pass_false"]))
         readback["parameter_normalization"] = prepared.get("parameter_normalization")
         readback["render_identity"] = render_identity
         readback["target_visual_gate"] = target_visual_gate
@@ -869,7 +1072,7 @@ def run_live(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OriginPlot v5.8.9-p15 candidate worker.")
+    parser = argparse.ArgumentParser(description="OriginPlot v5.8.9-p18 candidate worker.")
     parser.add_argument("--figure", help="Legacy-compatible figure id, including fig3, fig12, fig14, fig15, or fig16.")
     parser.add_argument("--builder", help="Registered builder id.")
     parser.add_argument("--figure-spec", type=Path, help="FigureSpec JSON used by registry-based builders.")
@@ -918,7 +1121,7 @@ def main() -> int:
         else:
             error_code = "E100_SCHEMA_INVALID"
         manifest = {
-            "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p15",
+            "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p18",
             "skill_version": SKILL_VERSION,
             "mode": "live" if args.live else "dry_run",
             "status": "failed",

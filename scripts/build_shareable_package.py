@@ -9,6 +9,7 @@ from pathlib import Path
 SKIP_PARTS = {"__pycache__", ".pytest_cache", ".git", "tmp_v5_validation", "local_python", "runs", "comparison_boards", "outputs", "data", "raw_data", "private"}
 SKIP_NAMES = {"FIGURESPEC_PROTOCOL.md", "FIGURESPEC_V4_PROTOCOL.md", "originplot_runtime_v4.py", "image_qa.py", "image_qa_v2.py", "image_qa_v3.py", "validate_shareable_package_v4.py", "validate_figurespec_v2.py", "origin_only_minimal_figurespec_v2.json", "compiled_ir_v4_example.json", "editable_reproduction_v4.json", "operation_plan_v4_example.json", "origin-2022-capabilities-v4.example.json", "adapter_modules_v5_1.example.json", "adapter_configs_v5_1.example.json"}
 AUTHORIZED_SOURCE_PLACEHOLDER = "AUTHORIZED_LOCAL_SOURCE_REQUIRED"
+AUTHORIZED_SOURCE_MARKER = "Marker file required for local source authorization contract.\n"
 
 
 def should_include(path: Path) -> bool:
@@ -44,6 +45,10 @@ def build_zip(skill_dir: Path, zip_out: Path) -> dict[str, object]:
             else:
                 archive.writestr(arcname, payload)
             entries.append(arcname)
+        marker_arcname = f"originplot-skill/{AUTHORIZED_SOURCE_PLACEHOLDER}"
+        if marker_arcname not in entries:
+            archive.writestr(marker_arcname, AUTHORIZED_SOURCE_MARKER.encode("utf-8"))
+            entries.append(marker_arcname)
     return {"schema": "originplot.package_build.v5.5", "zip": str(zip_out), "entry_count": len(entries), "entries": entries}
 
 

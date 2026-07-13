@@ -11,7 +11,7 @@ from typing import Any
 from PIL import Image, ImageChops
 
 
-SKILL_VERSION = "5.8.9-p15"
+SKILL_VERSION = "5.8.9-p18"
 STANDARD_FILES = {
     "result.opju",
     "source_crop.png",
@@ -116,6 +116,12 @@ def selected_visual_metrics(metrics: dict[str, Any]) -> dict[str, Any]:
         "edge_score",
         "color_score",
         "registration_shift",
+        "foreground_precision",
+        "foreground_recall",
+        "foreground_f1",
+        "edge_precision",
+        "edge_recall",
+        "edge_f1",
         "nonwhite_ratio_source",
         "nonwhite_ratio_candidate",
         "demo_cyan_ratio",
@@ -145,7 +151,7 @@ def materialize_standard_evidence(
     route: dict[str, Any],
 ) -> dict[str, Any]:
     if not run_id or not figure_id or skill_version != SKILL_VERSION:
-        raise ValueError("p15 evidence requires nonempty run_id/figure_id and skill_version=5.8.9-p15")
+        raise ValueError("p18 evidence requires nonempty run_id/figure_id and skill_version=5.8.9-p18")
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if any(output_dir.iterdir()):
