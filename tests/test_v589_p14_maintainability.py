@@ -336,6 +336,13 @@ class ReproducibilityTests(unittest.TestCase):
         self.assertNotIn("--live", workflow)
         self.assertIn("does not install Origin or claim live Origin E2E", workflow)
 
+    def test_offline_ci_pip_cache_tracks_declared_requirements(self) -> None:
+        workflow = (ROOT / ".github/workflows/offline-ci.yml").read_text(encoding="utf-8")
+        self.assertIn("cache: pip", workflow)
+        self.assertIn("cache-dependency-path: |", workflow)
+        for filename in ("requirements-core.txt", "requirements-dev.txt", "requirements-origin.txt"):
+            self.assertRegex(workflow, rf"(?m)^\s+{re.escape(filename)}\s*$")
+
     def test_official_template_inspector_gates_before_origin_import_and_detaches(self) -> None:
         source = (ROOT / "scripts/inspect_official_templates.py").read_text(encoding="utf-8-sig")
         admin_gate = source.index("if not is_administrator_python()")
