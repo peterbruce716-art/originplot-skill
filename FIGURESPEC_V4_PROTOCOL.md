@@ -1,7 +1,7 @@
 # OriginPlot FigureSpec v4 Legacy Protocol
 
 > Legacy input only. This document is retained for migration and historical
-> schema interpretation; it is not a supported p14 execution route. Current
+> schema interpretation; it is not a supported p15 execution route. Current
 > execution uses the v5 schemas and `scripts/origin_candidate_worker.py`.
 
 v4 separates authoring facts, compiled coordinates, executable operations, and run evidence.
@@ -32,4 +32,4 @@ Use the stable v4 error-code names recorded by the legacy artifacts, including
 `E110_CAPABILITY_MISSING`, `E210_OPERATION_UNSUPPORTED`,
 `E410_SERIALIZATION_DRIFT`, `E420_VISUAL_MISMATCH`, and
 `E510_NO_IMPROVEMENT`. Do not invoke the retained v4 runtime scripts as the
-current p14 execution path; migrate the artifacts to the v5 contracts first.
+current p15 execution path; migrate the artifacts to the v5 contracts first.

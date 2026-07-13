@@ -217,6 +217,89 @@ def validate_direct_worksheet_plot_bindings(
     return {"status": "ok" if not mismatches else "failed", "plot_count": len(plots), "mismatches": mismatches}
 
 
+def validate_plot_style_contracts(
+    readback: dict[str, Any],
+    contracts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate persisted plot styles that are not reliable through OriginPro properties alone."""
+    if not contracts:
+        return {
+            "schema": "originplot.plot_style_contracts.v1",
+            "status": "not_required",
+            "plots": [],
+            "mismatches": [],
+        }
+    indexed: dict[tuple[int, int], dict[str, Any]] = {}
+    for layer in readback.get("layers", []):
+        layer_index = int(layer.get("index", -1))
+        for fallback_index, plot in enumerate(layer.get("plot_details", [])):
+            indexed[(layer_index, int(plot.get("index", fallback_index)))] = plot
+    records: list[dict[str, Any]] = []
+    mismatches: list[dict[str, Any]] = []
+    for expected in contracts:
+        layer_index = int(expected["layer_index"])
+        plot_index = int(expected["plot_index"])
+        actual = indexed.get((layer_index, plot_index))
+        if actual is None:
+            mismatches.append({
+                "layer_index": layer_index,
+                "plot_index": plot_index,
+                "property": "exists",
+                "expected": True,
+                "actual": False,
+            })
+            continue
+        style = actual.get("style", {})
+        record = {
+            "layer_index": layer_index,
+            "plot_index": plot_index,
+            "plot_type_code": actual.get("plot_type_code"),
+            "symbol_shape": style.get("symbol_shape", actual.get("symbol_shape")),
+            "symbol_size": style.get("symbol_size", actual.get("symbol_size")),
+        }
+        records.append(record)
+        for prop in ("plot_type_code", "symbol_shape"):
+            if prop not in expected:
+                continue
+            try:
+                matches = int(record.get(prop)) == int(expected[prop])
+            except (TypeError, ValueError):
+                matches = False
+            if not matches:
+                mismatches.append({
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "property": prop,
+                    "expected": expected[prop],
+                    "actual": record.get(prop),
+                })
+        if "symbol_size" in expected:
+            try:
+                matches = math.isclose(
+                    float(record.get("symbol_size")),
+                    float(expected["symbol_size"]),
+                    rel_tol=1e-7,
+                    abs_tol=0.05,
+                )
+            except (TypeError, ValueError):
+                matches = False
+            if not matches:
+                mismatches.append({
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "property": "symbol_size",
+                    "expected": expected["symbol_size"],
+                    "actual": record.get("symbol_size"),
+                    "tolerance": 0.05,
+                })
+    return {
+        "schema": "originplot.plot_style_contracts.v1",
+        "status": "ok" if not mismatches else "failed",
+        "plots": records,
+        "mismatches": mismatches,
+    }
+
+
 def validate_native_yerror_pairs(
     readback: dict[str, Any],
     contracts: list[dict[str, Any]],

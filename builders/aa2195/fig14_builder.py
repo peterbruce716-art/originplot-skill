@@ -56,6 +56,10 @@ def _style_symbol(plot: Any, color: str, symbol: int) -> None:
             plot.set_float(prop, 10.5)
         except Exception:
             pass
+    try:
+        plot.set_cmd(f"-k {int(symbol)}", "-z 10.5")
+    except Exception:
+        pass
 
 
 def _style_marker(plot: Any, color: str, symbol: int) -> None:
@@ -127,6 +131,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     styled_lines: list[tuple[Any, str]] = []
     column = 0
     contracts = []
+    plot_style_contracts = []
     series_plot_contracts = []
     source_groups: list[dict[str, Any]] = []
     for mode in ("PSC", "UC", "TR"):
@@ -148,6 +153,13 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         _style_marker(markers, record["color"], int(record["symbol"]))
         marker_plot_numbers[mode] = plot_count + 1
         contracts.append({"layer_index": 0, "plot_index": plot_count, "plot_type_code": 202, "x_column": chr(ord("A") + marker_column), "y_column": chr(ord("A") + marker_column + 1)})
+        plot_style_contracts.append({
+            "layer_index": 0,
+            "plot_index": plot_count,
+            "plot_type_code": 202,
+            "symbol_shape": int(record["symbol"]),
+            "symbol_size": 10.5,
+        })
         plot_count += 1
         error_column = column + 4
         sheet.from_list(error_column, error_x, lname=f"error_x_{mode}", axis="X")
@@ -229,6 +241,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "page_size_inches": page_size_inches,
         "required_worksheet_books": [book_name],
         "direct_worksheet_plot_contracts": contracts,
+        "plot_style_contracts": plot_style_contracts,
         "subplot_worksheet_contracts": [{
             "subplot_id": "fig14_recrystallization_fraction",
             "layer_index": 0,

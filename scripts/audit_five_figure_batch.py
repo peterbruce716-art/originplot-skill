@@ -60,6 +60,11 @@ def audit_batch(root: Path) -> dict[str, Any]:
             .get("legend_plot_reference_validation", {})
             .get("status")
         )
+        plot_style_status = (
+            readback.get("origin_object_readback_validation", {})
+            .get("plot_style_validation", {})
+            .get("status")
+        )
         records[figure] = {
             "skill_version": manifest.get("skill_version"),
             "run_id": run_manifest.get("run_id"),
@@ -71,6 +76,7 @@ def audit_batch(root: Path) -> dict[str, Any]:
             "source_geometry_group_validation": source_geometry_status,
             "subplot_worksheet_validation": subplot_worksheet_status,
             "legend_plot_reference_validation": legend_plot_reference_status,
+            "plot_style_validation": plot_style_status,
         }
         if run_manifest.get("provenance") != "live_same_run":
             findings.append({"code": "INHERITED_OR_NONLIVE_EVIDENCE", "figure": figure})
@@ -86,6 +92,8 @@ def audit_batch(root: Path) -> dict[str, Any]:
             findings.append({"code": "SUBPLOT_WORKSHEET_BINDING_FAILED", "figure": figure, "status": subplot_worksheet_status})
         if legend_plot_reference_status not in {"ok", "not_required"}:
             findings.append({"code": "PLOT_DERIVED_LEGEND_FAILED", "figure": figure, "status": legend_plot_reference_status})
+        if figure == "fig14" and plot_style_status != "ok":
+            findings.append({"code": "PLOT_STYLE_FAILED", "figure": figure, "status": plot_style_status})
 
     versions = {record["skill_version"] for record in records.values()}
     if len(versions) != 1:

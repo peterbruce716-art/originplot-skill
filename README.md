@@ -1,4 +1,4 @@
-# OriginPlot Skill v5.8.9-p14
+# OriginPlot Skill v5.8.9-p15
 
 OriginPlot is a verification framework for editable Origin/OriginPro projects. It includes AA2195-specific builders for Fig3, Fig12, Fig14, Fig15, and Fig16. It is not a universal system that converts any input image into a high-fidelity OPJU automatically.
 
@@ -161,8 +161,8 @@ python -m compileall .
 python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
-python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p14.zip"
-python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p14.zip"
+python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p15.zip"
+python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p15.zip"
 ```
 
 None of these offline commands proves live Origin E2E.
@@ -186,4 +186,4 @@ Code and repository-authored documentation are MIT licensed. Origin, OriginPro, 
 - Fig12 contour data remains backed by native XYZ Worksheet plots. Plain `draw -paths objName SVGPath` creates editable type-34 overlay objects; each overlay now uses a unique cleaned temporary directory and must pass post-reopen type-34 plus X/Y/DX/DY geometry checks. The canonical Origin 2022 run passed every strict visual gate (MAE 0.035472, SSIM 0.801507, layout 0.992431, edge 0.745290, color 0.977127), but edge is explicitly reported as near-threshold and is not a cross-machine portability claim.
 - Fig15's frozen regression evidence does not generalize to arbitrary dual-panel schematics.
 - A generic registry reduces hard-coding; it does not remove the need for figure-specific engineering and validation.
-- The source tree retains legacy V4 migration tools, but p14 execution and shareable packaging use V5 contracts.
+- The source tree retains legacy V4 migration tools, but p15 execution and shareable packaging use V5 contracts.

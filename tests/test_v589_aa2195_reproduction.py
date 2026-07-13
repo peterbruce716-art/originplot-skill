@@ -1128,7 +1128,20 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual(9, result["expected_plot_count"])
         self.assertEqual("Times New Roman", result["font_profile"])
         self.assertEqual(3, len(result["series_plot_contracts"]))
+        self.assertEqual(
+            [
+                {"layer_index": 0, "plot_index": 1, "plot_type_code": 202, "symbol_shape": 1, "symbol_size": 10.5},
+                {"layer_index": 0, "plot_index": 4, "plot_type_code": 202, "symbol_shape": 2, "symbol_size": 10.5},
+                {"layer_index": 0, "plot_index": 7, "plot_type_code": 202, "symbol_shape": 3, "symbol_size": 10.5},
+            ],
+            result["plot_style_contracts"],
+        )
         self.assertEqual([200, 202, 200] * 3, [item["plot_type_code"] for item in result["direct_worksheet_plot_contracts"]])
+        for marker_index, symbol_shape in ((1, 1), (4, 2), (7, 3)):
+            self.assertEqual(
+                (f"-k {symbol_shape}", "-z 10.5"),
+                op.page.layers[0].plots[marker_index].properties["commands"],
+            )
         self.assertTrue(any("xb.fsize=22" in command for command in op.page.layers[0].commands))
         for mode in ("UC", "TR"):
             x_values, y_values = fig14_builder._patterned_series(
@@ -1139,6 +1152,35 @@ class FigureBuilderContractTests(unittest.TestCase):
             self.assertEqual(len(x_values), len(y_values))
             self.assertTrue(any(isinstance(value, float) and value != value for value in y_values))
         self.assertTrue(any("font(Times New Roman)" in command for command in op.page.layers[0].commands))
+
+    def test_plot_style_contract_validation_fails_closed_on_wrong_symbol_shape(self) -> None:
+        from builders.aa2195.readback import validate_plot_style_contracts
+
+        readback = {
+            "layers": [{
+                "index": 0,
+                "plot_details": [{
+                    "index": 0,
+                    "plot_type_code": 202,
+                    "visible": True,
+                    "line_width": 0.0,
+                    "style": {"symbol_shape": 3, "symbol_size": 10.5},
+                }],
+            }],
+        }
+        contract = [{
+            "layer_index": 0,
+            "plot_index": 0,
+            "plot_type_code": 202,
+            "symbol_shape": 3,
+            "symbol_size": 10.5,
+        }]
+
+        self.assertEqual("ok", validate_plot_style_contracts(readback, contract)["status"])
+        contract[0]["symbol_shape"] = 2
+        failed = validate_plot_style_contracts(readback, contract)
+        self.assertEqual("failed", failed["status"])
+        self.assertEqual("symbol_shape", failed["mismatches"][0]["property"])
 
     def test_formal_builders_construct_hidden_graph_page_then_reveal(self) -> None:
         from builders.aa2195 import fig12_builder, fig15_builder, fig16_builder
@@ -2287,7 +2329,7 @@ class VersionContractTests(unittest.TestCase):
         skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
         runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9-p14", skill)
+        self.assertIn("OriginPlot Skill v5.8.9-p15", skill)
         self.assertIn("administrator privilege for the entire live lifecycle", skill)
         self.assertIn("E121_ATTACH_POLICY_VIOLATION", skill)
         self.assertIn("op.detach()", skill)
@@ -2339,8 +2381,8 @@ class VersionContractTests(unittest.TestCase):
     def test_test_runner_reports_v589_p12_schema(self) -> None:
         root = Path(__file__).resolve().parents[1]
         runner = (root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
-        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p14"', runner)
-        self.assertIn('"skill_version": "5.8.9-p14"', runner)
+        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p15"', runner)
+        self.assertIn('"skill_version": "5.8.9-p15"', runner)
 
 
 if __name__ == "__main__":

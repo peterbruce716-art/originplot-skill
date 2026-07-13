@@ -1,6 +1,6 @@
 # Current Contract
 
-This is the active OriginPlot v5.8.9-p14 contract. Older protocol files are inputs only where a current script or schema explicitly consumes them.
+This is the active OriginPlot v5.8.9-p15 contract. Older protocol files are inputs only where a current script or schema explicitly consumes them.
 
 ## Result semantics
 
@@ -45,8 +45,9 @@ The five named AA2195 routes have a batch-level gate in `scripts/audit_five_figu
 - Legends are plot-derived editable Origin labels, not independent datasets. Fig3 uses `\l(plot)` references to its actual colored PSC/UC/TR curves; Fig14 references its line/marker plots; Fig16 references its real WH/DRV/DRX native columns. A legend-only Workbook, Worksheet, plot, or swatch-data column is forbidden.
 - Fig16's reopened export calibrates the plot-reference samples as geometry, not merely text anchors: WH/DRV share one 2 px black border, DRV/DRX retain a 3 px white gap, and the first border remains inside the white page.
 - Fig14 uses nine direct Worksheet-backed plots: three NaN-separated editable lines, three zero-line-width marker overlays, and three editable error paths. This separation preserves dashed UC/TR semantics across Origin 2022 save/reopen while keeping every data-bearing element independently editable.
+- Fig14 declares `plot_style_contracts` for its three PID 202 marker overlays. Post-reopen LabTalk shape/size readback must return shapes 1/2/3 and size 10.5 with `plot_style_validation=ok`; missing or drifted marker semantics fail both the figure structure gate and the five-figure batch audit.
 - The global direct-plot Worksheet budget is 5,000 rows per figure, verified after reopen.
-- Reopened `source_geometry_group_validation` and `subplot_worksheet_validation` are hard structure gates. Missing consumers, cross-Worksheet views, wrong declared columns, duplicate canonical consumers, undeclared derivations, missing editable subplot layers, or a subplot bound to another panel's Workbook fail closed.
+- Reopened `source_geometry_group_validation`, `subplot_worksheet_validation`, and every declared `plot_style_validation` are hard structure gates. Missing consumers, cross-Worksheet views, wrong declared columns, duplicate canonical consumers, undeclared derivations, missing editable subplot layers, a subplot bound to another panel's Workbook, or persisted style drift fail closed.
 
 ## Fail-closed conditions
 

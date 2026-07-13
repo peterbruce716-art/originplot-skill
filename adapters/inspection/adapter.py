@@ -340,6 +340,27 @@ def _labtalk_plot_line_style(op: Any, plot: Any) -> int | None:
         return None
 
 
+def _labtalk_plot_symbol_style(op: Any, plot: Any) -> dict[str, Any]:
+    """Read persisted Set -k/-z marker shape and size values in Origin 2022."""
+    plot_name = _read_property(plot, ["name"])
+    if not plot_name:
+        return {}
+    try:
+        command = f"get {plot_name} -k __opsk; get {plot_name} -z __opsz;"
+        layer = getattr(plot, "layer", None)
+        execute = getattr(layer, "LT_execute", None)
+        if callable(execute):
+            execute(command)
+        else:
+            op.lt_exec(command)
+        return {
+            "symbol_shape": int(op.lt_int("__opsk")),
+            "symbol_size": float(op.lt_float("__opsz")),
+        }
+    except Exception:
+        return {}
+
+
 def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | None = None) -> dict[str, Any]:
     """Read plots through the public GLayer API and cross-check LabTalk count."""
     plot_list_error = None
@@ -372,6 +393,12 @@ def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | 
                 detail["line_style"] = line_style
                 detail.setdefault("style", {})["line_style"] = line_style
                 detail["line_style_readback_route"] = "labtalk_get_dash"
+            if detail.get("plot_type_code") == 202:
+                symbol_style = _labtalk_plot_symbol_style(op, plot)
+                if symbol_style:
+                    detail.setdefault("style", {}).update(symbol_style)
+                    detail.update(symbol_style)
+                    detail["symbol_style_readback_route"] = "labtalk_get_shape_size"
         plot_details.append(detail)
     result = {
         "primary_route": "plot_list",

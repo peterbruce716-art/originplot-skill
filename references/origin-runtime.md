@@ -43,6 +43,8 @@ Restart from the initial administrator preflight with a new run ID, a clean outp
 
 ## Readback
 
-Use `list(GLayer.plot_list())` as the primary enumeration route and compare it with LabTalk `layer -c`. Deep Origin 2022 binding readback may use `layer.plotn.pid`, `%A=xof(Ydataset)`, and the plot range exposed by `Plot.lt_range()`. Always restore the string register after a LabTalk probe.
+Use `list(GLayer.plot_list())` as the primary enumeration route and compare it with LabTalk `layer -c`. Deep Origin 2022 binding readback may use `layer.plotn.pid`, `%A=xof(Ydataset)`, and the plot range exposed by `Plot.lt_range()`. For PID 202 marker plots, use persisted LabTalk `get dataset -k` and `get dataset -z` values for symbol shape and size; generic OriginPro plot properties alone are not sufficient. Always restore the string register after a LabTalk probe.
 
 Each plot record includes type, visibility, data workbook, worksheet, X/Y columns, and Z for XYZ contour. Required object names are read after reopen. Axis visibility and titles are read from native axis properties such as `layer.axis.showAxes`.
+
+The five-figure PowerShell runner must resolve Python 3.10 before any worker starts, run `assert_admin_preflight.py` into the clean output root, and use that exact executable for all five workers and `audit_five_figure_batch.py`.

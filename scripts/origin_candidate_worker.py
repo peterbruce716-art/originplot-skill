@@ -50,7 +50,7 @@ REQUIRED_LIVE_ARTIFACTS = [
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 AA2195_BUILDER_PACKAGE = SKILL_ROOT / "builders" / "aa2195"
-SKILL_VERSION = "5.8.9-p14"
+SKILL_VERSION = "5.8.9-p15"
 
 VISUAL_THRESHOLDS = {
     "fig3": {"mae_max": 0.12, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
@@ -238,7 +238,7 @@ def require_template_search_record(
 
 def make_run_id(figure: str, candidate: dict[str, Any]) -> str:
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    return f"p14-{figure}-{candidate_sha256(candidate)[:12]}-{timestamp}"
+    return f"p15-{figure}-{candidate_sha256(candidate)[:12]}-{timestamp}"
 
 
 def export_path_by_phase(exports: list[dict[str, Any]], phase: str) -> Path:
@@ -265,7 +265,7 @@ def build_manifest(
 ) -> dict[str, Any]:
     sha = candidate_sha256(candidate)
     manifest: dict[str, Any] = {
-        "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p14",
+        "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p15",
         "skill_version": SKILL_VERSION,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "figure": figure,
@@ -781,7 +781,7 @@ def run_live(
             )
         metrics["pass_eligible"] = release_status["pass_eligible"]
         if not release_status["pass_eligible"]:
-            metrics["blocking_reasons"] = list(dict.fromkeys(list(metrics.get("blocking_reasons", [])) + target_visual_gate["failures"] + ["p14_overall_release_pass_false"]))
+            metrics["blocking_reasons"] = list(dict.fromkeys(list(metrics.get("blocking_reasons", [])) + target_visual_gate["failures"] + ["p15_overall_release_pass_false"]))
         readback["parameter_normalization"] = prepared.get("parameter_normalization")
         readback["render_identity"] = render_identity
         readback["target_visual_gate"] = target_visual_gate
@@ -869,7 +869,7 @@ def run_live(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OriginPlot v5.8.9-p14 candidate worker.")
+    parser = argparse.ArgumentParser(description="OriginPlot v5.8.9-p15 candidate worker.")
     parser.add_argument("--figure", help="Legacy-compatible figure id, including fig3, fig12, fig14, fig15, or fig16.")
     parser.add_argument("--builder", help="Registered builder id.")
     parser.add_argument("--figure-spec", type=Path, help="FigureSpec JSON used by registry-based builders.")
@@ -918,7 +918,7 @@ def main() -> int:
         else:
             error_code = "E100_SCHEMA_INVALID"
         manifest = {
-            "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p14",
+            "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p15",
             "skill_version": SKILL_VERSION,
             "mode": "live" if args.live else "dry_run",
             "status": "failed",

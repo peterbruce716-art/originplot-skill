@@ -148,7 +148,7 @@ def validate(path: Path) -> dict[str, Any]:
             failures.append({"code": "inherited_or_seed_evidence_package_not_pass_eligible"})
     if report and report.get("status") != "pass":
         failures.append({"code": "semantic_benchmark_not_pass", "status": report.get("status")})
-    return {"schema": "originplot.benchmark_evidence_package_check.v1", "protocol": "v5.8.9-p14_live_same_run", "path": path.name, "entry_count": len(entries), "status": "ok" if not failures else "failed", "failures": failures}
+    return {"schema": "originplot.benchmark_evidence_package_check.v1", "protocol": "v5.8.9-p15_live_same_run", "path": path.name, "entry_count": len(entries), "status": "ok" if not failures else "failed", "failures": failures}
 
 
 def main() -> int:

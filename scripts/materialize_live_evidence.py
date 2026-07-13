@@ -11,7 +11,7 @@ from typing import Any
 from PIL import Image, ImageChops
 
 
-SKILL_VERSION = "5.8.9-p14"
+SKILL_VERSION = "5.8.9-p15"
 STANDARD_FILES = {
     "result.opju",
     "source_crop.png",
@@ -145,7 +145,7 @@ def materialize_standard_evidence(
     route: dict[str, Any],
 ) -> dict[str, Any]:
     if not run_id or not figure_id or skill_version != SKILL_VERSION:
-        raise ValueError("p14 evidence requires nonempty run_id/figure_id and skill_version=5.8.9-p14")
+        raise ValueError("p15 evidence requires nonempty run_id/figure_id and skill_version=5.8.9-p15")
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     if any(output_dir.iterdir()):

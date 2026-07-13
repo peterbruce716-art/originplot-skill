@@ -353,6 +353,32 @@ class ReadbackCalibrationV588Tests(unittest.TestCase):
         self.assertEqual(3, self.inspection._labtalk_plot_line_style(origin, plot))
         self.assertEqual("get p1 -d __opls;", plot.layer.command)
 
+    def test_plot_symbol_style_readback_uses_origin_shape_and_size_commands(self) -> None:
+        commands: list[str] = []
+
+        class SymbolOrigin:
+            def lt_exec(self, command: str) -> bool:
+                commands.append(command)
+                return True
+
+            def lt_int(self, variable: str) -> int:
+                self.assert_variable(variable, "__opsk")
+                return 3
+
+            def lt_float(self, variable: str) -> float:
+                self.assert_variable(variable, "__opsz")
+                return 10.5
+
+            @staticmethod
+            def assert_variable(actual: str, expected: str) -> None:
+                if actual != expected:
+                    raise AssertionError(actual)
+
+        result = self.inspection._labtalk_plot_symbol_style(SymbolOrigin(), FakePlot("p1", 202))
+
+        self.assertEqual({"symbol_shape": 3, "symbol_size": 10.5}, result)
+        self.assertEqual(["get p1 -k __opsk; get p1 -z __opsz;"], commands)
+
     def test_plot_readback_records_labtalk_disagreement(self) -> None:
         result = self.inspection.inspect_layer_plots(FakeLayer(), labtalk_count=1)
         self.assertTrue(result["readback_disagreement"])

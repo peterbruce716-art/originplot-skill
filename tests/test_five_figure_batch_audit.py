@@ -20,6 +20,22 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
         self.assertIn("fresh_output_root_verified = $true", text)
         self.assertLess(text.index("E126_STALE_OUTPUT_ROOT"), text.index("Get-Process -Name Origin64"))
 
+    def test_live_batch_runner_records_admin_preflight_before_origin_attach(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "scripts" / "run_five_figure_live_batch.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('"scripts\\assert_admin_preflight.py"', text)
+        self.assertIn('"admin_preflight.json"', text)
+        self.assertIn("& $PythonExe $preflight", text)
+        self.assertLess(text.index("& $PythonExe $preflight"), text.index("Get-Process -Name Origin64"))
+
+    def test_live_batch_runner_requires_python310_for_every_worker_and_audit(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "scripts" / "run_five_figure_live_batch.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("[string]$PythonExe = $null", text)
+        self.assertIn('$pythonVersion.StartsWith("3.10.")', text)
+        self.assertIn("Start-Process -FilePath $PythonExe", text)
+        self.assertIn("& $PythonExe $audit", text)
+
     def _write_batch(self, root: Path, *, visual_pass: bool = True, shared_pid: bool = True) -> None:
         pid_values = [23780] * 5 if shared_pid else [23780, 23781, 23780, 23780, 23780]
         (root / "live_validation_status.json").write_text(json.dumps({"runs": [
@@ -30,7 +46,7 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
             evidence = root / figure / "evidence"
             evidence.mkdir(parents=True)
             (root / figure / "candidate_manifest.json").write_text(json.dumps({
-                "skill_version": "5.8.9-p14", "live_origin_verified": True,
+                "skill_version": "5.8.9-p15", "live_origin_verified": True,
                 "structure_pass": True, "visual_pass": visual_pass,
             }), encoding="utf-8")
             (root / figure / "candidate_readback.json").write_text(json.dumps({
@@ -38,10 +54,11 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
                     "source_geometry_group_validation": {"status": "ok"},
                     "subplot_worksheet_validation": {"status": "ok"},
                     "legend_plot_reference_validation": {"status": "not_required"},
+                    "plot_style_validation": {"status": "ok" if figure == "fig14" else "not_required"},
                 }
             }), encoding="utf-8")
             (evidence / "run_manifest.json").write_text(json.dumps({
-                "run_id": f"p14-{figure}-test", "provenance": "live_same_run",
+                "run_id": f"p15-{figure}-test", "provenance": "live_same_run",
                 "release_status": {"overall_release_pass": visual_pass},
             }), encoding="utf-8")
 
@@ -96,3 +113,15 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
             result = audit_batch(root)
             self.assertEqual("fail", result["status"])
             self.assertIn("PLOT_DERIVED_LEGEND_FAILED", {item["code"] for item in result["findings"]})
+
+    def test_rejects_failed_fig14_plot_style_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_batch(root)
+            readback_path = root / "fig14" / "candidate_readback.json"
+            readback = json.loads(readback_path.read_text(encoding="utf-8"))
+            readback["origin_object_readback_validation"]["plot_style_validation"] = {"status": "failed"}
+            readback_path.write_text(json.dumps(readback), encoding="utf-8")
+            result = audit_batch(root)
+            self.assertEqual("fail", result["status"])
+            self.assertIn("PLOT_STYLE_FAILED", {item["code"] for item in result["findings"]})

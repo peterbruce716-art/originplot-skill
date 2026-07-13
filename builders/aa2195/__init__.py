@@ -11,6 +11,7 @@ from .readback import (
     validate_direct_worksheet_plot_bindings,
     validate_graphobject_contracts,
     validate_plot_derived_legends,
+    validate_plot_style_contracts,
     validate_subplot_worksheet_bindings,
 )
 from .session import (
@@ -355,6 +356,11 @@ def build_origin_figure(
     )
     if "legend_plot_reference_contracts" in build_record:
         declared_checks.append(legend_plot_reference_validation["status"] in {"ok", "not_required"})
+    plot_style_validation = validate_plot_style_contracts(
+        readback, build_record.get("plot_style_contracts", [])
+    )
+    if "plot_style_contracts" in build_record:
+        declared_checks.append(plot_style_validation["status"] == "ok")
     source_geometry_validation = validate_source_geometry_groups(
         readback, build_record.get("source_geometry_groups")
     )
@@ -382,6 +388,7 @@ def build_origin_figure(
             "worksheet_binding_validation": worksheet_binding_validation,
             "subplot_worksheet_validation": subplot_worksheet_validation,
             "legend_plot_reference_validation": legend_plot_reference_validation,
+            "plot_style_validation": plot_style_validation,
             "source_geometry_group_validation": source_geometry_validation,
         },
         "origin_candidate_hard_gate": {"status": "pass" if structure_ok else "failed"},

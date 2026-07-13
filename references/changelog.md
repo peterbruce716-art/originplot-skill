@@ -1,5 +1,20 @@
 # Changelog
 
+## v5.8.9-p15
+
+- Added fail-closed post-reopen `plot_style_contracts` for the three Fig14 PID 202 marker overlays, including persisted Origin 2022 symbol-shape and symbol-size readback.
+- Extended the five-figure batch audit so Fig14 marker-style drift fails the batch release gate.
+- Hardened the live batch runner to require one Python 3.10 executable and an administrator preflight before Origin attachment, then reuse that executable for every worker and the final audit.
+- Kept the source-tree V4 legacy-document assertion while allowing the packaged suite to run after the shareable-package policy intentionally excludes that legacy protocol file.
+- Preserved the recorded p14 AA2195 evidence as historical reference evidence. The p15 version label does not relabel those runs or claim a new p15 five-figure live pass.
+
+## 2026-07-14 Fig14 persisted-marker and batch-preflight update
+
+- Made Fig14 symbol shape and size explicit Origin 2022 LabTalk properties and added post-reopen `plot_style_contracts` validation for the three PID 202 marker overlays.
+- Made the five-figure batch audit fail closed with `PLOT_STYLE_FAILED` when Fig14 marker semantics are missing or drifted.
+- Made the five-figure runner resolve and require Python 3.10, write `admin_preflight.json` before Origin attach, and use the same Python executable for all workers and the audit.
+- Recorded a new administrator Origin 2022 Fig14 live canary with shapes 1/2/3 and size 10.5 verified after reopen. All visual gates passed (MAE 0.040352, SSIM 0.833945, layout 0.974196, edge 0.780529, color 0.987886). This single-figure canary proves the new closure but does not replace the earlier five-figure same-run batch; mixed metric movement is not described as uniform pixel improvement.
+
 ## 2026-07-13 morphology-proportion audit update
 
 - Required every identifiable morphology that affects source fidelity to declare its measurable ratios, normalization reference, tolerance, audit stage, and optional visible ordering before construction.

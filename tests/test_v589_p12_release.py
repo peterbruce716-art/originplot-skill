@@ -135,12 +135,12 @@ class ReleaseValidatorContractTests(unittest.TestCase):
             "inspection.json": {
                 "run_id": "run-p12-canary",
                 "figure_id": "fig15",
-                "skill_version": "5.8.9-p14",
+                "skill_version": "5.8.9-p15",
             },
             "qa_report.json": {
                 "run_id": "run-p12-canary",
                 "figure_id": "fig15",
-                "skill_version": "5.8.9-p14",
+                "skill_version": "5.8.9-p15",
             },
         }
         self.assertEqual([], self.evidence.identity_consistency_failures(payloads))
@@ -261,7 +261,7 @@ class EvidenceDirectoryContractTests(unittest.TestCase):
                 output_dir=output,
                 run_id="run-p12-test",
                 figure_id="fig15",
-                skill_version="5.8.9-p14",
+                skill_version="5.8.9-p15",
                 source_crop=source,
                 opju=opju,
                 pre_save=pre,
@@ -299,7 +299,7 @@ class EvidenceDirectoryContractTests(unittest.TestCase):
                 payload = json.loads(path.read_text(encoding="utf-8-sig"))
                 self.assertEqual("run-p12-test", payload["run_id"])
                 self.assertEqual("fig15", payload["figure_id"])
-                self.assertEqual("5.8.9-p14", payload["skill_version"])
+                self.assertEqual("5.8.9-p15", payload["skill_version"])
                 self.assertNotIn(str(root), json.dumps(payload))
             validation = validator.validate(output)
             self.assertEqual("ok", validation["status"], validation["failures"])

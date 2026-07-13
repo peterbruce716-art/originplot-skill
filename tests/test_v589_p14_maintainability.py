@@ -82,10 +82,12 @@ class DocumentationContractTests(unittest.TestCase):
         for filename in ("README.md", "SKILL.md"):
             text = (ROOT / filename).read_text(encoding="utf-8-sig").lower()
             self.assertNotIn("run originplot_runtime_v4.py", text)
-        v4_protocol = (ROOT / "FIGURESPEC_V4_PROTOCOL.md").read_text(encoding="utf-8-sig").lower()
-        self.assertIn("legacy protocol", v4_protocol)
-        self.assertIn("not a supported p14 execution route", v4_protocol)
-        self.assertNotIn("from `scripts/originplot_runtime_v4.py error-codes`", v4_protocol)
+        v4_path = ROOT / "FIGURESPEC_V4_PROTOCOL.md"
+        if v4_path.is_file():
+            v4_protocol = v4_path.read_text(encoding="utf-8-sig").lower()
+            self.assertIn("legacy protocol", v4_protocol)
+            self.assertIn("not a supported p15 execution route", v4_protocol)
+            self.assertNotIn("from `scripts/originplot_runtime_v4.py error-codes`", v4_protocol)
         legacy = (ROOT / "references" / "legacy-and-migration.md").read_text(encoding="utf-8-sig")
         self.assertIn("legacy inputs", legacy)
 

@@ -285,9 +285,9 @@ class CandidateWorkerIntegrationTests(unittest.TestCase):
         )["fingerprint"]
         self.assertNotEqual(thin, thick)
 
-    def test_live_evidence_run_id_uses_p14_prefix(self) -> None:
+    def test_live_evidence_run_id_uses_p15_prefix(self) -> None:
         run_id = self.worker.make_run_id("fig15", {"figure": "fig15"})
-        self.assertTrue(run_id.startswith("p14-fig15-"), run_id)
+        self.assertTrue(run_id.startswith("p15-fig15-"), run_id)
 
     def test_relative_source_crop_resolves_from_candidate_directory_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
