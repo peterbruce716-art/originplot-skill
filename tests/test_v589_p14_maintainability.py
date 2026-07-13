@@ -345,6 +345,11 @@ class ReproducibilityTests(unittest.TestCase):
         for filename in ("requirements-core.txt", "requirements-dev.txt", "requirements-origin.txt"):
             self.assertRegex(workflow, rf"(?m)^\s+{re.escape(filename)}\s*$")
 
+    def test_offline_ci_uses_node24_actions(self) -> None:
+        workflow = (ROOT / ".github/workflows/offline-ci.yml").read_text(encoding="utf-8")
+        self.assertIn("actions/checkout@v6", workflow)
+        self.assertIn("actions/setup-python@v6", workflow)
+
     def test_official_template_inspector_gates_before_origin_import_and_detaches(self) -> None:
         source = (ROOT / "scripts/inspect_official_templates.py").read_text(encoding="utf-8-sig")
         admin_gate = source.index("if not is_administrator_python()")
