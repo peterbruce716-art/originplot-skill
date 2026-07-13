@@ -23,6 +23,7 @@ AUTHORIZED_SOURCE_PLACEHOLDER = "AUTHORIZED_LOCAL_SOURCE_REQUIRED"
 
 try:
     from scripts.visual_qa import score_visual
+    from scripts.assert_admin_preflight import demo_restart_directive
     from scripts.materialize_live_evidence import materialize_standard_evidence
     from scripts.acceptance_hardening import (
         derive_release_status,
@@ -33,6 +34,7 @@ try:
     from scripts.fig12_roi import evaluate_fig12_rois
 except ImportError:
     from visual_qa import score_visual
+    from assert_admin_preflight import demo_restart_directive
     from materialize_live_evidence import materialize_standard_evidence
     from acceptance_hardening import derive_release_status, evaluate_target_visual_gate, normalize_fig12_parameters, render_parameter_fingerprint
     from fig12_roi import evaluate_fig12_rois
@@ -632,10 +634,11 @@ def run_live(
             build_result = definition.build_live(effective_figure, build_candidate, output_dir)
         if not isinstance(build_result, dict) or build_result.get("status") == "failed":
             failure = build_result if isinstance(build_result, dict) else {}
+            failure_code = failure.get("error_code", "E525_CANDIDATE_WORKER_FAILED")
             manifest.update(
                 {
                     "status": "failed",
-                    "error_code": failure.get("error_code", "E525_CANDIDATE_WORKER_FAILED"),
+                    "error_code": failure_code,
                     "message": failure.get("message", "The packaged Origin builder failed before producing a candidate."),
                     "builder_result_status": failure.get("status", "invalid_result"),
                     "origin_attach_not_attempted": bool(failure.get("origin_attach_not_attempted", False)),
@@ -649,6 +652,10 @@ def run_live(
                     "builder_failure": failure,
                 }
             )
+            restart = demo_restart_directive(failure_code, python_is_admin=is_admin())
+            if restart is not None:
+                manifest["admin_restart_directive"] = restart
+                manifest["evidence_provenance"] = "invalid_demo_watermark"
             write_json(
                 output_dir / "candidate_readback.json",
                 {
@@ -715,6 +722,29 @@ def run_live(
             origin_export_qa=fig_result.get("origin_export_qa", []),
             source_crop=source_crop,
         )
+        if "E122_ORIGIN_DEMO_EXPORT_BLOCKED" in metrics.get("error_codes", []):
+            restart = demo_restart_directive(
+                "E122_ORIGIN_DEMO_EXPORT_BLOCKED", python_is_admin=is_admin()
+            )
+            metrics["admin_restart_directive"] = restart
+            metrics["pass_eligible"] = False
+            write_json(metrics_path, metrics)
+            manifest.update(
+                {
+                    "status": "failed",
+                    "error_code": "E122_ORIGIN_DEMO_EXPORT_BLOCKED",
+                    "message": "Demo watermark invalidated the complete run; restart from administrator preflight.",
+                    "command_success": False,
+                    "structure_pass": False,
+                    "visual_pass": False,
+                    "live_origin_verified": False,
+                    "pass_eligible": False,
+                    "overall_status": "failed",
+                    "admin_restart_directive": restart,
+                    "evidence_provenance": "invalid_demo_watermark",
+                }
+            )
+            return manifest
         effective_route = readback.get("effective_builder_route", {})
         source_hash = _source_sha256(source_crop)
         render_identity = render_parameter_fingerprint(
@@ -812,10 +842,11 @@ def run_live(
         )
     except Exception as exc:
         message = str(exc)
+        error_code = stable_runtime_error_code(exc)
         manifest.update(
             {
                 "status": "failed",
-                "error_code": stable_runtime_error_code(exc),
+                "error_code": error_code,
                 "error_class": exc.__class__.__name__,
                 "message": message,
                 "traceback": traceback.format_exc(limit=8),
@@ -827,6 +858,10 @@ def run_live(
                 "overall_status": "failed",
             }
         )
+        restart = demo_restart_directive(error_code, python_is_admin=is_admin())
+        if restart is not None:
+            manifest["admin_restart_directive"] = restart
+            manifest["evidence_provenance"] = "invalid_demo_watermark"
     finally:
         manifest["release"] = manifest.get("release") or "builder_owned_session_released"
         write_json(output_dir / "candidate_manifest.json", manifest)

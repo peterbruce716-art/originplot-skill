@@ -44,6 +44,14 @@ For a new builder or material restyle, read [references/figure-contract-and-styl
 
 For materials or EBSD figures, also read [references/materials-figure-qa.md](references/materials-figure-qa.md) before finalizing panel semantics or claims.
 
+For column/bar figures, declare `column_arrangement` per layer rather than once for the page. The supported semantic modes are `side_by_side`, `cumulative_stack`, and `nested_overlap`. Distinguish `nested_overlap` from cumulative stacking by geometry: nested columns share the zero baseline and the smaller front columns occlude wider back columns, while cumulative stacks use successive segment baselines and their visible top represents a sum. Do not infer stacking only because adjacent columns touch or overlap in a low-resolution reference. Record plot order and per-series width or gap controls for every `nested_overlap` layer.
+
+### Morphology proportion contract
+
+Every identifiable morphology whose proportions affect source fidelity must be declared before construction in `morphology_ratio_contracts`. This rule is not limited to columns: it covers nested series widths, cumulative segment shares, panel or object dimensions, gaps, regional occupancy, and other measurable shape relationships. Each contract declares `morphology_id`, `scope_id`, `metric`, `reference_item`, `expected_ratios`, `tolerance`, and `audit_stage`; add an ordering constraint when order itself is visible. Ratios estimated from a raster source remain approximate and must retain that provenance.
+
+Audit every declared proportion on the post-reopen final export at its declared output size, or from reopened native geometry when that is the declared metric. Preserve expected ratios, measured values, normalized actual ratios, absolute deviations, tolerance, and per-contract status. Missing declarations, missing measurements, and out-of-tolerance ratios fail the visual-structure gate; an informal claim that the result looks similar cannot substitute for this audit.
+
 ## Task classification
 
 - `offline_contract`: validate schemas, registry resolution, candidates, dependencies, tests, or packaging without Origin.
@@ -67,7 +75,8 @@ For offline work:
 For formal live work:
 
 - Require Windows, Origin 2022 with a valid license, Python 3.10, and `originpro`.
-- Require administrator Python and a visible administrator-started Origin process before the live workflow begins.
+- Before the first task action that can feed a live run, execute `python scripts/assert_admin_preflight.py --json-out <run-root>/admin_preflight.json`. This includes template retrieval/inspection, contract materialization, candidate creation, and every Origin phase. If it fails, do not create or reuse live-run artifacts; relaunch the entire workflow from this preflight in an elevated PowerShell process.
+- Require administrator Python and a visible administrator-started Origin process before the live workflow begins. Starting unelevated and elevating only the final worker is forbidden because it breaks the single privilege envelope.
 - Keep administrator privilege for the entire live lifecycle: preflight, template-project open/inspection, build, save, release, reopen, readback, export, and cleanup. Do not mix elevated and non-elevated Origin/Python phases.
 - Confirm the destination OPJU is not open and no stale lock blocks it.
 - Use bounded workers and expose runtime timeout controls such as `--phase-timeout-seconds` where supported.
@@ -86,6 +95,20 @@ For every paper-like reproduction, template discovery is the first route decisio
 8. Open and inspect the downloaded project in compatible Origin before calling it a reusable template. A screenshot, `.otp`, filename, or Gallery citation alone is not sufficient.
 9. If no candidate is reusable, record the gap and use a native reconstruction route; never imply object transplantation.
 
+### Template retrieval resilience
+
+Do not conclude that an OriginLab page or template is unavailable after one search, request, parser, redirect, or download failure.
+
+1. When an official entrance or candidate URL fails, retry it with bounded backoff for at least three total attempts; stop retrying that URL as soon as one attempt succeeds. Record the UTC timestamp, URL, retrieval method, HTTP status or error, response bytes, and final resolved URL for every attempt.
+2. When a search backend or HTML parser fails, bypass it: request the official page directly, inspect the raw HTML, use another available HTTP client or the in-app browser, and follow only official redirects. A tool decoding error is not evidence that OriginLab is down.
+3. Search at least three semantically close Gallery candidates when they exist. Continue until one closest candidate archive passes validation, or until the official entrances, candidate GID pages, direct official download URLs, local official-template catalog, and installed templates are all exhausted.
+4. Use `python scripts/retrieve_official_template.py --url <official-zip-url> --output <archive.zip> --attempts 3 --log <attempts.json>` for repeatable downloads. Multiple `--url` values provide official mirrors or alternate candidate archives.
+5. Accept a download only when it is non-HTML content, has a ZIP signature, passes `zipfile.testzip()`, contains no unsafe extraction path, and has a recorded SHA256. Extract only data/template files; never execute downloaded binaries.
+6. Open the extracted `.opj` or `.opju` in the compatible administrator-run Origin instance and inspect its structure. A valid archive that cannot be opened in the target Origin version is a rejected candidate, not a reusable template.
+7. Report `E131_TEMPLATE_RETRIEVAL_EXHAUSTED` only after the recorded retry matrix shows at least two retrieval methods, three failed attempts per exhausted official URL, alternate official candidates where available, and both local searches. Preserve the attempt log with the template-search record.
+
+Network, authorization, or upstream removal can make a successful download impossible. In that case, fail transparently after exhausting the required routes; do not claim that a template was downloaded or inspected.
+
 If preflight fails, return a stable error and do not create evidence that looks live.
 Missing or unauthorized attach uses `E121_ATTACH_POLICY_VIOLATION`; a non-administrator live process uses `E120_ENVIRONMENT_MISMATCH`.
 Shareable candidates that still contain `AUTHORIZED_LOCAL_SOURCE_REQUIRED` fail before Origin attach with `E124_AUTHORIZED_SOURCE_REQUIRED`; replace it with an authorized readable local source path.
@@ -103,6 +126,7 @@ For final graphs:
 - Declare `originplot.source_geometry_groups.v1`. Give every continuous curve, NaN-separated path, categorical region field, or local fill one canonical source. Every additional plot view must stay in the same reopened Workbook/Worksheet and name its deterministic derivation; reuse the exact X/Y/Z columns when its Origin plot family permits it. A derived GraphObject must name the same source group and pass its object type/geometry gate after reopen.
 - After reopen, resolve workbook, worksheet, X, Y, and Z for XYZ plots from live Origin readback.
 - Declare `subplot_worksheet_contracts` for every data-bearing subplot/layer. After reopen, each declared subplot must contain at least one editable Plot, match its exact plot count, and resolve every Plot to the corresponding declared Workbook alias, Worksheet, and X/Y(/Z) columns. Project-level workbook presence or an aggregate binding count is not sufficient.
+- Treat Origin 2022 native Y error bars as persistent plot pairs. Declare `binding_mode` for every pair. `dataset_linked` is the default: `GLayer.add_plot(..., colyerr=...)` persists a type-203 data plot plus a type-231 error plot whose X dataset is the data plot's Y dataset and whose Y dataset is the Error column. For grouped or intentionally overlapped columns built before their error bars, `implicit_error_column` is allowed only when a type-231 plot is appended after the corresponding type-203 column, reopens from the same Workbook/Worksheet with the declared Error column as both X and Y, and same-run Origin exports visibly place caps on the intended bar tops. Count and validate both plots with `validate_native_yerror_pairs`; keep plot-derived legends pointed only at data plots and reject line-plot substitutes. Declare the native cap-width setting, such as LabTalk `-erwc`, and verify at final export size that every cap is strictly narrower than its corresponding visible column.
 - Keep the global direct-plot Worksheet total at or below 5,000 rows per figure.
 - Reject source-image pages, pixel traces, raster backgrounds, and copied preview pages.
 - Treat official templates as references unless donor opening, object readback, and transplantation are evidenced.
@@ -122,7 +146,7 @@ Always release in `finally` or the session context manager. Attached sessions us
 
 Both phases and every helper process that touches Origin must remain elevated. A non-administrator helper cannot inherit or continue a formal live run; fail with `E120_ENVIRONMENT_MISMATCH` before importing `originpro` or `OriginExt`.
 
-The build and reopen phases must use the same verified visible Origin PID. Check the pre-save export for demo cyan markings before saving the OPJU; fail immediately with `E122_ORIGIN_DEMO_EXPORT_BLOCKED` instead of continuing the batch.
+The build and reopen phases must use the same verified visible Origin PID. Check every template-inspection, pre-save, and post-reopen export for demo cyan markings. On `E122_ORIGIN_DEMO_EXPORT_BLOCKED`, invalidate the complete current run, release the attached session in `finally`, forbid reuse of its OPJU/exports/readback, create a new run ID and clean output root, and restart the full skill workflow from administrator preflight with administrator Python and a visible administrator-started Origin instance. Do not resume at save, reopen, or visual QA. If the fully elevated restart still has a demo watermark, treat it as a license/environment failure and stop rather than looping or claiming success.
 
 Read [references/origin-runtime.md](references/origin-runtime.md) before changing Origin attachment, page/layer units, text size, readback, save, reopen, or export logic.
 

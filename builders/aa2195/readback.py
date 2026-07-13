@@ -217,6 +217,136 @@ def validate_direct_worksheet_plot_bindings(
     return {"status": "ok" if not mismatches else "failed", "plot_count": len(plots), "mismatches": mismatches}
 
 
+def validate_native_yerror_pairs(
+    readback: dict[str, Any],
+    contracts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate Origin 2022 native column/YErr plot pairs after reopen.
+
+    Origin persists native Y error bars as separate type-231 plots. Two
+    Origin 2022 readback forms are supported: ``dataset_linked`` for a
+    ``colyerr`` pair, and explicitly declared ``implicit_error_column`` for a
+    type-231 plot appended after grouped or intentionally overlapped columns.
+    The latter reads the Error column as both X and Y even though Origin renders
+    it on the corresponding preceding column. Native YErr pairs therefore count
+    as two plots.
+    """
+    layers = {int(layer.get("index", -1)): layer for layer in readback.get("layers", [])}
+    mismatches: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    for contract in contracts:
+        layer_index = int(contract["layer_index"])
+        layer = layers.get(layer_index)
+        if layer is None:
+            mismatches.append(
+                {"layer_index": layer_index, "property": "layer_exists", "expected": True, "actual": False}
+            )
+            continue
+        plots = layer.get("plot_details", [])
+        expected_plot_count = int(contract.get("expected_plot_count", 2 * len(contract.get("pairs", []))))
+        if int(layer.get("plot_count", len(plots))) != expected_plot_count:
+            mismatches.append(
+                {
+                    "layer_index": layer_index,
+                    "property": "native_column_yerr_plot_count",
+                    "expected": expected_plot_count,
+                    "actual": layer.get("plot_count", len(plots)),
+                }
+            )
+        for pair in contract.get("pairs", []):
+            column_index = int(pair["column_plot_index"])
+            error_index = int(pair["error_plot_index"])
+            binding_mode = str(pair.get("binding_mode", "dataset_linked"))
+            column_plot = plots[column_index] if 0 <= column_index < len(plots) else None
+            error_plot = plots[error_index] if 0 <= error_index < len(plots) else None
+            if column_plot is None or error_plot is None:
+                mismatches.append(
+                    {
+                        "layer_index": layer_index,
+                        "property": "pair_exists",
+                        "expected": [column_index, error_index],
+                        "actual": len(plots),
+                    }
+                )
+                continue
+            expected = {
+                "column_plot_type_code": 203,
+                "error_plot_type_code": 231,
+                "column_x": pair.get("column_x"),
+                "column_y": pair.get("column_y"),
+                "error_value_column": pair.get("error_value_column"),
+            }
+            actual = {
+                "column_plot_type_code": column_plot.get("plot_type_code"),
+                "error_plot_type_code": error_plot.get("plot_type_code"),
+                "column_x": column_plot.get("x_column"),
+                "column_y": column_plot.get("y_column"),
+                "error_source_column": error_plot.get("x_column"),
+                "error_value_column": error_plot.get("y_column"),
+                "column_y_dataset": column_plot.get("y_dataset"),
+                "error_x_dataset": error_plot.get("x_dataset"),
+                "error_y_dataset": error_plot.get("y_dataset"),
+            }
+            checks: dict[str, bool] = {
+                "column_plot_type_code": actual["column_plot_type_code"] == 203,
+                "error_plot_type_code": actual["error_plot_type_code"] == 231,
+                "column_x": actual["column_x"] == expected["column_x"],
+                "column_y": actual["column_y"] == expected["column_y"],
+                "same_workbook": column_plot.get("data_workbook") == error_plot.get("data_workbook"),
+                "same_worksheet": column_plot.get("data_worksheet") == error_plot.get("data_worksheet"),
+                "error_plot_follows_column_plot": error_index > column_index,
+            }
+            if binding_mode == "dataset_linked":
+                checks.update(
+                    {
+                        "error_source_column": actual["error_source_column"] == expected["column_y"],
+                        "error_value_column": actual["error_value_column"] == expected["error_value_column"],
+                        "dataset_link": bool(actual["column_y_dataset"])
+                        and actual["column_y_dataset"] == actual["error_x_dataset"],
+                    }
+                )
+            elif binding_mode == "implicit_error_column":
+                checks.update(
+                    {
+                        "error_source_column": actual["error_source_column"] == expected["error_value_column"],
+                        "error_value_column": actual["error_value_column"] == expected["error_value_column"],
+                        "implicit_error_dataset": bool(actual["error_x_dataset"])
+                        and actual["error_x_dataset"] == actual["error_y_dataset"],
+                    }
+                )
+            else:
+                checks["supported_binding_mode"] = False
+            for prop, passed in checks.items():
+                if not passed:
+                    mismatches.append(
+                        {
+                            "layer_index": layer_index,
+                            "column_plot_index": column_index,
+                            "error_plot_index": error_index,
+                            "property": prop,
+                            "expected": expected,
+                            "actual": actual,
+                        }
+                    )
+            records.append(
+                {
+                    "layer_index": layer_index,
+                    "column_plot_index": column_index,
+                    "error_plot_index": error_index,
+                    "binding_mode": binding_mode,
+                    "status": "ok" if all(checks.values()) else "failed",
+                    "actual": actual,
+                }
+            )
+    return {
+        "schema": "originplot.native_yerror_pairs.v1",
+        "status": "ok" if not mismatches else "failed",
+        "pair_count": len(records),
+        "pairs": records,
+        "mismatches": mismatches,
+    }
+
+
 def validate_subplot_worksheet_bindings(
     readback: dict[str, Any],
     contracts: list[dict[str, Any]],

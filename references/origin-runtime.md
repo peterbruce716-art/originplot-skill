@@ -2,7 +2,7 @@
 
 ## Preflight
 
-Formal live execution requires Windows, Origin 2022 with a valid license, Python 3.10 with `originpro`, administrator Python, and a visible administrator-started Origin instance. Administrator privilege is continuous from live preflight through template inspection, build, save, detach, reopen, readback, export, and cleanup. Never combine an elevated Origin instance with a non-elevated helper. Verify that the target OPJU is not open and that no stale lock blocks saving.
+Formal live execution requires Windows, Origin 2022 with a valid license, Python 3.10 with `originpro`, administrator Python, and a visible administrator-started Origin instance. Administrator privilege is one continuous envelope from the first action that can feed a live run through template retrieval/inspection, contract and candidate materialization, build, save, detach, reopen, readback, export, evidence packaging, and cleanup. Run `python scripts/assert_admin_preflight.py --json-out <run-root>/admin_preflight.json` before those actions. Never start unelevated and elevate only a later helper. Verify that the target OPJU is not open and that no stale lock blocks saving.
 
 Do not run `origin_attach_smoke.py` as the default formal preflight. The smoke script is an explicit live-debug diagnostic that clears the active project. The default formal path is the candidate worker itself. Snapshot the visible Origin PID before `op.attach()`, verify the same PID and visible window immediately after attach, reject any new `-Embedding` process with `E123_ORIGIN_SESSION_IDENTITY_DRIFT`, and require the same PID for the reopen phase.
 
@@ -29,7 +29,9 @@ Hidden sessions are diagnostic-only unless an explicit future contract promotes 
 8. Save the fitted edit view and export post-reopen evidence.
 9. Release the session.
 
-Immediately after step 3's pre-save export and before saving the OPJU, run the demo-watermark gate. `E122_ORIGIN_DEMO_EXPORT_BLOCKED` stops the run at once; do not continue to reopen or later figures.
+Run the demo-watermark gate on template-inspection exports, immediately after step 3's pre-save export and before saving the OPJU, and again after reopen. `E122_ORIGIN_DEMO_EXPORT_BLOCKED` stops the run at once. Mark the entire run invalid, release the attached session in `finally`, and preserve only a failure manifest and diagnostic watermark evidence. Do not reuse the OPJU, exports, readback, run ID, or output root.
+
+Restart from the initial administrator preflight with a new run ID, a clean output root, administrator Python, and a visible administrator-started Origin instance. Rerun template inspection and reconstruction; do not resume from save/reopen/QA. Allow one complete elevated restart for this condition. If the elevated restart also reports `E122_ORIGIN_DEMO_EXPORT_BLOCKED`, stop with a license/environment failure because administrator privilege alone cannot repair an invalid or demo license.
 
 ## Origin 2022 units
 

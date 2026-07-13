@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-07-13 morphology-proportion audit update
+
+- Required every identifiable morphology that affects source fidelity to declare its measurable ratios, normalization reference, tolerance, audit stage, and optional visible ordering before construction.
+- Added a generic fail-closed morphology-ratio validator; missing declarations, missing post-export measurements, order violations, and out-of-tolerance ratios now fail the visual-structure gate.
+- Applied the rule beyond column charts to stacked shares, panel/object dimensions, gaps, regional occupancy, and other measurable shape relationships without changing frozen AA2195 evidence.
+
+## 2026-07-13 mixed column-arrangement and native-cap update
+
+- Required each column/bar layer to declare `side_by_side`, `cumulative_stack`, or noncumulative `nested_overlap` independently, including plot order and per-series width controls for nested overlays.
+- Defined the geometry distinction between cumulative stacking and same-baseline nested overlap so touching bars in a raster reference are not automatically treated as stacked values.
+- Extended the native Origin 2022 YErr contract to intentionally overlapped columns and required a recorded native cap-width control with final-size evidence that every cap is narrower than its visible column.
+- Kept the update additive to the `5.8.9-p14` runtime and frozen AA2195 benchmark evidence; the new KYBD run is task-local evidence and does not promote unrelated builders.
+
+## 2026-07-13 administrator-envelope and demo-restart update
+
+- Added an explicit administrator preflight before the first action that can feed a live run; elevating only the final Origin worker is now forbidden.
+- Extended the single privilege envelope through template retrieval/inspection, candidate materialization, Origin save/reopen/readback/export, evidence packaging, and cleanup.
+- Made every demo-watermark result invalidate the complete run and emit a machine-readable restart directive requiring a new run ID, clean output root, and full restart from administrator preflight.
+- Limited demo-watermark restart to one fully elevated retry. A repeated watermark is a license/environment failure, not a reason to loop or accept contaminated evidence.
+
+## 2026-07-13 template-retrieval resilience update
+
+- Prohibited treating a single search-tool, parser, redirect, or download failure as evidence that OriginLab is unavailable.
+- Required at least three bounded attempts after failures unless an earlier retry succeeds, at least two retrieval methods before declaring exhaustion, alternate close Gallery candidates when available, and recorded local-catalog and installed-template fallback.
+- Added `scripts/retrieve_official_template.py` to reject HTML error pages, validate ZIP signatures and integrity, prevent unsafe extraction paths, record SHA256 and attempt evidence, and support multiple official URLs.
+- Added `E131_TEMPLATE_RETRIEVAL_EXHAUSTED` for transparent failure only after the complete retry matrix is exhausted. This maintenance update does not change the frozen AA2195 builder evidence or inherit a new live pass.
+
 ## 2026-07-13 publication-contract extension
 
 - Added a machine-validatable `originplot.publication_contract.v1` that gates conclusion-first panel design, evidence hierarchy, source traceability, final physical size, statistics and uncertainty, accessibility, and export requirements before a new builder or material restyle.
