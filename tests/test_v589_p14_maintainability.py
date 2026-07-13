@@ -321,6 +321,8 @@ class ReproducibilityTests(unittest.TestCase):
             self.assertTrue((ROOT / filename).is_file())
         audit = load("p14_dependency_audit", "scripts/audit_dependencies.py").audit()
         self.assertEqual("ok", audit["status"], audit)
+        self.assertTrue({"cv2", "fitz"}.issubset(audit["detected_external_imports"]), audit)
+        self.assertTrue({"opencv-python-headless", "pymupdf"}.issubset(audit["declared_requirements"]), audit)
 
     def test_public_demo_generation_is_rebuildable(self) -> None:
         generator = load("p14_public_demo", "examples/public_demo/generate_source.py")

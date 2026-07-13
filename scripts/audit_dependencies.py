@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 IMPORT_TO_REQUIREMENT = {
+    "cv2": "opencv-python-headless",
+    "fitz": "PyMuPDF",
     "numpy": "numpy",
     "PIL": "Pillow",
     "skimage": "scikit-image",

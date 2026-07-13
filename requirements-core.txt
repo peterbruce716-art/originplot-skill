@@ -1,5 +1,7 @@
 # Offline contracts, builders, image metrics, and YAML input support (Python 3.10+)
 numpy>=1.23,<3
+opencv-python-headless>=4.8,<5
 Pillow>=9.5,<12
+PyMuPDF>=1.23,<2
 scikit-image>=0.20,<1
 PyYAML>=6,<7
