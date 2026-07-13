@@ -38,6 +38,12 @@ class FakePlot:
 class FakeLayer:
     name = "Layer1"
 
+    def __init__(self) -> None:
+        self.activate_count = 0
+
+    def activate(self) -> None:
+        self.activate_count += 1
+
     def __len__(self) -> int:
         return 0
 
@@ -71,6 +77,7 @@ class FakeSemanticBook:
 class FakeSemanticOrigin:
     def __init__(self) -> None:
         self.register_a = "preserve-me"
+        self.line_style_readback = 0
 
     def lt_int(self, formula: str):
         values = {
@@ -78,6 +85,7 @@ class FakeSemanticOrigin:
             "layer.plot1.show": 1,
             "layer.plot2.pid": 201,
             "layer.plot2.show": 0,
+            "__opls": self.line_style_readback,
         }
         return values[formula]
 
@@ -95,6 +103,10 @@ class FakeSemanticOrigin:
             self.register_a = "Book2_A"
         elif command == "%A=xof(Book2_D);":
             self.register_a = "Book2_C"
+        elif command == "get p1 -d __opls;":
+            self.line_style_readback = 2
+        elif command == "get p2 -d __opls;":
+            self.line_style_readback = 3
         else:
             raise AssertionError(command)
         return True
@@ -305,7 +317,8 @@ class ReadbackCalibrationV588Tests(unittest.TestCase):
 
     def test_plot_readback_prefers_origin2022_labtalk_semantics_and_restores_register(self) -> None:
         origin = FakeSemanticOrigin()
-        result = self.inspection.inspect_layer_plots(FakeLayer(), labtalk_count=2, op=origin)
+        layer = FakeLayer()
+        result = self.inspection.inspect_layer_plots(layer, labtalk_count=2, op=origin)
         first, second = result["plot_details"]
         self.assertEqual(200, first["plot_type_code"])
         self.assertEqual("line", first["plot_family"])
@@ -318,10 +331,27 @@ class ReadbackCalibrationV588Tests(unittest.TestCase):
         self.assertEqual("B", first["y_column"])
         self.assertEqual("[Book2]RawData!(A,B)", first["data_binding_raw"])
         self.assertEqual("[Book1]Sheet1!(A,B)", first["graph_plot_range"])
+        self.assertEqual(2, first["line_style"])
+        self.assertEqual("labtalk_get_dash", first["line_style_readback_route"])
         self.assertEqual(201, second["plot_type_code"])
         self.assertEqual("scatter", second["plot_family"])
         self.assertIs(second["visible"], False)
+        self.assertEqual(3, second["line_style"])
         self.assertEqual("preserve-me", origin.register_a)
+        self.assertEqual(2, layer.activate_count)
+
+    def test_plot_line_style_readback_executes_in_the_plots_own_layer(self) -> None:
+        origin = FakeSemanticOrigin()
+        plot = FakePlot("p1", 200)
+
+        class RawLayer:
+            def LT_execute(self, command: str) -> None:
+                self.command = command
+                origin.line_style_readback = 3
+
+        plot.layer = RawLayer()
+        self.assertEqual(3, self.inspection._labtalk_plot_line_style(origin, plot))
+        self.assertEqual("get p1 -d __opls;", plot.layer.command)
 
     def test_plot_readback_records_labtalk_disagreement(self) -> None:
         result = self.inspection.inspect_layer_plots(FakeLayer(), labtalk_count=1)

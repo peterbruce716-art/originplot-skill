@@ -14,6 +14,7 @@ from .common_origin_utils import (
     reveal_graph_page,
 )
 from .geometry import fig16_geometry
+from .source_geometry import source_geometry_contract
 
 
 HEIGHT = 375.0
@@ -41,7 +42,7 @@ FIG16_TUNING_KEYS = {
 DEFAULT_FIG16_TUNING = {
     "bar_top_dy": -1.0,
     "bar_bottom_dy": 1.0,
-    "legend_dy": 3.0,
+    "legend_dy": 6.0,
 }
 FIG16_COLOR_KEYS = {"WH", "DRV", "DRX"}
 FIG16_TEXT_SIZE_KEYS = {
@@ -914,85 +915,11 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         })
         column += 2
 
-    legend_inventory: list[dict[str, Any]] = []
-    legend_layers: list[Any] = []
-    # Isolate each swatch in a micro-layer. A native column supplies the true
-    # area fill; a Worksheet-backed closed XY path supplies all four border
-    # edges independently of column clipping and adjacency.
-    for legend_index, record in enumerate(geometry["legend"], start=2):
-        bbox = _shift_bbox(record["bbox"], tuning["legend_dx"], tuning["legend_dy"])
-        fill_x0, fill_y0, fill_x1, fill_y1 = (
-            max(1, bbox[0] - 3),
-            max(1, bbox[1] - 2),
-            min(719, bbox[2] + 3),
-            min(374, bbox[3] + 2),
-        )
-        x_col, y_col = column, column + 1
-        sheet.from_list(x_col, [0.0], lname=f"legend_{record['label']}_x", axis="X")
-        sheet.from_list(y_col, [1.0], lname=f"legend_{record['label']}_fill", axis="Y")
-        legend_layer = page.add_layer()
-        layout_percent = (
-            100.0 * fill_x0 / geometry["canvas"][0],
-            100.0 * fill_y0 / geometry["canvas"][1],
-            100.0 * (fill_x1 - fill_x0) / geometry["canvas"][0],
-            100.0 * (fill_y1 - fill_y0) / geometry["canvas"][1],
-        )
-        legend_layer.lt_exec(page_percent_layer_command(layout_percent))
-        remove_default_labels(legend_layer)
-        try:
-            legend_layer.lt_exec(axisless_layer_command())
-        except Exception:
-            pass
-        plot = legend_layer.add_plot(sheet, colx=x_col, coly=y_col, type=203)
-        _style_float_column(plot, str(record["color"]), 0.0)
-        legend_layer.set_xlim(-0.5, 0.5)
-        legend_layer.set_ylim(0.0, 1.0)
-        legend_layer.lt_exec("layer.x.from=-0.5; layer.x.to=0.5; layer.y.from=0; layer.y.to=1;")
-        border_x_col, border_y_col = x_col + 2, y_col + 2
-        sheet.from_list(
-            border_x_col,
-            [-0.49, 0.49, 0.49, -0.49, -0.49],
-            lname=f"legend_{record['label']}_border_x",
-            axis="X",
-        )
-        sheet.from_list(
-            border_y_col,
-            [0.01, 0.01, 0.99, 0.99, 0.01],
-            lname=f"legend_{record['label']}_border_y",
-            axis="Y",
-        )
-        border_plot = legend_layer.add_plot(
-            sheet, colx=border_x_col, coly=border_y_col, type="line"
-        )
-        _style_native_plot(border_plot, "#000000", 1.0)
-        disable_speed_mode(legend_layer)
-        legend_layers.append(legend_layer)
-        direct_contracts.append({
-            "layer_index": legend_index,
-            "plot_index": 0,
-            "plot_type_code": 203,
-            "x_column": chr(ord("A") + x_col),
-            "y_column": chr(ord("A") + y_col),
-        })
-        direct_contracts.append({
-            "layer_index": legend_index,
-            "plot_index": 1,
-            "plot_type_code": 200,
-            "x_column": chr(ord("A") + border_x_col),
-            "y_column": chr(ord("A") + border_y_col),
-        })
-        column += 4
-        legend_inventory.append({
-            **record,
-            "bbox": bbox,
-            "fill_bbox": (fill_x0, fill_y0, fill_x1, fill_y1),
-            "layout_percent": layout_percent,
-            "layer_index": legend_index,
-            "swatch_route": "isolated_native_column_fill_with_closed_xy_border",
-        })
-
     required_graphobject_contracts: dict[str, dict[str, Any]] = {}
     expected_names: list[str] = []
+    legend_names: list[str] = []
+    legend_inventory: list[dict[str, Any]] = []
+    legend_contracts: list[dict[str, Any]] = []
     def add_text_contract(name: str, text: str, x: float, y: float, size: float, bold: bool = False) -> None:
         rich_text = f"\\f:Times New Roman({text})"
         label = overlay.add_label(rich_text, x, _stack_chart_y(y))
@@ -1015,8 +942,43 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     for record in geometry["group_boxes"]:
         add_text_contract(f"fig16_group_label_{record['name'].lower()}", record["name"], record["bbox"][0] + 8 + tuning["group_label_dx"], 65 + tuning["group_label_dy"], text_sizes["group_label"], True)
     for index, record in enumerate(geometry["legend"], start=1):
-        bbox = _shift_bbox(record["bbox"], tuning["legend_dx"], tuning["legend_dy"])
-        add_text_contract(f"fig16_legend_text_{index:02d}", record["label"], bbox[2] + 5, bbox[1] - 6, text_sizes["legend"])
+        # Reopened Origin exports each plot-reference sample with a 2 px
+        # border. These per-row corrections overlap the WH/DRV borders while
+        # retaining the source's 3 px white gap before DRX.
+        plot_reference_dy = (0.0, -1.0, 0.0)[index - 1]
+        bbox = _shift_bbox(
+            record["bbox"],
+            tuning["legend_dx"],
+            tuning["legend_dy"] + plot_reference_dy,
+        )
+        object_name = f"fig16_legend_text_{index:02d}"
+        legend_text = f"\\l({index}) {record['label']}"
+        legend_label = layer.add_label(legend_text, bbox[0], _stack_chart_y(bbox[1] - 6))
+        if legend_label is None:
+            raise RuntimeError(f"Origin failed to create Fig16 plot-derived legend: {object_name}")
+        _set_object_name(legend_label, object_name)
+        try:
+            legend_label.set_int("attach", 2)
+            legend_label.set_float("x1", float(bbox[0]))
+            legend_label.set_float("y1", _stack_chart_y(bbox[1] - 6))
+            legend_label.set_float("fsize", origin_font_size(text_sizes["legend"]))
+        except Exception:
+            pass
+        required_graphobject_contracts[object_name] = {"attach": 2, "text_contains": record["label"]}
+        legend_names.append(object_name)
+        legend_contracts.append({
+            "object_name": object_name,
+            "layer_index": 0,
+            "plot_numbers": [index],
+            "text_contains": record["label"],
+        })
+        legend_inventory.append({
+            **record,
+            "bbox": bbox,
+            "plot_number": index,
+            "layer_index": 0,
+            "swatch_route": "plot_derived_legend_reference",
+        })
     for index, record in enumerate(geometry["stage_labels"], start=1):
         # Origin's exported Times New Roman glyphs have digit-specific side
         # bearings. These offsets center the reopened glyph bbox, not merely
@@ -1043,12 +1005,56 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     disable_speed_mode(layer)
     disable_speed_mode(overlay)
     construction_visibility = reveal_graph_page(page)
+    source_groups: list[dict[str, Any]] = [{
+        "group_id": "fig16.h_s_stage_row_model",
+        "canonical_source": {
+            "source_id": "fig16_geometry.bars::H_S_stage_rows",
+            "kind": "paired_hardening_softening_stage_rows",
+        },
+        "continuity": "stacked_columns",
+        "same_worksheet": True,
+        "consumers": [
+            {
+                "consumer_id": family,
+                "kind": "plot",
+                "view": "canonical" if plot_index == 0 else "derived",
+                "derivation": None if plot_index == 0 else f"select {family} family from the same H/S stage rows",
+                "layer_index": 0,
+                "plot_index": plot_index,
+                "x_column": "A",
+                "y_column": chr(ord("B") + plot_index),
+            }
+            for plot_index, family in enumerate(("WH", "DRV", "DRX"))
+        ],
+    }]
+    for plot_index, (name, x_column, y_column, continuity) in enumerate((
+        ("group_frames", "E", "F", "nan_separated_xy"),
+        ("stage_circles", "G", "H", "nan_separated_xy"),
+    )):
+        source_groups.append({
+            "group_id": f"fig16.{name}",
+            "canonical_source": {
+                "source_id": f"fig16_geometry.{name}",
+                "kind": "source_calibrated_overlay_geometry",
+            },
+            "continuity": continuity,
+            "same_worksheet": True,
+            "consumers": [{
+                "consumer_id": name,
+                "kind": "plot",
+                "view": "canonical",
+                "layer_index": 1,
+                "plot_index": plot_index,
+                "x_column": x_column,
+                "y_column": y_column,
+            }],
+        })
     return {
         "page_name": "Fig16_gid399_native_stackcolumn",
-        "expected_plot_count": 11,
-        "expected_plot_count_by_layer": {0: 3, 1: 2, 2: 2, 3: 2, 4: 2},
+        "expected_plot_count": 5,
+        "expected_plot_count_by_layer": {0: 3, 1: 2},
         "expected_graphobject_count": len(required_graphobject_contracts),
-        "route": "gid399_stackcolumn_213_with_gid1652_layout",
+        "route": "gid399_stackcolumn_213_with_plot_derived_legend",
         "canvas_size": geometry["canvas"], "page_size_inches": page_size_inches,
         "bar_inventory": bar_inventory, "group_inventory": group_inventory,
         "stage_inventory": stage_inventory, "legend_inventory": legend_inventory,
@@ -1058,6 +1064,21 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "target_layer_index": 0, "target_plot_count": 3,
         }],
         "direct_worksheet_plot_contracts": direct_contracts,
+        "subplot_worksheet_contracts": [
+            {
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "expected_plot_count": expected_plot_count,
+                "worksheet_books": [worksheet_name],
+                "worksheet_names": ["Sheet1"],
+            }
+            for subplot_id, layer_index, expected_plot_count in (
+                ("fig16_native_stack", 0, 3),
+                ("fig16_geometry_overlay", 1, 2),
+            )
+        ],
+        "legend_plot_reference_contracts": legend_contracts,
+        "source_geometry_groups": source_geometry_contract(source_groups),
         "official_template_selection": {
             "selected_primary": "GID399",
             "selected_primary_sha256": "a4b3ba55ebe2d195e6ca4b15afb1745619ea23469bedbb60490b976aa9f097b6",
@@ -1078,6 +1099,17 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "anchor_y_base": -9.5,
             "calibration_basis": "post_reopen_exported_glyph_bbox_to_circle_outline_center",
         },
+        "fig16_legend_calibration": {
+            "source_bbox_tops": [0, 17, 37],
+            "source_top_deltas": [17, 20],
+            "plot_reference_incremental_dy": [0.0, -1.0, 0.0],
+            "exported_anchor_top_deltas": [16, 21],
+            "sample_relationship": ["shared_two_pixel_border", "three_pixel_white_gap"],
+            "default_group_shift_y": 6.0,
+            "expected_exported_border_top_px": 1,
+            "expected_exported_fill_top_px": 3,
+            "calibration_basis": "source_crop_and_post_reopen_exported_plot_reference_samples",
+        },
         "fig16_native_stack_calibration": {
             "layer_y_limits": [-40.0, 335.0],
             "official_gid399_column_line_width": 1.0,
@@ -1087,12 +1119,11 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "psc_relation_source_y_corrections": [-8.0, -17.0],
             "stage_centers_source_calibrated": [[65, 352], [157, 352], [250, 352], [360, 352], [452, 352], [559, 352], [650, 352]],
         },
-        "required_graphobject_names_by_layer": {1: expected_names},
+        "required_graphobject_names_by_layer": {0: legend_names, 1: expected_names},
         "required_graphobject_contracts": required_graphobject_contracts,
         "axis_contract": [
             axis_contract[0],
             {**axis_contract[0], "layer_index": 1},
-            *[{**axis_contract[0], "layer_index": index} for index in range(2, 5)],
         ],
         "construction_visibility": construction_visibility,
         "reproduction_mode": geometry["provenance"], "candidate_params": candidate_params,

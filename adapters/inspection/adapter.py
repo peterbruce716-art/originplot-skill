@@ -322,6 +322,24 @@ def _plot_detail(plot: Any, index: int) -> dict[str, Any]:
     return detail
 
 
+def _labtalk_plot_line_style(op: Any, plot: Any) -> int | None:
+    """Read the persisted Set -d value; Origin 2022 Plot properties report 0 for every dash style."""
+    plot_name = _read_property(plot, ["name"])
+    if not plot_name:
+        return None
+    variable = "__opls"
+    try:
+        layer = getattr(plot, "layer", None)
+        execute = getattr(layer, "LT_execute", None)
+        if callable(execute):
+            execute(f"get {plot_name} -d {variable};")
+        else:
+            op.lt_exec(f"get {plot_name} -d {variable};")
+        return int(op.lt_int(variable))
+    except Exception:
+        return None
+
+
 def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | None = None) -> dict[str, Any]:
     """Read plots through the public GLayer API and cross-check LabTalk count."""
     plot_list_error = None
@@ -333,11 +351,27 @@ def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | 
     plot_list_count = len(plots)
     plot_details = []
     for index, plot in enumerate(plots):
+        line_style = None
+        if op is not None:
+            try:
+                parent_name = layer.obj.GetParent().GetName()
+                op.lt_exec(f"win -a {parent_name};")
+            except Exception:
+                pass
+            try:
+                layer.activate()
+            except Exception:
+                pass
+            line_style = _labtalk_plot_line_style(op, plot)
         detail = _plot_detail(plot, index)
         detail["graph_plot_range"] = detail.get("data_binding")
         if op is not None:
             semantics = _labtalk_plot_semantics(op, index + 1)
             detail.update({key: value for key, value in semantics.items() if value is not None})
+            if line_style is not None:
+                detail["line_style"] = line_style
+                detail.setdefault("style", {})["line_style"] = line_style
+                detail["line_style_readback_route"] = "labtalk_get_dash"
         plot_details.append(detail)
     result = {
         "primary_route": "plot_list",

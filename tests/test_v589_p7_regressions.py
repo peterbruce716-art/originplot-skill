@@ -98,8 +98,9 @@ class Fig16ObjectRegressionTests(unittest.TestCase):
 
         result = fig16_builder.build(op, {})
 
-        self.assertEqual(5, len(result["axis_contract"]))
-        self.assertEqual(set(range(5)), {item["layer_index"] for item in result["axis_contract"]})
+        self.assertEqual(2, len(result["axis_contract"]))
+        self.assertEqual({0, 1}, {item["layer_index"] for item in result["axis_contract"]})
+        self.assertEqual({0}, {item["layer_index"] for item in result["legend_plot_reference_contracts"]})
         for axis_contract in result["axis_contract"]:
             self.assertEqual(0, axis_contract["x.showAxes"])
             self.assertEqual(0, axis_contract["y.showAxes"])

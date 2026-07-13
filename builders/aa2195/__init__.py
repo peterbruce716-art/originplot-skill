@@ -10,6 +10,8 @@ from .readback import (
     validate_axis_contract,
     validate_direct_worksheet_plot_bindings,
     validate_graphobject_contracts,
+    validate_plot_derived_legends,
+    validate_subplot_worksheet_bindings,
 )
 from .session import (
     assert_no_demo_watermark,
@@ -17,6 +19,7 @@ from .session import (
     is_administrator_python,
     origin_session,
 )
+from .source_geometry import validate_source_geometry_groups
 from runtime.editable_opju import ensure_opju_file_editable, open_opju_editable
 
 
@@ -46,12 +49,17 @@ def _page_names(page: Any) -> set[str]:
 def _validate_required_worksheet_books(op: Any, expected_names: list[str]) -> dict[str, Any]:
     expected = [str(name) for name in expected_names if str(name)]
     if not expected:
-        return {"status": "not_required", "expected": [], "found": [], "missing": []}
+        return {"status": "not_required", "expected": [], "found": [], "missing": [], "aliases": {}}
 
     found: set[str] = set()
+    aliases: dict[str, list[str]] = {}
     try:
         for workbook in op.pages("w"):
-            found.update(_page_names(workbook))
+            names = _page_names(workbook)
+            found.update(names)
+            for expected_name in expected:
+                if expected_name in names:
+                    aliases[expected_name] = sorted(names)
     except Exception:
         pass
     finder = getattr(op, "find_book", None)
@@ -65,13 +73,16 @@ def _validate_required_worksheet_books(op: Any, expected_names: list[str]) -> di
                 workbook = None
             if workbook is not None:
                 found.add(name)
-                found.update(_page_names(workbook))
+                names = _page_names(workbook)
+                found.update(names)
+                aliases[name] = sorted(names | {name})
     missing = [name for name in expected if name not in found]
     return {
         "status": "ok" if not missing else "failed",
         "expected": expected,
         "found": sorted(name for name in found if name in expected),
         "missing": missing,
+        "aliases": {name: aliases.get(name, [name]) for name in expected if name not in missing},
     }
 
 
@@ -332,6 +343,22 @@ def build_origin_figure(
         readback, build_record.get("direct_worksheet_plot_contracts", [])
     )
     declared_checks.append(worksheet_binding_validation["status"] == "ok")
+    subplot_worksheet_validation = validate_subplot_worksheet_bindings(
+        readback,
+        build_record.get("subplot_worksheet_contracts", []),
+        worksheet_readback.get("aliases", {}),
+    )
+    if "subplot_worksheet_contracts" in build_record:
+        declared_checks.append(subplot_worksheet_validation["status"] == "ok")
+    legend_plot_reference_validation = validate_plot_derived_legends(
+        readback, build_record.get("legend_plot_reference_contracts", [])
+    )
+    if "legend_plot_reference_contracts" in build_record:
+        declared_checks.append(legend_plot_reference_validation["status"] in {"ok", "not_required"})
+    source_geometry_validation = validate_source_geometry_groups(
+        readback, build_record.get("source_geometry_groups")
+    )
+    declared_checks.append(source_geometry_validation["status"] == "ok")
     structure_ok = bool(declared_checks) and all(declared_checks)
     figure_result = {
         "status": "post_reopen_built" if structure_ok else "structure_readback_failed",
@@ -353,6 +380,9 @@ def build_origin_figure(
             "worksheet_book_validation": worksheet_readback,
             "worksheet_row_budget_validation": worksheet_row_budget,
             "worksheet_binding_validation": worksheet_binding_validation,
+            "subplot_worksheet_validation": subplot_worksheet_validation,
+            "legend_plot_reference_validation": legend_plot_reference_validation,
+            "source_geometry_group_validation": source_geometry_validation,
         },
         "origin_candidate_hard_gate": {"status": "pass" if structure_ok else "failed"},
         "origin_export_qa": [],

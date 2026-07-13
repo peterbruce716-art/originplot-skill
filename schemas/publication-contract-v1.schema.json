@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.publication_contract.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "core_conclusion",
+    "figure_archetype",
+    "target_journal",
+    "style_profile",
+    "final_size_mm",
+    "panels",
+    "evidence_hierarchy",
+    "source_data",
+    "editable_object_families",
+    "statistics_and_uncertainty",
+    "accessibility",
+    "export_formats",
+    "reviewer_risks",
+    "acceptance_tracks"
+  ],
+  "properties": {
+    "schema": {"const": "originplot.publication_contract.v1"},
+    "core_conclusion": {"type": "string", "minLength": 12},
+    "figure_archetype": {
+      "enum": ["quantitative_grid", "schematic_led_composite", "image_plate_quant", "asymmetric_mixed_modality", "single_panel"]
+    },
+    "domain_profile": {"enum": ["generic", "materials_ebsd"]},
+    "target_journal": {"type": "string", "minLength": 1},
+    "style_profile": {"type": "string", "minLength": 1},
+    "final_size_mm": {
+      "type": "array",
+      "prefixItems": [{"type": "number", "exclusiveMinimum": 0}, {"type": "number", "exclusiveMinimum": 0}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "panels": {"type": "array", "minItems": 1},
+    "evidence_hierarchy": {"type": "object"},
+    "source_data": {"type": "array", "minItems": 1},
+    "editable_object_families": {"type": "array", "minItems": 1},
+    "source_geometry_groups": {"type": "array"},
+    "statistics_and_uncertainty": {"type": "array"},
+    "accessibility": {"type": "object"},
+    "export_formats": {"type": "array", "minItems": 2},
+    "reviewer_risks": {"type": "array", "minItems": 1},
+    "acceptance_tracks": {"type": "object"},
+    "journal_requirements": {"type": "object"},
+    "custom_style_tokens": {"type": "object"}
+  }
+}

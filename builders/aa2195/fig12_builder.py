@@ -20,6 +20,7 @@ from .geometry import (
     _fig12_threshold_centered_region_values,
     fig12_panels,
 )
+from .source_geometry import source_geometry_contract
 
 
 HEIGHT = 590.0
@@ -1020,6 +1021,40 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     ]
     construction_visibility = reveal_graph_page(page)
     disable_speed_mode(page)
+    source_groups: list[dict[str, Any]] = []
+    for index, panel in enumerate(panels):
+        consumers: list[dict[str, Any]] = [{
+            "consumer_id": "editable_xyz_contour",
+            "kind": "plot",
+            "view": "canonical",
+            "layer_index": index,
+            "plot_index": 0,
+            "x_column": "A",
+            "y_column": "B",
+            "z_column": "C",
+        }]
+        if path_overlays_enabled:
+            consumers.append({
+                "consumer_id": "editable_local_region_fill_and_boundaries",
+                "kind": "graphobject",
+                "view": "derived",
+                "derivation": "vectorize the same classified palette field used to sample the XYZ matrix",
+                "object_name": f"fig12_boundary_{['a', 'b', 'c'][index]}",
+            })
+        source_groups.append({
+            "group_id": f"fig12.{panel['name']}.region_field",
+            "canonical_source": {
+                "source_id": (
+                    f"candidate.source_crop::{panel['name']}::classified_palette_field"
+                    if matrix_mode != "analytic_fallback"
+                    else f"fig12.analytic_field::{panel['name']}"
+                ),
+                "kind": panel.get("matrix_source", matrix_mode),
+            },
+            "continuity": "categorical_region_field",
+            "same_worksheet": True,
+            "consumers": consumers,
+        })
     return {
         "page_name": "Fig12_source_calibrated_three_panel_contour",
         "expected_plot_count": 3,
@@ -1063,6 +1098,18 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             {"layer_index": index, "plot_index": 0, "plot_type_code": 243, "x_column": "A", "y_column": "B", "z_column": "C"}
             for index in range(3)
         ],
+        "subplot_worksheet_contracts": [
+            {
+                "subplot_id": f"fig12_panel_{panel['name']}",
+                "layer_index": index,
+                "expected_plot_count": 1,
+                "worksheet_books": [required_worksheet_books[index]],
+                "worksheet_names": ["Sheet1"],
+            }
+            for index, panel in enumerate(panels)
+        ],
+        "legend_plot_reference_contracts": [],
+        "source_geometry_groups": source_geometry_contract(source_groups),
         "colorbar_inventory": colorbar_inventory,
         "fig12_colorbar_offsets": colorbar_offsets,
         "fig12_label_sizes": label_sizes,

@@ -1,0 +1,31 @@
+{
+  "schema": "originplot.publication_contract.v1",
+  "core_conclusion": "The treatment lowers flow stress while preserving the measured hardening response.",
+  "figure_archetype": "quantitative_grid",
+  "domain_profile": "generic",
+  "target_journal": "MSEA",
+  "style_profile": "msea",
+  "final_size_mm": [180, 85],
+  "journal_requirements": {
+    "source_url": "https://www.sciencedirect.com/journal/materials-science-and-engineering-a/publish/guide-for-authors",
+    "checked_on": "2026-07-13"
+  },
+  "panels": [
+    {"id": "a", "kind": "quantitative", "question": "How does flow stress change with treatment?"},
+    {"id": "b", "kind": "quantitative", "question": "Is the hardening response preserved?"}
+  ],
+  "evidence_hierarchy": {"hero": "a", "validation": ["b"], "controls": []},
+  "source_data": [
+    {"id": "flow_curves", "kind": "worksheet", "location": "data/processed/flow_curves.csv", "panels": ["a", "b"]}
+  ],
+  "editable_object_families": ["worksheet_xy_plot", "axis", "legend", "panel_label"],
+  "source_geometry_groups": ["flow_curve_series"],
+  "statistics_and_uncertainty": [
+    {"panel": "a", "applicable": false, "reason": "Each curve is an individual measured response."},
+    {"panel": "b", "applicable": true, "n_definition": "independent specimens", "center": "mean", "spread": "standard deviation", "test": "not used; descriptive comparison"}
+  ],
+  "accessibility": {"color_vision_safe": true, "grayscale_legible": true, "non_color_encoding": true},
+  "export_formats": ["opju", "pdf", "svg"],
+  "reviewer_risks": ["The specimen count and uncertainty definition must remain visible in the caption."],
+  "acceptance_tracks": {"source_fidelity": false, "publication_style": true}
+}

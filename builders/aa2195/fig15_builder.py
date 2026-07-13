@@ -15,6 +15,7 @@ from .common_origin_utils import (
     reveal_graph_page,
 )
 from .geometry import fig15_geometry
+from .source_geometry import source_geometry_contract
 
 
 TEXT_Y_OFFSETS = {
@@ -269,6 +270,29 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         for index in range(2)
     ]
     construction_visibility = reveal_graph_page(page)
+    path_names = ("axes", "guides", "curve", "stage_circles", "header_circles")
+    source_groups = [
+        {
+            "group_id": f"fig15.{panel['name']}.{path_name}",
+            "canonical_source": {
+                "source_id": f"fig15_geometry.panels.{panel['name']}.{path_name}",
+                "kind": "source_calibrated_panel_geometry",
+            },
+            "continuity": "single_xy" if path_name == "curve" else "nan_separated_xy",
+            "same_worksheet": True,
+            "consumers": [{
+                "consumer_id": path_name,
+                "kind": "plot",
+                "view": "canonical",
+                "layer_index": layer_index,
+                "plot_index": plot_index,
+                "x_column": chr(ord("A") + plot_index * 2),
+                "y_column": chr(ord("B") + plot_index * 2),
+            }],
+        }
+        for layer_index, panel in enumerate(panels)
+        for plot_index, path_name in enumerate(path_names)
+    ]
     return {
         "page_name": "Fig15_source_calibrated_two_layer",
         "expected_plot_count": plot_count,
@@ -292,6 +316,18 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             for layer_index in range(2)
             for plot_index in range(5)
         ],
+        "subplot_worksheet_contracts": [
+            {
+                "subplot_id": f"fig15_panel_{panels[layer_index]['name']}",
+                "layer_index": layer_index,
+                "expected_plot_count": 5,
+                "worksheet_books": [required_worksheet_books[layer_index]],
+                "worksheet_names": ["Sheet1"],
+            }
+            for layer_index in range(2)
+        ],
+        "legend_plot_reference_contracts": [],
+        "source_geometry_groups": source_geometry_contract(source_groups),
         "axis_route": "worksheet_arrowhead_paths",
         "axis_arrowhead_segment_count": sum(panel["axes"]["arrowhead_segment_count"] for panel in panels),
         "axis_contract": axis_contract,

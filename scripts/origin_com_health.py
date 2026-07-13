@@ -6,7 +6,6 @@ from typing import Any, Iterable
 
 
 def classify_origin_com_failure(events: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """Return a stable diagnostic for WER/DCOM evidence collected after a timeout."""
     rows = list(events)
     text = "\n".join(str(row.get("message", "")) for row in rows).lower()
     onag = "origin64.exe" in text and "onag.dll" in text and (

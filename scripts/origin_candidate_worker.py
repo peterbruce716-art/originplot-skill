@@ -67,7 +67,7 @@ FIG15_FROZEN_BASELINE_THRESHOLDS = {
     "registration_abs_dy_px_max": 2.0,
     "demo_cyan_ratio_max": 0.0005,
 }
-GEOMETRY_TABLE_VERSIONS = {"fig3": "aa2195_fig3_source_anchors_v1", "fig12": "aa2195_fig12_loggrid_threshold_centered_v22", "fig14": "aa2195_fig14_source_values_v1", "fig15": "aa2195_fig15_run047_v1", "fig16": "aa2195_fig16_run052_v1"}
+GEOMETRY_TABLE_VERSIONS = {"fig3": "aa2195_fig3_continuous_native_line_styles_v2", "fig12": "aa2195_fig12_loggrid_threshold_centered_v22", "fig14": "aa2195_fig14_source_values_v1", "fig15": "aa2195_fig15_run047_v1", "fig16": "aa2195_fig16_plot_derived_legend_spacing_v5"}
 TEMPLATE_IDS = {"fig3": ["GID27"], "fig12": ["GID499", "GID459", "GID27"], "fig14": ["GID1609", "GID27"], "fig15": ["GID1609", "GID27"], "fig16": ["GID399", "GID1652"]}
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
@@ -86,15 +86,15 @@ FIG15_FROZEN_EFFECTIVE_ROUTE = {
 }
 FIG15_SOURCE_CROP_SHA256 = "a0d3c0f0e106af6353579fa176524cb552ec22deb5107c33383cbf4aea9e63a0"
 FIG16_FROZEN_EFFECTIVE_ROUTE = {
-    "route": "gid399_stackcolumn_213_with_gid1652_layout",
+    "route": "gid399_stackcolumn_213_with_plot_derived_legend",
     "reproduction_mode": "reconstructed_approximate",
     "canvas_size": [720, 375],
     "page_size_inches": [7.2, 3.75],
-    "expected_plot_count": 11,
-    "expected_plot_count_by_layer": {"0": 3, "1": 2, "2": 2, "3": 2, "4": 2},
+    "expected_plot_count": 5,
+    "expected_plot_count_by_layer": {"0": 3, "1": 2},
     "expected_graphobject_count": 22,
     "fig16_tuning": {
-        "legend_dx": 0.0, "legend_dy": 3.0, "stage_text_dx": 0.0, "stage_text_dy": 0.0,
+        "legend_dx": 0.0, "legend_dy": 6.0, "stage_text_dx": 0.0, "stage_text_dy": 0.0,
         "stage_circle_dx": 0.0, "stage_circle_dy": 0.0, "bar_top_dy": -1.0,
         "bar_bottom_dy": 1.0, "header_dx": 0.0, "header_dy": 0.0,
         "relation_text_dx": 0.0, "relation_text_dy": 0.0,

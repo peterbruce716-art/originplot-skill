@@ -16,6 +16,10 @@ This protocol is the active contract for OriginPlot Skill v5.3 - Semantic Figure
 
 The JSON schemas live in `schemas/`.
 
+## Upstream-compatible intake mapping
+
+The public `deliuou/originplot-skill` describes a useful FigureSpec hierarchy: `DataSpec`, `PageSpec`, `LayerSpec`, `PlotSpec`, `AnnotationSpec`, `StyleSpec`, and `ExportSpec`. Local V5 keeps those conceptual boundaries during intake, then validates them through its schemas, capability profile, operation registry, registered builders, and live evidence gates. This mapping improves specification review and portability; it does not create a universal YAML executor or relax builder-specific contracts.
+
 ## Operation IDs
 
 All operation IDs must come from `operation_registry/operation_registry_v1.json`. Adapters, recipes, patches, and QA reports must refer to the same IDs.

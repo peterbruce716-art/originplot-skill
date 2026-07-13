@@ -1,0 +1,97 @@
+{
+  "schema": "originplot.journal_style_profiles.v1",
+  "profile_policy": {
+    "journal_requirements_must_be_verified": true,
+    "source_fidelity_and_publication_style_are_independent": true,
+    "profiles_are_house_defaults_not_journal_mandates": true
+  },
+  "shared_publication_qa": {
+    "inspect_at_final_size": true,
+    "require_axis_units_when_applicable": true,
+    "require_uncertainty_definition_when_applicable": true,
+    "require_color_vision_review": true,
+    "require_grayscale_review": true,
+    "require_non_color_encoding": true,
+    "require_editable_vector_text": true
+  },
+  "profiles": {
+    "source_fidelity": {
+      "inherit_reference": true,
+      "benchmark_default": true,
+      "require_post_reopen_style_readback": true
+    },
+    "jmpt": {
+      "basis": "conservative_materials_house_default",
+      "font_family": "Times New Roman",
+      "font_size_pt": 7.0,
+      "panel_label_size_pt": 8.0,
+      "axes_box": "full",
+      "axes_width_pt": 0.8,
+      "tick_direction": "out_left_bottom",
+      "data_line_width_pt": 1.0,
+      "editable_vector_text": true
+    },
+    "acta_materialia": {
+      "basis": "conservative_materials_house_default",
+      "font_family": "Times New Roman",
+      "font_size_pt": 7.0,
+      "panel_label_size_pt": 8.0,
+      "axes_box": "full",
+      "axes_width_pt": 0.8,
+      "tick_direction": "out_left_bottom",
+      "data_line_width_pt": 1.0,
+      "editable_vector_text": true
+    },
+    "ijp": {
+      "basis": "conservative_materials_house_default",
+      "font_family": "Times New Roman",
+      "font_size_pt": 7.0,
+      "panel_label_size_pt": 8.0,
+      "axes_box": "full",
+      "axes_width_pt": 0.8,
+      "tick_direction": "out_left_bottom",
+      "data_line_width_pt": 1.0,
+      "editable_vector_text": true
+    },
+    "msea": {
+      "basis": "conservative_materials_house_default",
+      "font_family": "Times New Roman",
+      "font_size_pt": 7.0,
+      "panel_label_size_pt": 8.0,
+      "axes_box": "full",
+      "axes_width_pt": 0.8,
+      "tick_direction": "out_left_bottom",
+      "data_line_width_pt": 1.0,
+      "editable_vector_text": true
+    },
+    "jmpt_acta": {
+      "basis": "compatibility_alias",
+      "inherits": "jmpt"
+    },
+    "nature": {
+      "basis": "conservative_nature_style_default",
+      "font_family": "Arial",
+      "font_size_pt": 7.0,
+      "panel_label_size_pt": 8.0,
+      "panel_label_case": "lowercase",
+      "axes_width_pt": 0.5,
+      "data_line_width_pt": 1.0,
+      "editable_vector_text": true
+    },
+    "custom": {
+      "required_tokens": [
+        "font_family",
+        "font_size_pt",
+        "panel_label_size_pt",
+        "axes_box",
+        "axes_width_pt",
+        "tick_direction",
+        "palette",
+        "data_line_width_pt",
+        "marker_policy",
+        "legend_policy",
+        "editable_vector_text"
+      ]
+    }
+  }
+}

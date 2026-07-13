@@ -217,6 +217,268 @@ def validate_direct_worksheet_plot_bindings(
     return {"status": "ok" if not mismatches else "failed", "plot_count": len(plots), "mismatches": mismatches}
 
 
+def validate_subplot_worksheet_bindings(
+    readback: dict[str, Any],
+    contracts: list[dict[str, Any]],
+    workbook_aliases: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    """Prove every declared subplot has editable plots bound to its Worksheets."""
+    if not contracts:
+        return {
+            "schema": "originplot.subplot_worksheet_bindings.v1",
+            "status": "not_required",
+            "subplots": [],
+            "mismatches": [],
+        }
+
+    aliases = workbook_aliases or {}
+    layers = {int(layer.get("index", -1)): layer for layer in readback.get("layers", [])}
+    mismatches: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_layers: set[int] = set()
+
+    for contract in contracts:
+        subplot_id = str(contract.get("subplot_id", "")).strip()
+        layer_index = int(contract.get("layer_index", -1))
+        expected_plot_count = int(contract.get("expected_plot_count", 0))
+        expected_books = [str(value) for value in contract.get("worksheet_books", []) if str(value)]
+        expected_sheets = [str(value) for value in contract.get("worksheet_names", []) if str(value)]
+        if not subplot_id or subplot_id in seen_ids:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "unique nonempty subplot_id",
+                "expected": True,
+                "actual": subplot_id or None,
+            })
+        seen_ids.add(subplot_id)
+        if layer_index in seen_layers:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "unique layer contract",
+                "expected": True,
+                "actual": False,
+            })
+        seen_layers.add(layer_index)
+        if expected_plot_count <= 0:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "expected_plot_count",
+                "expected": ">0",
+                "actual": expected_plot_count,
+            })
+
+        layer = layers.get(layer_index)
+        plots = list(layer.get("plot_details", [])) if layer else []
+        if layer is None:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "editable graph layer exists",
+                "expected": True,
+                "actual": False,
+            })
+        if len(plots) != expected_plot_count:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "editable plot count",
+                "expected": expected_plot_count,
+                "actual": len(plots),
+            })
+
+        allowed_aliases: set[str] = set()
+        alias_to_book: dict[str, str] = {}
+        for book in expected_books:
+            book_aliases = {book, *[str(value) for value in aliases.get(book, []) if str(value)]}
+            allowed_aliases.update(book_aliases)
+            for alias in book_aliases:
+                alias_to_book[alias] = book
+        bindings: list[dict[str, Any]] = []
+        used_books: set[str] = set()
+        for fallback_index, plot in enumerate(plots):
+            plot_index = int(plot.get("index", fallback_index))
+            workbook = str(plot.get("data_workbook") or "")
+            worksheet = str(plot.get("data_worksheet") or "")
+            binding = {
+                "plot_index": plot_index,
+                "plot_type_code": plot.get("plot_type_code"),
+                "data_workbook": workbook or None,
+                "data_worksheet": worksheet or None,
+                "x_column": plot.get("x_column"),
+                "y_column": plot.get("y_column"),
+                "z_column": plot.get("z_column"),
+            }
+            bindings.append(binding)
+            required = ["data_workbook", "data_worksheet", "x_column", "y_column"]
+            if int(plot.get("plot_type_code") or 0) == 243:
+                required.append("z_column")
+            for field in required:
+                if not plot.get(field):
+                    mismatches.append({
+                        "subplot_id": subplot_id,
+                        "layer_index": layer_index,
+                        "plot_index": plot_index,
+                        "property": field,
+                        "expected": "nonempty direct Worksheet binding",
+                        "actual": plot.get(field),
+                    })
+            if expected_books and workbook not in allowed_aliases:
+                mismatches.append({
+                    "subplot_id": subplot_id,
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "property": "corresponding worksheet book",
+                    "expected": expected_books,
+                    "actual": workbook or None,
+                })
+            elif workbook in alias_to_book:
+                used_books.add(alias_to_book[workbook])
+            if expected_sheets and worksheet not in expected_sheets:
+                mismatches.append({
+                    "subplot_id": subplot_id,
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "property": "corresponding worksheet name",
+                    "expected": expected_sheets,
+                    "actual": worksheet or None,
+                })
+        missing_books = [book for book in expected_books if book not in used_books]
+        if missing_books:
+            mismatches.append({
+                "subplot_id": subplot_id,
+                "layer_index": layer_index,
+                "property": "all declared worksheet books used",
+                "expected": expected_books,
+                "actual": sorted(used_books),
+            })
+        records.append({
+            "subplot_id": subplot_id,
+            "layer_index": layer_index,
+            "editable_plot_count": len(plots),
+            "declared_worksheet_books": expected_books,
+            "declared_worksheet_names": expected_sheets,
+            "resolved_worksheet_books": sorted(used_books),
+            "plot_bindings": bindings,
+        })
+
+    return {
+        "schema": "originplot.subplot_worksheet_bindings.v1",
+        "status": "ok" if not mismatches else "failed",
+        "subplot_count": len(records),
+        "subplots": records,
+        "mismatches": mismatches,
+    }
+
+
+def validate_plot_derived_legends(
+    readback: dict[str, Any],
+    contracts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Require legends to reference existing plots instead of legend-only data."""
+    if not contracts:
+        return {
+            "schema": "originplot.plot_derived_legends.v1",
+            "status": "not_required",
+            "legends": [],
+            "mismatches": [],
+        }
+
+    layers = {int(layer.get("index", -1)): layer for layer in readback.get("layers", [])}
+    mismatches: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    for contract in contracts:
+        object_name = str(contract.get("object_name", ""))
+        layer_index = int(contract.get("layer_index", -1))
+        expected_numbers = [int(value) for value in contract.get("plot_numbers", [])]
+        layer = layers.get(layer_index, {})
+        graph_readback = layer.get("graph_object_readback", {})
+        objects: dict[str, dict[str, Any]] = {}
+        for collection in ("objects", "enumerated_objects"):
+            for record in graph_readback.get(collection, []):
+                name = str(record.get("name", ""))
+                if name:
+                    objects[name.lower()] = record
+        actual = objects.get(object_name.lower())
+        text = str(actual.get("text", "")) if actual else ""
+        actual_numbers = [int(value) for value in re.findall(r"\\l\((\d+)\)", text, flags=re.IGNORECASE)]
+        plot_details = layer.get("plot_details", [])
+        plot_count = len(plot_details)
+        if actual is None:
+            mismatches.append({
+                "object_name": object_name,
+                "layer_index": layer_index,
+                "property": "plot-derived legend object exists",
+                "expected": True,
+                "actual": False,
+            })
+        if actual_numbers != expected_numbers:
+            mismatches.append({
+                "object_name": object_name,
+                "layer_index": layer_index,
+                "property": "plot references",
+                "expected": expected_numbers,
+                "actual": actual_numbers,
+            })
+        invalid_numbers = [number for number in expected_numbers if number <= 0 or number > plot_count]
+        if invalid_numbers:
+            mismatches.append({
+                "object_name": object_name,
+                "layer_index": layer_index,
+                "property": "referenced plots exist in legend layer",
+                "expected": f"1..{plot_count}",
+                "actual": invalid_numbers,
+            })
+        expected_line_style = contract.get("expected_plot_line_style")
+        actual_line_styles: list[Any] = []
+        if expected_line_style is not None and not invalid_numbers:
+            actual_line_styles = [
+                plot_details[number - 1].get("line_style")
+                for number in expected_numbers
+            ]
+            unexpected_styles = [
+                {"plot_number": number, "line_style": style}
+                for number, style in zip(expected_numbers, actual_line_styles)
+                if style != expected_line_style
+            ]
+            if unexpected_styles:
+                mismatches.append({
+                    "object_name": object_name,
+                    "layer_index": layer_index,
+                    "property": "referenced plot line styles",
+                    "expected": expected_line_style,
+                    "actual": unexpected_styles,
+                })
+        text_contains = str(contract.get("text_contains", ""))
+        if text_contains and text_contains not in text:
+            mismatches.append({
+                "object_name": object_name,
+                "layer_index": layer_index,
+                "property": "text_contains",
+                "expected": text_contains,
+                "actual": text,
+            })
+        records.append({
+            "object_name": object_name,
+            "layer_index": layer_index,
+            "plot_numbers": actual_numbers,
+            "plot_count_in_layer": plot_count,
+            "expected_plot_line_style": expected_line_style,
+            "actual_plot_line_styles": actual_line_styles,
+            "text": text,
+        })
+    return {
+        "schema": "originplot.plot_derived_legends.v1",
+        "status": "ok" if not mismatches else "failed",
+        "legend_count": len(records),
+        "legends": records,
+        "mismatches": mismatches,
+    }
+
+
 def validate_graphobject_contracts(
     readback: dict[str, Any],
     contracts: dict[str, dict[str, Any]],

@@ -1098,6 +1098,48 @@ class GeometryContractTests(unittest.TestCase):
 
 
 class FigureBuilderContractTests(unittest.TestCase):
+    def test_fig3_preserves_continuous_curves_and_native_legend_line_styles(self) -> None:
+        from builders.aa2195 import fig3_builder
+
+        op = FakeBuilderOrigin()
+        result = fig3_builder.build(op, {})
+
+        self.assertEqual(44, result["expected_plot_count"])
+        self.assertEqual(4, len(op.books))
+        self.assertEqual(11, len(result["legend_plot_reference_contracts"]))
+        for contract in result["legend_plot_reference_contracts"]:
+            expected = fig3_builder.LINE_STYLES[contract["text_contains"]]
+            self.assertEqual(expected, contract["expected_plot_line_style"])
+        for contract in result["legend_plot_reference_contracts"]:
+            expected_command = (f"-d {contract['expected_plot_line_style']}",)
+            layer = op.page.layers[contract["layer_index"]]
+            for plot_number in contract["plot_numbers"]:
+                self.assertEqual(expected_command, layer.plots[plot_number - 1].properties["commands"])
+        for book in op.books:
+            for _, values, _, _ in book[0].columns:
+                self.assertFalse(any(isinstance(value, float) and value != value for value in values))
+
+    def test_fig14_preserves_dashed_series_and_times_font_after_reopen_route(self) -> None:
+        from builders.aa2195 import fig14_builder
+
+        op = FakeBuilderOrigin()
+        result = fig14_builder.build(op, {})
+
+        self.assertEqual(9, result["expected_plot_count"])
+        self.assertEqual("Times New Roman", result["font_profile"])
+        self.assertEqual(3, len(result["series_plot_contracts"]))
+        self.assertEqual([200, 202, 200] * 3, [item["plot_type_code"] for item in result["direct_worksheet_plot_contracts"]])
+        self.assertTrue(any("xb.fsize=22" in command for command in op.page.layers[0].commands))
+        for mode in ("UC", "TR"):
+            x_values, y_values = fig14_builder._patterned_series(
+                fig14_builder.TEMPERATURE,
+                fig14_builder.SERIES[mode]["y"],
+                mode,
+            )
+            self.assertEqual(len(x_values), len(y_values))
+            self.assertTrue(any(isinstance(value, float) and value != value for value in y_values))
+        self.assertTrue(any("font(Times New Roman)" in command for command in op.page.layers[0].commands))
+
     def test_formal_builders_construct_hidden_graph_page_then_reveal(self) -> None:
         from builders.aa2195 import fig12_builder, fig15_builder, fig16_builder
 
@@ -1602,9 +1644,9 @@ class FigureBuilderContractTests(unittest.TestCase):
         result = fig16_builder.build(op, {})
 
         self.assertEqual((720, 375), result["canvas_size"])
-        self.assertEqual("gid399_stackcolumn_213_with_gid1652_layout", result["route"])
-        self.assertEqual(11, result["expected_plot_count"])
-        self.assertEqual({0: 3, 1: 2, 2: 2, 3: 2, 4: 2}, result["expected_plot_count_by_layer"])
+        self.assertEqual("gid399_stackcolumn_213_with_plot_derived_legend", result["route"])
+        self.assertEqual(5, result["expected_plot_count"])
+        self.assertEqual({0: 3, 1: 2}, result["expected_plot_count_by_layer"])
         self.assertEqual(
             ["Fig16_gid399_stack_data"],
             result["required_worksheet_books"],
@@ -1613,10 +1655,10 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual(1, len(op.books))
         self.assertEqual("w", op.books[0].book_type)
         self.assertEqual("H_S_slot_x", op.books[0].sheet.columns[0][2])
-        self.assertEqual(20, len(op.books[0].sheet.columns))
-        self.assertEqual(11, len(result["direct_worksheet_plot_contracts"]))
+        self.assertEqual(8, len(op.books[0].sheet.columns))
+        self.assertEqual(5, len(result["direct_worksheet_plot_contracts"]))
         self.assertEqual(
-            [213, 213, 213, 200, 200, 203, 200, 203, 200, 203, 200],
+            [213, 213, 213, 200, 200],
             [item["plot_type_code"] for item in result["direct_worksheet_plot_contracts"]],
         )
         self.assertFalse(any(column[2].startswith("baselines_") for column in op.books[0].sheet.columns))
@@ -1625,18 +1667,11 @@ class FigureBuilderContractTests(unittest.TestCase):
             for item in result["group_inventory"]
         ))
         self.assertTrue(all(
-            item["swatch_route"] == "isolated_native_column_fill_with_closed_xy_border"
+            item["swatch_route"] == "plot_derived_legend_reference"
             for item in result["legend_inventory"]
         ))
         self.assertFalse(any("scanline" in item["swatch_route"] for item in result["legend_inventory"]))
-        self.assertEqual(5, len(op.page.layers))
-        fill_plots = [op.page.layers[index].plots[0] for index in range(2, 5)]
-        for plot in fill_plots:
-            commands = " ".join(plot.properties["commands"])
-            self.assertIn("-pfb color(", commands)
-            self.assertIn("-pbc color(0,0,0)", commands)
-            self.assertIn("-vg 0", commands)
-            self.assertNotIn("-pfv 9", commands)
+        self.assertEqual(2, len(op.page.layers))
         self.assertEqual("GID399", result["official_template_selection"]["selected_primary"])
         self.assertEqual(213, result["official_template_selection"]["selected_primary_plot_type"])
         self.assertEqual("GID1652", result["official_template_selection"]["layout_reference"])
@@ -1644,7 +1679,10 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual(3, len(result["group_inventory"]))
         self.assertEqual(7, len(result["stage_inventory"]))
         self.assertEqual(result["expected_graphobject_count"], len(result["required_graphobject_contracts"]))
-        self.assertEqual(result["expected_graphobject_count"], len(result["required_graphobject_names_by_layer"][1]))
+        self.assertEqual(
+            result["expected_graphobject_count"],
+            sum(len(names) for names in result["required_graphobject_names_by_layer"].values()),
+        )
         self.assertNotIn("fig16_bar_wh_01", result["required_graphobject_contracts"])
         self.assertIn("fig16_header_h", result["required_graphobject_contracts"])
         self.assertIn("fig16_legend_text_01", result["required_graphobject_contracts"])
@@ -1659,6 +1697,24 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertEqual("#ff9830", result["bar_inventory"][0]["color"])
         self.assertEqual((24, 147, 63, 335), result["bar_inventory"][0]["bbox"])
         self.assertEqual("H: Hardening level", result["required_graphobject_contracts"]["fig16_header_h"]["text_contains"])
+        self.assertEqual(
+            [1, 2, 3],
+            [contract["plot_numbers"][0] for contract in result["legend_plot_reference_contracts"]],
+        )
+        self.assertEqual([6.0, 22.0, 43.0], [item["bbox"][1] for item in result["legend_inventory"]])
+        self.assertEqual([17, 20], result["fig16_legend_calibration"]["source_top_deltas"])
+        self.assertEqual([16, 21], result["fig16_legend_calibration"]["exported_anchor_top_deltas"])
+        self.assertEqual(
+            ["shared_two_pixel_border", "three_pixel_white_gap"],
+            result["fig16_legend_calibration"]["sample_relationship"],
+        )
+        self.assertEqual(1, result["fig16_legend_calibration"]["expected_exported_border_top_px"])
+        legend_labels = {
+            getattr(label, "name", ""): label for label in op.page.layers[0].labels
+        }
+        self.assertIn("\\l(1)", legend_labels["fig16_legend_text_01"].text)
+        self.assertIn("\\l(2)", legend_labels["fig16_legend_text_02"].text)
+        self.assertIn("\\l(3)", legend_labels["fig16_legend_text_03"].text)
         relation_labels = [
             label
             for label in op.page.layers[1].labels
@@ -1783,7 +1839,11 @@ class FigureBuilderContractTests(unittest.TestCase):
             {"header": 9.5, "legend": 9.25, "group_label": 12.5, "stage": 8.5, "relation": 9.25},
             result["fig16_text_sizes"],
         )
-        labels = {getattr(label, "name", ""): label for label in op.page.layers[1].labels}
+        labels = {
+            getattr(label, "name", ""): label
+            for layer in op.page.layers
+            for label in layer.labels
+        }
         self.assertAlmostEqual(9.5, labels["fig16_header_h"].properties["fsize"])
         self.assertAlmostEqual(9.25, labels["fig16_legend_text_01"].properties["fsize"])
         self.assertAlmostEqual(12.5, labels["fig16_group_label_psc"].properties["fsize"])

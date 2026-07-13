@@ -268,7 +268,7 @@ class CandidateWorkerIntegrationTests(unittest.TestCase):
 
     def test_effective_builder_route_and_fingerprint_include_fig16_widths(self) -> None:
         route = self.worker._effective_builder_route({"builder_route": {
-            "route": "gid399_stackcolumn_213_with_gid1652_layout",
+            "route": "gid399_stackcolumn_213_with_plot_derived_legend",
             "canvas_size": [720, 375],
             "page_size_inches": [7.2, 3.75],
             "fig16_column_gap_percent": 15.0,

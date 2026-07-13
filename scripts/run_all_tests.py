@@ -24,6 +24,7 @@ CRITICAL_SCRIPTS = [
     "scripts/acceptance_hardening.py",
     "scripts/fig12_roi.py",
     "scripts/audit_dependencies.py",
+    "scripts/validate_publication_contract.py",
     "scripts/inspect_official_templates.py",
     "scripts/operation_maturity.py",
     "scripts/originplot_runtime_v5.py",

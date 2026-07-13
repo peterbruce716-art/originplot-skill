@@ -1,9 +1,9 @@
 ---
 name: originplot
-description: "Use for editable Origin/OriginPro OPJU construction, save/reopen inspection, native plot and Worksheet binding validation, Origin-rendered visual QA, and authorized Origin 2022 automation."
+description: "Use for planning, constructing, auditing, or reproducing publication figures as editable Origin/OriginPro OPJU projects, including conclusion-first panel and evidence design, journal-style profiles, canonical source groups, native plots and Worksheet bindings, save/reopen inspection, Origin-rendered visual QA, and authorized Origin 2022 automation. Trigger for Origin figures, manuscript multi-panel figures that must be delivered in Origin, OPJU reproduction, Origin template selection, and journal-ready Origin export bundles."
 ---
 
-# OriginPlot Skill v5.8.9-p14
+# OriginPlot Skill v5.8.9-p14 + Publication Contract v1
 
 OriginPlot is a Verified Origin Runtime for producing and validating an editable Origin project. It includes specialized AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 builders and an extensible registry; it does not automatically reproduce arbitrary figures. Each named AA2195 route has administrator Origin 2022 save/reopen evidence within its declared benchmark scope. This is not a claim of arbitrary-input completion, cross-machine pixel identity, or raw-data recovery. Fig12 keeps native XYZ Worksheet bindings, applies a constrained TR region-anchor remap, and adds editable source-vectorized type-34 regions plus editable page-coordinate axis titles. Origin 2022 supports these SVG path objects through plain `draw -paths objName SVGPath`; the tested `-s/-d` variants did not create objects.
 
@@ -31,8 +31,18 @@ Before execution, identify:
 4. Candidate parameters and output directory.
 5. Required acceptance level: offline plan, live structure, or live visual pass.
 6. Whether the user has authorized attach to an administrator-started visible Origin instance.
+7. Figure conclusion, style profile, and canonical source groups for continuous curves, segmented paths, and local fills.
+8. For a new builder or material restyle, a validated `originplot.publication_contract.v1` covering panel evidence, final size, statistics, accessibility, and exports.
 
 Do not read unrelated local documents or private data. Never embed the source image as the editable base graph.
+
+### FigureSpec intake
+
+Normalize a requested figure through the upstream-compatible hierarchy `DataSpec -> PageSpec/LayerSpec -> PlotSpec/AnnotationSpec -> StyleSpec/ExportSpec`, then resolve it to a registered local builder. Confirm the normalized structure before a new or materially changed build. This hierarchy is an intake and review aid; it is not evidence that arbitrary YAML or arbitrary source images can be executed automatically. The local V5 schema, registry, capability profile, and live gates remain authoritative.
+
+For a new builder or material restyle, read [references/figure-contract-and-style.md](references/figure-contract-and-style.md), create the publication contract from [examples/publication_contract.example.json](examples/publication_contract.example.json), and validate it with `python scripts/validate_publication_contract.py <contract>`. Use `source_fidelity` for the five AA2195 visual benchmarks. Journal profiles are explicit derivatives, not silent replacements for the source-matching route.
+
+For materials or EBSD figures, also read [references/materials-figure-qa.md](references/materials-figure-qa.md) before finalizing panel semantics or claims.
 
 ## Task classification
 
@@ -41,6 +51,7 @@ Do not read unrelated local documents or private data. Never embed the source im
 - `live_debug`: diagnose attach, modal, serialization, readback, or export failures.
 - `benchmark`: run live build plus source comparison and benchmark-specific gates.
 - `new_builder`: define a new builder and tests; do not imply universal plot support.
+- `publication_design`: define and validate the conclusion, evidence hierarchy, panel map, style profile, and export contract before selecting or changing a builder.
 
 For AA2195 Fig3/Fig12/Fig14/Fig15/Fig16, read [references/aa2195-benchmark.md](references/aa2195-benchmark.md). For other tasks, do not load benchmark-specific rules unless they are relevant.
 
@@ -51,6 +62,7 @@ For offline work:
 - Validate JSON and required files.
 - Resolve the builder through `builders.registry`; reject unknown or duplicate IDs.
 - Keep source, candidate, and output paths portable where possible.
+- For `new_builder` or `publication_design`, validate the publication contract before compiling a FigureSpec. Do not construct panels when the contract has unmapped evidence, untraceable sources, unresolved quantitative statistics, or an incomplete export bundle.
 
 For formal live work:
 
@@ -88,7 +100,9 @@ For final graphs:
 
 - Use Origin-native plots or verified editable Origin objects.
 - Bind every data-bearing or geometry-bearing Plot directly from a Worksheet. Treat geometry-only GraphObjects separately: require an editable native object type plus an explicit post-reopen type and geometry contract. Source-derived type-34 paths may use a unique transient SVG import, but the SVG is never retained or treated as evidence.
+- Declare `originplot.source_geometry_groups.v1`. Give every continuous curve, NaN-separated path, categorical region field, or local fill one canonical source. Every additional plot view must stay in the same reopened Workbook/Worksheet and name its deterministic derivation; reuse the exact X/Y/Z columns when its Origin plot family permits it. A derived GraphObject must name the same source group and pass its object type/geometry gate after reopen.
 - After reopen, resolve workbook, worksheet, X, Y, and Z for XYZ plots from live Origin readback.
+- Declare `subplot_worksheet_contracts` for every data-bearing subplot/layer. After reopen, each declared subplot must contain at least one editable Plot, match its exact plot count, and resolve every Plot to the corresponding declared Workbook alias, Worksheet, and X/Y(/Z) columns. Project-level workbook presence or an aggregate binding count is not sufficient.
 - Keep the global direct-plot Worksheet total at or below 5,000 rows per figure.
 - Reject source-image pages, pixel traces, raster backgrounds, and copied preview pages.
 - Treat official templates as references unless donor opening, object readback, and transplantation are evidenced.
@@ -115,6 +129,10 @@ Read [references/origin-runtime.md](references/origin-runtime.md) before changin
 ## Editable closure
 
 A live candidate is not verified until the saved OPJU is released, reopened in a new phase, read back, exported again, and released. The reopened graph must retain expected pages, layers, direct plots, axes, objects, workbook shapes, and bindings.
+
+The reopened `source_geometry_group_validation` must be `ok`. A missing consumer, cross-Worksheet view, undeclared derived view, or wrong canonical column is a structure failure even when the export looks similar.
+
+The reopened `subplot_worksheet_validation` must also be `ok`. It is the per-subplot proof that the delivered OPJU contains editable graph layers and their corresponding bound Worksheets; a valid aggregate plot count cannot substitute for this layer-by-layer record.
 
 Run `win -z0` for the delivered editable view and record `editable_view_evidence`; this does not change page geometry. Origin page dimensions are dot-based and text size is point-based. Do not mix these units.
 
@@ -153,9 +171,9 @@ Run structure and nonblank gates before scalar visual metrics. Compare source an
 
 For the named AA2195 set, run `scripts/audit_five_figure_batch.py` on the completed batch directory after all five routes finish. The audit is a release gate: it requires exactly Fig3/Fig12/Fig14/Fig15/Fig16, one stable visible Origin PID, `live_same_run` provenance, matching skill versions, and `structure_pass`, `visual_pass`, and `overall_release_pass` for every figure. A scalar score from one figure or an inherited manifest cannot promote the five-figure set.
 
-Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path>` from an elevated PowerShell process to build the five named routes in one visible Origin session. The batch runner records per-figure output and PID stability, continues through visual non-promotion so the full gap is observable, and invokes the batch audit at the end.
+Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path>` from an elevated PowerShell process to build the five named routes in one visible Origin session. Give it a new or empty output directory; it fails with `E126_STALE_OUTPUT_ROOT` before Origin attach when prior files are present. Do not copy an old OPJU, export, Worksheet, or readback into a fresh batch. The runner records fresh-output preflight, per-figure output, and PID stability, continues through visual non-promotion so the full gap is observable, and invokes the batch audit at the end.
 
-Fig3's four-panel route keeps the top PSC/UC/TR legend editable: each temperature swatch is a native Worksheet-backed line segment, with NaN gaps encoding dotted and dash-dot modes so the pattern survives save/reopen. Fig3 labels and axes explicitly use Times New Roman and the temperature labels retain their source color and bold weight; these typography and legend details are part of the live visual check rather than raster decoration.
+Fig3's four-panel route keeps the top PSC/UC/TR legend editable without a legend-only Worksheet: each legend row uses Origin `\l(plot)` references to the actual temperature curves, so its colors and line modes follow the plotted series after save/reopen. Fig3 labels and axes explicitly use Times New Roman and the temperature labels retain their source color and bold weight; these typography and legend details are part of the live visual check rather than raster decoration.
 
 Report `gate_margins` and `near_threshold_metrics`. A promoted metric within 0.001 of its threshold remains a pass in the verified environment but must be disclosed as near-threshold; do not generalize it to another Origin build, export profile, or machine without a new live run.
 
@@ -168,6 +186,8 @@ A live promoted candidate requires:
 - editable OPJU;
 - pre-save and post-reopen Origin exports;
 - post-reopen object and binding readback;
+- post-reopen canonical source-group validation;
+- post-reopen per-subplot Graph-to-Worksheet binding validation;
 - visual metrics and deviation records;
 - candidate manifest with consistent run identity and hashes;
 - self-contained standard evidence directory.
@@ -175,6 +195,8 @@ A live promoted candidate requires:
 Shareable skill packages exclude source images, OPJUs, and rendered exports. Packaged AA2195 candidates contain an authorized-local-source placeholder, and `references/aa2195-release-evidence.json` provides only a sanitized hash-and-metric index.
 
 Offline reports must say `live_origin_e2e = not_run_environment_unavailable` or another accurate not-run reason, never passed.
+
+For new or restyled publication figures, include the validated publication contract and its validation report. Keep `source_fidelity` and `publication_style` as separate acceptance tracks; passing one cannot promote the other.
 
 ## Troubleshooting
 

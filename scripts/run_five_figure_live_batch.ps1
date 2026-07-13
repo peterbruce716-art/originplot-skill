@@ -1,10 +1,11 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$OutputRoot,
-    [string]$SkillRoot = (Split-Path -Parent (Split-Path -Parent $PSCommandPath))
+    [string]$SkillRoot = $null
 )
 
 $ErrorActionPreference = "Stop"
+if (-not $SkillRoot) { $SkillRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath) }
 $figures = @("fig3", "fig12", "fig14", "fig15", "fig16")
 $worker = Join-Path $SkillRoot "scripts\origin_candidate_worker.py"
 $audit = Join-Path $SkillRoot "scripts\audit_five_figure_batch.py"
@@ -20,13 +21,23 @@ if (-not (Test-IsAdministrator)) {
     throw "E120_ENVIRONMENT_MISMATCH: run this batch from an elevated PowerShell process."
 }
 
+if (Test-Path -LiteralPath $OutputRoot) {
+    if (-not (Test-Path -LiteralPath $OutputRoot -PathType Container)) {
+        throw "E126_STALE_OUTPUT_ROOT: OutputRoot must be a new or empty directory."
+    }
+    $existingOutput = @(Get-ChildItem -LiteralPath $OutputRoot -Force)
+    if ($existingOutput.Count -ne 0) {
+        throw "E126_STALE_OUTPUT_ROOT: OutputRoot is not empty; use a new directory so old run artifacts cannot enter the batch."
+    }
+} else {
+    New-Item -ItemType Directory -Path $OutputRoot | Out-Null
+}
+
 $origin = @(Get-Process -Name Origin64 -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
 if ($origin.Count -ne 1) {
     throw "E121_ATTACH_POLICY_VIOLATION: exactly one visible Origin64 process is required."
 }
 $originPid = $origin[0].Id
-
-New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 $runs = @()
 foreach ($figure in $figures) {
     $candidate = Join-Path $candidateRoot "$figure.json"
@@ -60,6 +71,7 @@ foreach ($figure in $figures) {
 
 $batch = [ordered]@{
     schema = "originplot.five_figure_live_batch.v1"
+    fresh_output_root_verified = $true
     started_visible_origin_pid = $originPid
     completed_at = (Get-Date).ToString("o")
     status = if ($runs.Count -eq 5 -and ($runs | Where-Object { -not $_.pid_stable }).Count -eq 0) { "completed" } else { "failed" }

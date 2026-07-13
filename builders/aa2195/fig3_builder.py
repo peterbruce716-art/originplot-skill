@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
 from .common_origin_utils import create_hidden_graph_page, disable_speed_mode, page_dot_command, page_percent_layer_command, remove_default_labels, reveal_graph_page
 from .fig3_data import COLORS, LINE_STYLES, PANELS
+from .source_geometry import source_geometry_contract
 
 
 FIG3_FONT = "Times New Roman"
@@ -28,7 +27,7 @@ def _set_plot_style(plot: Any, color: str, line_style: int) -> None:
         except Exception:
             pass
     try:
-        plot.lt_exec(f"set %C -d {int(line_style)};")
+        plot.set_cmd(f"-d {int(line_style)}")
     except Exception:
         pass
 
@@ -66,35 +65,9 @@ def _name_label(
 
 
 def _patterned_series(x: list[float], y: list[float], mode: str) -> tuple[list[float], list[float]]:
-    if mode == "PSC":
-        return list(x), list(y)
-    dense_x = np.linspace(float(x[0]), float(x[-1]), 441)
-    dense_y = np.interp(dense_x, np.asarray(x, dtype=float), np.asarray(y, dtype=float))
-    if mode == "UC":
-        phase = np.mod(dense_x, 0.035)
-        visible = phase < 0.012
-    else:
-        phase = np.mod(dense_x, 0.070)
-        visible = (phase < 0.035) | ((phase >= 0.047) & (phase < 0.053))
-    dense_y = dense_y.astype(float)
-    dense_y[~visible] = np.nan
-    return dense_x.tolist(), dense_y.tolist()
-
-
-def _legend_segment(start: float, end: float, y: float, mode: str) -> tuple[list[float], list[float]]:
-    """Return a short editable legend segment whose gaps survive OPJU reopen."""
-    if mode == "PSC":
-        return [start, end], [y, y]
-    dense_x = np.linspace(float(start), float(end), 81)
-    phase = np.linspace(0.0, 1.0, 81, endpoint=False)
-    if mode == "UC":
-        visible = np.mod(phase, 0.18) < 0.045
-    else:
-        cycle = np.mod(phase, 0.42)
-        visible = (cycle < 0.22) | ((cycle >= 0.30) & (cycle < 0.335))
-    dense_y = np.full(dense_x.shape, float(y), dtype=float)
-    dense_y[~visible] = np.nan
-    return dense_x.tolist(), dense_y.tolist()
+    if mode not in LINE_STYLES:
+        raise ValueError(f"Unknown Fig3 line mode: {mode}")
+    return list(x), list(y)
 
 
 def _column_name(index: int) -> str:
@@ -108,13 +81,15 @@ def _add_panel(
     layer: Any,
     panel: dict[str, Any],
     layer_index: int,
-) -> tuple[int, list[str], list[str], list[dict[str, Any]]]:
+) -> tuple[int, list[str], list[str], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     book_name = f"Fig3_{panel['name']}_source_calibrated_curves"
     sheet = op.new_book(lname=book_name)[0]
     column = 0
     plot_count = 0
     plot_styles: list[tuple[Any, str, int]] = []
     plot_contracts: list[dict[str, Any]] = []
+    source_groups: list[dict[str, Any]] = []
+    plot_numbers_by_mode: dict[str, list[int]] = {"PSC": [], "UC": [], "TR": []}
     for temperature in ("250", "300", "350", "400"):
         for mode in ("PSC", "UC", "TR"):
             record = panel["series"].get(temperature, {}).get(mode)
@@ -126,12 +101,31 @@ def _add_panel(
             plot = layer.add_plot(sheet, colx=column, coly=column + 1, type="line")
             _set_plot_style(plot, COLORS[temperature], LINE_STYLES[mode])
             plot_styles.append((plot, COLORS[temperature], LINE_STYLES[mode]))
+            plot_numbers_by_mode[mode].append(plot_count + 1)
             plot_contracts.append({
                 "layer_index": layer_index,
                 "plot_index": plot_count,
                 "plot_type_code": 200,
                 "x_column": _column_name(column),
                 "y_column": _column_name(column + 1),
+            })
+            source_groups.append({
+                "group_id": f"fig3.{panel['name']}.{temperature}.{mode}.curve",
+                "canonical_source": {
+                    "source_id": f"fig3_data.PANELS.{panel['name']}.{temperature}.{mode}",
+                    "kind": "digitized_curve_anchors",
+                },
+                "continuity": "single_xy",
+                "same_worksheet": True,
+                "consumers": [{
+                    "consumer_id": "curve",
+                    "kind": "plot",
+                    "view": "canonical",
+                    "layer_index": layer_index,
+                    "plot_index": plot_count,
+                    "x_column": _column_name(column),
+                    "y_column": _column_name(column + 1),
+                }],
             })
             plot_count += 1
             column += 2
@@ -161,33 +155,23 @@ def _add_panel(
     _name_label(panel_label, panel_name, 38.0)
     labels.append(panel_name)
     modes = ("PSC", "UC") if panel["name"] == "d" else ("PSC", "UC", "TR")
-    legend_book_name = f"Fig3_{panel['name']}_editable_legend_segments"
-    legend_sheet = op.new_book(lname=legend_book_name)[0]
-    legend_column = 0
+    legend_contracts: list[dict[str, Any]] = []
     legend_y_fractions = {"PSC": 0.94, "UC": 0.86, "TR": 0.78}
     for mode in modes:
         legend_y = float(panel["ymax"]) * legend_y_fractions[mode]
-        for color_index, temperature in enumerate(("250", "300", "350", "400")):
-            start = 0.055 + color_index * 0.148
-            end = start + 0.128
-            legend_x, legend_y_values = _legend_segment(start, end, legend_y, mode)
-            legend_sheet.from_list(legend_column, legend_x, lname=f"legend_x_{mode}_{temperature}", axis="X")
-            legend_sheet.from_list(legend_column + 1, legend_y_values, lname=f"legend_y_{mode}_{temperature}", axis="Y")
-            legend_plot = layer.add_plot(legend_sheet, colx=legend_column, coly=legend_column + 1, type="line")
-            _set_plot_style(legend_plot, COLORS[temperature], LINE_STYLES["PSC"])
-            plot_contracts.append({
-                "layer_index": layer_index,
-                "plot_index": plot_count,
-                "plot_type_code": 200,
-                "x_column": _column_name(legend_column),
-                "y_column": _column_name(legend_column + 1),
-            })
-            plot_count += 1
-            legend_column += 2
-        legend = layer.add_label(mode, 0.655, legend_y)
+        plot_numbers = plot_numbers_by_mode[mode]
+        legend_text = "".join(f"\\l({number})" for number in plot_numbers) + f" {mode}"
+        legend = layer.add_label(legend_text, 0.055, legend_y)
         legend_name = f"fig3_legend_{panel['name']}_{mode.lower()}"
         _name_label(legend, legend_name, 31.0)
         labels.append(legend_name)
+        legend_contracts.append({
+            "object_name": legend_name,
+            "layer_index": layer_index,
+            "plot_numbers": plot_numbers,
+            "expected_plot_line_style": LINE_STYLES[mode],
+            "text_contains": mode,
+        })
     label_y = {temp: panel["series"][temp]["PSC"]["y"][-1] for temp in panel["series"]}
     for temperature, y_value in label_y.items():
         label = layer.add_label(f"{temperature}°C", 0.92, float(y_value))
@@ -195,7 +179,7 @@ def _add_panel(
         _name_label(label, name, 31.0, color=COLORS[temperature], bold=True)
         labels.append(name)
     disable_speed_mode(layer)
-    return plot_count, [book_name, legend_book_name], labels, plot_contracts
+    return plot_count, [book_name], labels, plot_contracts, source_groups, legend_contracts
 
 
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
@@ -208,13 +192,25 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     names_by_layer: dict[int, list[str]] = {}
     contracts: dict[str, dict[str, Any]] = {}
     plot_contracts: list[dict[str, Any]] = []
+    source_groups: list[dict[str, Any]] = []
+    subplot_contracts: list[dict[str, Any]] = []
+    legend_contracts: list[dict[str, Any]] = []
     for index, (layer, panel) in enumerate(zip(layers, PANELS)):
-        count, panel_books, names, panel_plot_contracts = _add_panel(op, layer, panel, index)
+        count, panel_books, names, panel_plot_contracts, panel_source_groups, panel_legend_contracts = _add_panel(op, layer, panel, index)
         counts[index] = count
         books.extend(panel_books)
         names_by_layer[index] = names
         contracts.update({name: {"attach": 2} for name in names})
         plot_contracts.extend(panel_plot_contracts)
+        source_groups.extend(panel_source_groups)
+        legend_contracts.extend(panel_legend_contracts)
+        subplot_contracts.append({
+            "subplot_id": f"fig3_panel_{panel['name']}",
+            "layer_index": index,
+            "expected_plot_count": count,
+            "worksheet_books": panel_books,
+            "worksheet_names": ["Sheet1"],
+        })
     visibility = reveal_graph_page(page)
     return {
         "page_name": "Fig3_source_calibrated_four_panel",
@@ -225,6 +221,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "page_size_inches": page_size_inches,
         "required_worksheet_books": books,
         "direct_worksheet_plot_contracts": plot_contracts,
+        "subplot_worksheet_contracts": subplot_contracts,
+        "legend_plot_reference_contracts": legend_contracts,
+        "source_geometry_groups": source_geometry_contract(source_groups),
         "required_graphobject_names_by_layer": names_by_layer,
         "required_graphobject_contracts": contracts,
         "expected_graphobject_count": len(contracts),

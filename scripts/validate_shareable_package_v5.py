@@ -14,6 +14,13 @@ REQUIRED |= {
     "originplot-skill/scripts/inspect_official_templates.py",
     "originplot-skill/examples/template_search/aa2195_official_template_search.json",
     "originplot-skill/references/aa2195-release-evidence.json",
+    "originplot-skill/references/figure-contract-and-style.md",
+    "originplot-skill/references/materials-figure-qa.md",
+    "originplot-skill/assets/journal_style_profiles.json",
+    "originplot-skill/schemas/publication-contract-v1.schema.json",
+    "originplot-skill/examples/publication_contract.example.json",
+    "originplot-skill/scripts/validate_publication_contract.py",
+    "originplot-skill/tests/test_publication_contract.py",
 }
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",

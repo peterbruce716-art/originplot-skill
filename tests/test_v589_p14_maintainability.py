@@ -24,23 +24,19 @@ def load(name: str, relative: str):
 
 
 class DocumentationContractTests(unittest.TestCase):
-    def test_fig3_patterned_series_keeps_editable_nan_breaks(self) -> None:
-        from builders.aa2195.fig3_builder import FIG3_FONT, FIG3_FONT_ID, _legend_segment, _patterned_series
+    def test_fig3_uses_continuous_xy_and_native_plot_styles(self) -> None:
+        from builders.aa2195.fig3_builder import FIG3_FONT, FIG3_FONT_ID, LINE_STYLES, _patterned_series
 
         x = [0.0, 0.5, 1.0]
         y = [0.0, 1.0, 0.5]
-        plot_x, plot_y = _patterned_series(x, y, "UC")
-        self.assertEqual(len(plot_x), len(plot_y))
-        self.assertGreater(len(plot_x), len(x))
-        self.assertTrue(any(value != value for value in plot_y))
+        for mode in ("PSC", "UC", "TR"):
+            plot_x, plot_y = _patterned_series(x, y, mode)
+            self.assertEqual(x, plot_x)
+            self.assertEqual(y, plot_y)
+            self.assertFalse(any(value != value for value in plot_y))
+        self.assertEqual({"PSC": 0, "UC": 2, "TR": 3}, LINE_STYLES)
         self.assertEqual("Times New Roman", FIG3_FONT)
         self.assertEqual(429, FIG3_FONT_ID)
-        for mode in ("UC", "TR"):
-            legend_x, legend_y = _legend_segment(0.05, 0.18, 200.0, mode)
-            self.assertEqual(len(legend_x), len(legend_y))
-            self.assertTrue(any(value != value for value in legend_y))
-        _, solid_y = _legend_segment(0.05, 0.18, 200.0, "PSC")
-        self.assertFalse(any(value != value for value in solid_y))
 
     def test_skill_is_bounded_and_reference_links_resolve(self) -> None:
         path = ROOT / "SKILL.md"

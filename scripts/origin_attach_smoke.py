@@ -41,7 +41,7 @@ def read_status(path: Path | None) -> dict[str, Any]:
 
 
 def collect_recent_origin_events(since: datetime) -> list[dict[str, Any]]:
-    """Collect only recent WER/DCOM records needed to explain a native timeout."""
+    """Collect recent WER/DCOM records needed to explain a native timeout."""
     script = (
         "$since = [datetime]::Parse('%s'); "
         "$rows = @(); "
