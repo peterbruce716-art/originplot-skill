@@ -14,6 +14,7 @@ from .common_origin_utils import (
     remove_default_labels,
     reveal_graph_page,
 )
+from .curve_processing import smooth_digitized_curve
 from .geometry import fig15_geometry
 from .fresh_source_data import load_fresh_figure_data
 from .source_geometry import source_geometry_contract
@@ -29,12 +30,22 @@ TEXT_Y_OFFSETS = {
     "description": -4.0,
 }
 
+FIG15_FONT = "Times New Roman"
+FIG15_FONT_ID = 429
+
 
 def _candidate_float(value: Any, default: float) -> float:
     try:
         return float(value)
     except (TypeError, ValueError):
         return float(default)
+
+
+def _candidate_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return int(default)
 
 
 def _text_size(record: dict[str, Any], candidate_params: dict[str, Any]) -> float:
@@ -68,6 +79,10 @@ def _set_plot_style(plot: Any, *, color: str, width: float, dotted: bool = False
                 plot.set_int(prop, 2)
             except Exception:
                 pass
+        try:
+            plot.set_cmd("-d 2")
+        except Exception:
+            pass
 
 
 def _set_layer_frame(layer: Any, frame: tuple[float, float, float, float]) -> None:
@@ -119,6 +134,14 @@ def _add_scale_label(
                 label.set_float(prop, float(value))
             except Exception:
                 pass
+        try:
+            label.set_int("font", FIG15_FONT_ID)
+        except Exception:
+            pass
+        try:
+            layer.lt_exec(f"{name}.font=font({FIG15_FONT});")
+        except Exception:
+            pass
         return True
     except Exception:
         return False
@@ -148,12 +171,18 @@ def _add_panel(op: Any, layer: Any, panel: dict[str, Any]) -> int:
         ("header_circles", header_circle_x, header_circle_y, "black", 0.65, False),
     ]
     column = 0
+    applied_styles: list[tuple[Any, str, float, bool]] = []
     for name, xs, ys, color, width, dotted in paths:
         sheet.from_list(column, list(xs), lname=f"{name}_x", axis="X")
         sheet.from_list(column + 1, list(ys), lname=f"{name}_y", axis="Y")
         plot = layer.add_plot(sheet, colx=column, coly=column + 1, type="line")
         _set_plot_style(plot, color=color, width=width, dotted=dotted)
+        applied_styles.append((plot, color, width, dotted))
         column += 2
+
+    # Origin may normalize plot-group dashes while later paths are inserted.
+    for plot, color, width, dotted in applied_styles:
+        _set_plot_style(plot, color=color, width=width, dotted=dotted)
 
     layer.set_xlim(0.0, 1.0)
     layer.set_ylim(0.0, 1.0)
@@ -171,8 +200,27 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     fresh_source = load_fresh_figure_data(candidate_params, "fig15")
     geometry = fig15_geometry()
     fresh_panels = fresh_source["data"]["panels"]
+    smoothing_window = _candidate_int(candidate_params.get("fig15_curve_smoothing_window"), 5)
+    smoothing_max_delta = _candidate_float(
+        candidate_params.get("fig15_curve_smoothing_max_delta"),
+        0.006,
+    )
+    curve_processing: list[dict[str, Any]] = []
     for panel in geometry["panels"]:
-        panel["curve"] = dict(fresh_panels[panel["name"]]["curve"])
+        source_curve = fresh_panels[panel["name"]]["curve"]
+        curve_x, curve_y, evidence = smooth_digitized_curve(
+            source_curve["x"],
+            source_curve["y"],
+            window=smoothing_window,
+            max_deviation=smoothing_max_delta,
+        )
+        panel["curve"] = {
+            **dict(source_curve),
+            "x": curve_x,
+            "y": curve_y,
+            "processing": evidence["method"],
+        }
+        curve_processing.append({"panel": panel["name"], **evidence})
     page_size_inches = (8.5, 3.35)
     page = create_hidden_graph_page(
         op,
@@ -321,6 +369,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
                 "plot_type_code": 200,
                 "x_column": chr(ord("A") + plot_index * 2),
                 "y_column": chr(ord("B") + plot_index * 2),
+                "expected_plot_line_style": 2 if plot_index == 1 else 0,
             }
             for layer_index in range(2)
             for plot_index in range(5)
@@ -354,7 +403,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fresh_source_data_sha256": fresh_source["data_sha256"],
         "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
         "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
+        "font_profile": FIG15_FONT,
+        "curve_processing": {
+            "source_strategy": "fresh_digitized_raster",
+            "window": smoothing_window,
+            "max_deviation": smoothing_max_delta,
+            "curves": curve_processing,
+        },
         "text_calibration": {
+            "font_family": FIG15_FONT,
             "text_scale": _candidate_float(candidate_params.get("text_scale"), 1.0),
             "text_role_scales": candidate_params.get("text_role_scales", {}),
             "caption_font_size": _candidate_float(candidate_params.get("caption_font_size"), 9.0),

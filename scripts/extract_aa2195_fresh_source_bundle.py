@@ -42,6 +42,7 @@ FIG14_COLORS = {
 }
 FIG14_SYMBOLS = {"PSC": 1, "UC": 2, "TR": 3}
 FIG14_TEMPERATURES = (250.0, 300.0, 350.0, 400.0)
+FIG3_POINTS_PER_CURVE = 181
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -181,7 +182,7 @@ def _drawing_group_centerline(
     source_y = np.asarray([np.median(points[bins == value, 1]) for value in unique_bins], dtype=float)
     order = np.argsort(source_x)
     source_x, source_y = source_x[order], source_y[order]
-    strain = np.linspace(0.0, 0.9, 46)
+    strain = np.linspace(0.0, 0.9, FIG3_POINTS_PER_CURVE)
     target_pdf_x = left + strain / 1.1 * (right - left)
     curve_pdf_y = np.interp(target_pdf_x, source_x, source_y)
     stress = np.clip((bottom - curve_pdf_y) / (bottom - top) * float(ymax), 0.0, float(ymax))
@@ -224,7 +225,7 @@ def _extract_fig3_data(document: fitz.Document) -> dict[str, Any]:
     return {
         "method": "fresh_pdf_vector_path_centerline_digitization",
         "page_one_based": 5,
-        "points_per_curve": 46,
+        "points_per_curve": FIG3_POINTS_PER_CURVE,
         "panels": panels,
     }
 

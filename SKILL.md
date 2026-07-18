@@ -3,9 +3,9 @@ name: originplot
 description: "Use for planning, constructing, auditing, or reproducing publication figures as editable Origin/OriginPro OPJU projects, including conclusion-first panel design, Excel/CSV scatter-line intake, Graph Gallery template discovery or image matching, journal profiles, canonical source groups, native Worksheet-bound plots, save/reopen inspection, Origin-rendered visual QA, and authorized Origin 2022 automation. Trigger for Origin figures, OPJU reproduction, Origin template searches/downloads, basic scientific plots that must remain editable in Origin, and journal-ready Origin export bundles."
 ---
 
-# OriginPlot Skill v5.8.9-p18 + Publication Contract v1
+# OriginPlot Skill v5.8.9-p18.2 + Publication Contract v1
 
-OriginPlot is a Verified Origin Runtime for producing and validating an editable Origin project. It includes specialized AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 builders and an extensible registry; it does not automatically reproduce arbitrary figures. Each named AA2195 route has administrator Origin 2022 save/reopen evidence within its declared benchmark scope. This is not a claim of arbitrary-input completion, cross-machine pixel identity, or raw-data recovery. Fig12 keeps native XYZ Worksheet bindings, applies a constrained TR region-anchor remap, and adds editable source-vectorized type-34 regions plus editable page-coordinate axis titles. Origin 2022 supports these SVG path objects through plain `draw -paths objName SVGPath`; the tested `-s/-d` variants did not create objects. For the five-figure benchmark, validated local reproductions may be reused for layout, typography, object routes, calibration, curves, markers, error bars, fields, and bar segments when the originating live batch passed structure, visual, and release gates. Only missing, unvalidated, hash-drifted, or visually inadequate parts require fresh extraction or reconstruction.
+OriginPlot is a Verified Origin Runtime for producing and validating an editable Origin project. Release `5.8.9-p18.2` retains the `5.8.9-p18` functional contract and live-evidence identity while adding a new same-run fresh-PDF administrator Origin 2022 batch, stricter no-reuse lineage checks, runner-managed Origin startup, denser Fig3 vector sampling, and Fig15 source typography/dotted-guide closure. Read all three version values from `version.json` and never relabel p18 evidence as a p18.2 contract run. It includes specialized AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 builders and an extensible registry; it does not automatically reproduce arbitrary figures. Each named AA2195 route has administrator Origin 2022 save/reopen evidence within its declared benchmark scope. This is not a claim of arbitrary-input completion, cross-machine pixel identity, or raw-data recovery. Fig12 keeps native XYZ Worksheet bindings, applies a constrained TR region-anchor remap, and adds editable source-vectorized type-34 regions plus editable page-coordinate axis titles. Origin 2022 supports these SVG path objects through plain `draw -paths objName SVGPath`; the tested `-s/-d` variants did not create objects. For the five-figure benchmark, validated local reproductions may be reused for layout, typography, object routes, calibration, curves, markers, error bars, fields, and bar segments when the originating live batch passed structure, visual, and release gates. Only missing, unvalidated, hash-drifted, or visually inadequate parts require fresh extraction or reconstruction. An explicit request to reproduce again or not use old data always overrides those reuse routes and requires `fresh_extract`.
 
 ## Use this skill when
 
@@ -28,12 +28,12 @@ Before execution, identify:
 1. Figure class: native chart, semantic schematic, or unsupported.
 2. Source/reference image and its provenance, when visual comparison is requested.
 3. FigureSpec or an existing registered AA2195 figure ID.
-4. Candidate parameters and output directory.
-5. Required acceptance level: offline plan, live structure, or live visual pass.
-6. Whether the user has authorized attach to an administrator-started visible Origin instance.
-7. Figure conclusion, style profile, and canonical source groups for continuous curves, segmented paths, and local fills.
-8. For a new builder or material restyle, a validated `originplot.publication_contract.v1` covering panel evidence, final size, statistics, accessibility, and exports.
-
+4. A user request to reproduce again, re-digitize, or not use old data is a hard override: use `fresh_extract`, the original PDF, and a new/empty output root; forbid both reuse modes; require `fresh_extraction=true` with no parent/reuse/validated-source lineage and one same-run manifest for all candidates; keep every prior bundle, extracted dataset, OPJU, export, and metric diagnostic-only.
+5. Candidate parameters and output directory.
+6. Required acceptance level: offline plan, live structure, or live visual pass.
+7. Whether the user has authorized attach to an administrator-started visible Origin instance.
+8. Figure conclusion, style profile, and canonical source groups for continuous curves, segmented paths, and local fills.
+9. For a new builder or material restyle, a validated `originplot.publication_contract.v1` covering panel evidence, final size, statistics, accessibility, and exports.
 Do not read unrelated local documents or private data. Never embed the source image as the editable base graph.
 
 ### FigureSpec intake
@@ -199,7 +199,7 @@ Run structure and nonblank gates before scalar visual metrics. Compare source an
 
 For the named AA2195 set, run `scripts/audit_five_figure_batch.py` on the completed batch directory after all five routes finish. The audit is a release gate: it requires exactly Fig3/Fig12/Fig14/Fig15/Fig16, one stable visible Origin PID, `live_same_run` provenance, matching skill versions, and `structure_pass`, `visual_pass`, and `overall_release_pass` for every figure. It also requires Fig14 `plot_style_validation=ok`. Fig16 additionally requires detection of all 21 WH/DRV/DRX segments, no boundary more than 1 px from the source, and mean absolute boundary error no greater than 0.5 px. A scalar score from one figure or an inherited manifest cannot promote the five-figure set.
 
-Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path> -SourceDataPolicy fresh_extract -SourcePdf <paper.pdf>` for a new extraction, `-SourceDataPolicy validated_reuse -ReuseBatchRoot <promoted-batch>` to reuse scientific data that already reproduced well, or `-SourceDataPolicy validated_crop_reextract -ReuseBatchRoot <promoted-batch>` to apply the declared Fig14 extraction correction to its validated crop. Reuse routes first build `originplot.aa2195_validated_data_reuse.v1`, require the prior five-figure audit plus every structure, visual, live, and release gate to pass, then verify parent manifest, crop, and data hashes before Origin attach. The re-extraction route permits only Fig14 data to change and records both parent and new hashes. Missing or failed evidence returns `E128_SOURCE_DATA_REUSE_REJECTED`. Every route requires a new or empty output root, Python 3.10, one stable visible Origin PID, and new OPJU construction/save/reopen/export/readback/visual evidence. Reuse never copies an old OPJU, Origin export, readback, or metric file; only the verified source bundle is materialized into the new run.
+Use `scripts/run_five_figure_live_batch.ps1 -OutputRoot <path> -SourceDataPolicy fresh_extract -SourcePdf <paper.pdf> -LaunchOriginExe <Origin64.exe>` for a new extraction with runner-managed Origin startup, `-SourceDataPolicy validated_reuse -ReuseBatchRoot <promoted-batch>` to reuse scientific data that already reproduced well, or `-SourceDataPolicy validated_crop_reextract -ReuseBatchRoot <promoted-batch>` to apply the declared Fig14 extraction correction to its validated crop. `-LaunchOriginExe` is restricted to `fresh_extract`: the elevated runner finishes same-run PDF extraction and candidate generation first, rejects every pre-existing visible or hidden Origin process, then starts one visible Origin and immediately enters the attach workflow. Reuse routes first build `originplot.aa2195_validated_data_reuse.v1`, require the prior five-figure audit plus every structure, visual, live, and release gate to pass, then verify parent manifest, crop, and data hashes before Origin attach. The re-extraction route permits only Fig14 data to change and records both parent and new hashes. Missing or failed evidence returns `E128_SOURCE_DATA_REUSE_REJECTED`. Every route requires a new or empty output root, Python 3.10, one stable visible Origin PID, and new OPJU construction/save/reopen/export/readback/visual evidence. Reuse never copies an old OPJU, Origin export, readback, or metric file; only the verified source bundle is materialized into the new run.
 
 Fig3's four-panel route keeps the top PSC/UC/TR legend editable without a legend-only Worksheet: each legend row uses Origin `\l(plot)` references to the actual temperature curves, so its colors and line modes follow the plotted series after save/reopen. Fig3 labels and axes explicitly use Times New Roman and the temperature labels retain their source color and bold weight; these typography and legend details are part of the live visual check rather than raster decoration.
 
@@ -221,7 +221,7 @@ A live promoted candidate requires:
 - candidate manifest with consistent run identity and hashes;
 - self-contained standard evidence directory.
 
-Shareable skill packages exclude source images, OPJUs, and rendered exports. Packaged AA2195 candidates contain an authorized-local-source placeholder, and `references/aa2195-release-evidence.json` provides only a sanitized hash-and-metric index.
+Shareable skill packages exclude source images, OPJUs, rendered exports, virtual environments, `site-packages`, local interpreters, and tool caches. Packaged AA2195 candidates contain an authorized-local-source placeholder. `references/aa2195-release-evidence.json` is only a maintainer-attested hash-and-metric index: public artifacts are not sufficient for independent pixel verification, and the index alone never establishes `live_origin_verified` or `pass_eligible`.
 
 Offline reports must say `live_origin_e2e = not_run_environment_unavailable` or another accurate not-run reason, never passed.
 
@@ -243,7 +243,7 @@ When updating the skill:
 2. Make the smallest coherent change.
 3. Add behavior tests for code and narrow wording tests only for false public claims.
 4. Run compile, pytest, packaged tests, dependency audit, public demo dry-run, package build, and package validation.
-5. Run live Origin only in an authorized environment and report it separately.
+5. Run `python scripts/validate_public_evidence_index.py references/aa2195-release-evidence.json`; treat a pass as index-consistency evidence only, then run live Origin only in an authorized environment and report it separately.
 
 ## External wording
 

@@ -48,8 +48,19 @@ class FiveFigureBatchAuditTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         text = (root / "scripts" / "run_five_figure_live_batch.ps1").read_text(encoding="utf-8-sig")
         self.assertIn('$originProcessNames = @("Origin64", "Origin_64", "Origin_32", "Origin")', text)
-        self.assertEqual(2, text.count("Get-Process -Name $originProcessNames"))
+        self.assertGreaterEqual(text.count("Get-Process -Name $originProcessNames"), 2)
         self.assertIn("exactly one visible supported Origin process is required", text)
+
+    def test_live_batch_runner_can_launch_origin_only_after_fresh_source_preparation(self):
+        root = Path(__file__).resolve().parents[1]
+        text = (root / "scripts" / "run_five_figure_live_batch.ps1").read_text(encoding="utf-8-sig")
+
+        self.assertIn("[string]$LaunchOriginExe = $null", text)
+        self.assertIn("E132_ORIGIN_LAUNCH_CONFLICT", text)
+        self.assertIn("Start-Process -FilePath $LaunchOriginExe", text)
+        self.assertIn('origin_launch_mode = if ($LaunchOriginExe) { "batch_started" } else { "preexisting_visible" }', text)
+        self.assertLess(text.index("& $PythonExe $extractor"), text.index("Start-Process -FilePath $LaunchOriginExe"))
+        self.assertLess(text.index("Start-Process -FilePath $LaunchOriginExe"), text.index("exactly one visible supported Origin process is required"))
 
     def _write_batch(self, root: Path, *, visual_pass: bool = True, shared_pid: bool = True) -> None:
         pid_values = [23780] * 5 if shared_pid else [23780, 23781, 23780, 23780, 23780]

@@ -8,6 +8,38 @@ from typing import Any
 
 SCHEMA = "originplot.aa2195_fresh_source_bundle.v1"
 FIGURES = {"fig3", "fig12", "fig14", "fig15", "fig16"}
+FRESH_FORBIDDEN_LINEAGE_KEYS = {
+    "data_policy",
+    "inherited_from_run",
+    "reextracted_figures",
+    "source_data_policy",
+    "source_reuse_record",
+    "source_reuse_record_sha256",
+    "validated_crop_reextract",
+    "validated_reuse_record",
+    "validated_source_data_reuse_verified",
+}
+
+
+def fresh_lineage_fields(payload: Any, prefix: str = "") -> list[str]:
+    found: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            name = str(key)
+            path = f"{prefix}.{name}" if prefix else name
+            lower = name.lower()
+            if (
+                lower in FRESH_FORBIDDEN_LINEAGE_KEYS
+                or lower.startswith("parent_")
+                or "reuse" in lower
+                or lower.startswith("validated_source")
+            ):
+                found.append(path)
+            found.extend(fresh_lineage_fields(value, path))
+    elif isinstance(payload, list):
+        for index, value in enumerate(payload):
+            found.extend(fresh_lineage_fields(value, f"{prefix}[{index}]"))
+    return found
 
 
 def _sha256_file(path: Path) -> str:
@@ -49,6 +81,13 @@ def load_fresh_figure_data(
     if source_data_policy in {"fresh_extract", "validated_reuse"}:
         if payload.get("fresh_extraction") is not True:
             raise RuntimeError("E127_SOURCE_DATA_REQUIRED: invalid source data manifest")
+        if source_data_policy == "fresh_extract":
+            lineage = fresh_lineage_fields(payload)
+            if lineage:
+                raise RuntimeError(
+                    "E127_SOURCE_DATA_REQUIRED: fresh source manifest contains reuse lineage: "
+                    + ", ".join(lineage)
+                )
     elif (
         payload.get("fresh_extraction") is not False
         or payload.get("validated_crop_reextract") is not True

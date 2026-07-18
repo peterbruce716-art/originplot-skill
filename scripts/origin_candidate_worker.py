@@ -18,10 +18,12 @@ if str(_IMPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(_IMPORT_ROOT))
 
 from builders.registry import UnknownBuilderError, resolve_builder
+from builders.aa2195.fresh_source_data import fresh_lineage_fields
 
 AUTHORIZED_SOURCE_PLACEHOLDER = "AUTHORIZED_LOCAL_SOURCE_REQUIRED"
 
 try:
+    from scripts.versioning import load_versions
     from scripts.visual_qa import score_visual
     from scripts.assert_admin_preflight import demo_restart_directive
     from scripts.materialize_live_evidence import materialize_standard_evidence
@@ -33,6 +35,7 @@ try:
     )
     from scripts.fig12_roi import evaluate_fig12_rois
 except ImportError:
+    from versioning import load_versions
     from visual_qa import score_visual
     from assert_admin_preflight import demo_restart_directive
     from materialize_live_evidence import materialize_standard_evidence
@@ -50,7 +53,9 @@ REQUIRED_LIVE_ARTIFACTS = [
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 AA2195_BUILDER_PACKAGE = SKILL_ROOT / "builders" / "aa2195"
-SKILL_VERSION = "5.8.9-p18"
+VERSIONS = load_versions(SKILL_ROOT)
+SKILL_VERSION = VERSIONS.contract_version
+RELEASE_VERSION = VERSIONS.release_version
 
 VISUAL_THRESHOLDS = {
     "fig3": {"mae_max": 0.12, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
@@ -266,8 +271,9 @@ def build_manifest(
 ) -> dict[str, Any]:
     sha = candidate_sha256(candidate)
     manifest: dict[str, Any] = {
-        "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p18",
+        "schema": f"originplot.clean_rebuild_candidate_worker.v{VERSIONS.contract_version}",
         "skill_version": SKILL_VERSION,
+        **VERSIONS.as_dict(),
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "figure": figure,
         "mode": mode,
@@ -454,6 +460,11 @@ def _validate_source_data_gate(
     if policy == "fresh_extract":
         if payload.get("fresh_extraction") is not True:
             raise ValueError("fresh source manifest is not marked as a new extraction")
+        lineage = fresh_lineage_fields(payload)
+        if lineage:
+            raise ValueError(
+                "fresh source manifest contains reuse lineage: " + ", ".join(lineage)
+            )
         gate["reuse_validation"] = "not_required"
         return gate
 
@@ -1072,7 +1083,9 @@ def run_live(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OriginPlot v5.8.9-p18 candidate worker.")
+    parser = argparse.ArgumentParser(
+        description=f"OriginPlot {RELEASE_VERSION} candidate worker for contract {SKILL_VERSION}."
+    )
     parser.add_argument("--figure", help="Legacy-compatible figure id, including fig3, fig12, fig14, fig15, or fig16.")
     parser.add_argument("--builder", help="Registered builder id.")
     parser.add_argument("--figure-spec", type=Path, help="FigureSpec JSON used by registry-based builders.")
@@ -1121,8 +1134,9 @@ def main() -> int:
         else:
             error_code = "E100_SCHEMA_INVALID"
         manifest = {
-            "schema": "originplot.clean_rebuild_candidate_worker.v5.8.9-p18",
+            "schema": f"originplot.clean_rebuild_candidate_worker.v{VERSIONS.contract_version}",
             "skill_version": SKILL_VERSION,
+            **VERSIONS.as_dict(),
             "mode": "live" if args.live else "dry_run",
             "status": "failed",
             "overall_status": "failed",

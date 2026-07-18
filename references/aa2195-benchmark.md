@@ -4,7 +4,7 @@ The packaged AA2195 builders are specialized implementations, not proof that arb
 
 The p18 Fig14 fresh-source route clusters colored marker rows before selecting the data point, preventing the 250 degrees C markers from being averaged with the legend. Black error-bar pixels are selected by marker-local connected components at each shared x coordinate, and one-sided marker occlusion uses the maximum center-to-endpoint extent. Marker overlays use Origin's native scatter plot so a zero-width hairline cannot cover the dashed series. The route identity is `aa2195_fig14_component_errorbars_native_scatter_dash_v4`; it requires a new same-run Origin save/reopen validation before promotion.
 
-The final p18 administrator-Origin 2022 batch completed all five figures against one visible Origin process with no audit findings. Every worker exited zero and passed live-Origin, save/reopen structure, source-data, visual, and release gates. The sanitized run hashes and scalar metrics are recorded in `aa2195-release-evidence.json`; local rasters and Origin projects remain outside the shareable package.
+The final p18 administrator-Origin 2022 batch completed all five figures against one visible Origin process with no audit findings. Every worker exited zero and passed live-Origin, save/reopen structure, source-data, visual, and release gates in the retained reference environment. The sanitized run hashes and scalar metrics are recorded in `aa2195-release-evidence.json`; local rasters and Origin projects remain outside the shareable package. The public file is a maintainer-attested index, so third parties can validate its schema and recorded values but cannot independently reproduce its pixels or infer live verification without the authorized complete evidence bundle.
 
 ## Fig3
 
@@ -88,4 +88,4 @@ Official entrances:
 
 Record candidate project/template hashes, reopen results, Worksheet rows, plot types, direct bindings, and selection reason. Official assets are not bundled and remain subject to OriginLab terms.
 
-The shareable package also excludes paper-source rasters. Its candidate JSON files use an authorized-local-source placeholder; `aa2195-release-evidence.json` is a sanitized index of reference-run hashes and scalar metrics, not a substitute for the retained live evidence artifacts.
+The shareable package also excludes paper-source rasters. Its candidate JSON files use an authorized-local-source placeholder; `aa2195-release-evidence.json` is a maintainer-attested index of reference-run hashes and scalar metrics, not a substitute for the retained live evidence artifacts. `validate_public_evidence_index.py` checks index consistency only and always reports `live_origin_verified=false` and `pass_eligible=false` for index-only validation.

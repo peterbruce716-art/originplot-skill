@@ -6,7 +6,8 @@ param(
     [string]$SourcePdf = $null,
     [string]$ReuseBatchRoot = $null,
     [string]$SkillRoot = $null,
-    [string]$PythonExe = $null
+    [string]$PythonExe = $null,
+    [string]$LaunchOriginExe = $null
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,6 +40,15 @@ function Test-IsAdministrator {
 
 if (-not (Test-IsAdministrator)) {
     throw "E120_ENVIRONMENT_MISMATCH: run this batch from an elevated PowerShell process."
+}
+
+if ($LaunchOriginExe) {
+    if ($SourceDataPolicy -ne "fresh_extract") {
+        throw "E132_ORIGIN_LAUNCH_CONFLICT: batch-started Origin is limited to fresh_extract runs."
+    }
+    if (-not (Test-Path -LiteralPath $LaunchOriginExe -PathType Leaf)) {
+        throw "E120_ENVIRONMENT_MISMATCH: LaunchOriginExe was not found."
+    }
 }
 
 if (Test-Path -LiteralPath $OutputRoot) {
@@ -129,7 +139,24 @@ foreach ($figure in $figures) {
     $baseCandidate | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $runCandidateRoot "$figure.json") -Encoding UTF8
 }
 
-$origin = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+if ($LaunchOriginExe) {
+    $originBeforeLaunch = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue)
+    if ($originBeforeLaunch.Count -ne 0) {
+        throw "E132_ORIGIN_LAUNCH_CONFLICT: close all visible and hidden Origin processes before a batch-started run."
+    }
+    $startedOrigin = Start-Process -FilePath $LaunchOriginExe `
+        -WorkingDirectory (Split-Path -Parent $LaunchOriginExe) `
+        -PassThru
+    $origin = @()
+    $originLaunchDeadline = (Get-Date).AddSeconds(8)
+    do {
+        $origin = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+        if ($origin.Count -eq 1) { break }
+        Start-Sleep -Milliseconds 100
+    } while ((Get-Date) -lt $originLaunchDeadline)
+} else {
+    $origin = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+}
 if ($origin.Count -ne 1) {
     throw "E121_ATTACH_POLICY_VIOLATION: exactly one visible supported Origin process is required."
 }
@@ -180,6 +207,7 @@ $batch = [ordered]@{
     validated_reuse_record = $reuseRecordPath
     python_executable = $PythonExe
     python_version = $pythonVersion
+    origin_launch_mode = if ($LaunchOriginExe) { "batch_started" } else { "preexisting_visible" }
     started_visible_origin_pid = $originPid
     completed_at = (Get-Date).ToString("o")
     status = if ($runs.Count -eq 5 -and $failedRuns.Count -eq 0) { "completed" } else { "failed" }

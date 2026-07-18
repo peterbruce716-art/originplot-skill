@@ -1,6 +1,6 @@
 # Current Contract
 
-This is the active OriginPlot v5.8.9-p18 contract. Older protocol files are inputs only where a current script or schema explicitly consumes them.
+This is the active OriginPlot v5.8.9-p18 contract, distributed by release v5.8.9-p18.2. The release revision does not alter the p18 live-evidence identity. Read `release_version`, `contract_version`, and `evidence_version` from `version.json`; older protocol files are inputs only where a current script or schema explicitly consumes them.
 
 ## Result semantics
 
@@ -25,6 +25,7 @@ The five named AA2195 routes have a batch-level gate in `scripts/audit_five_figu
 - `inherited_diagnostic` covers copied OPJUs, seed files, old exports, and cross-run comparisons. It cannot pass.
 - The five-figure live runner accepts only a new or empty output root. It records `fresh_output_root_verified=true` and fails with `E126_STALE_OUTPUT_ROOT` before Origin attach when prior files are present. Old OPJUs, exports, Worksheets, and readbacks may be comparators only; they cannot enter the new run directory.
 - The five-figure runner declares `source_data_policy` as `fresh_extract`, `validated_reuse`, or `validated_crop_reextract`. Fresh extraction requires `-SourcePdf`. Both reuse modes require `-ReuseBatchRoot`; `build_validated_data_reuse_record.py` accepts only a prior batch with a clean five-figure audit and per-figure structure, visual, live, provenance, and release passes. `validated_crop_reextract` additionally runs `reextract_validated_source_bundle.py`, which may change only Fig14 data using the hash-verified Fig14 crop and must retain every unrelated data hash. The worker verifies parent manifest, bundle, crop, reuse-record, and per-figure data hashes before Origin attach, otherwise it fails with `E128_SOURCE_DATA_REUSE_REJECTED`.
+- An explicit user request to reproduce again, re-digitize, or not use old data forces `fresh_extract`. In that mode the batch must read the original PDF into its own new output root, the source manifest must declare `fresh_extraction=true` without parent/reuse/validated-source lineage, and no prior extracted data may feed construction. Historical artifacts remain diagnostic comparators only.
 - Validated reuse applies only to curves, markers, error bars, fields, bar segments, and their source crops. The current run must still build new Worksheets/OPJUs, save, detach, reopen, read back, export, and pass visual gates. Old OPJUs, exports, readbacks, and metrics cannot enter the new run as pass evidence.
 - Approximate reconstruction must be labelled `digitized_approximate`, `semantic_reconstruction`, or `reconstructed_approximate`, never `source_exact`.
 

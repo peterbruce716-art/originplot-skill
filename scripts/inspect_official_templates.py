@@ -14,6 +14,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from builders.aa2195.session import has_visible_origin_process, is_administrator_python
+from scripts.versioning import load_versions
+
+
+VERSIONS = load_versions(ROOT)
 
 
 def sha256(path: Path) -> str:
@@ -92,7 +96,8 @@ def inspect_templates(manifest_path: Path, output_path: Path, project_root: Path
 
     report: dict[str, Any] = {
         "schema": "originplot.official_template_inspection.v1",
-        "skill_version": "5.8.9-p18",
+        "skill_version": VERSIONS.contract_version,
+        **VERSIONS.as_dict(),
         "source_manifest": str(manifest_path.resolve()),
         "administrator_python": True,
         "visible_administrator_origin_required": True,

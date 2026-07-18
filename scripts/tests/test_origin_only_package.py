@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import stat
+import subprocess
 import sys
 import tempfile
 import unittest
+import warnings
 import zipfile
 from pathlib import Path
 
@@ -82,6 +85,9 @@ class OriginOnlyPackageTests(unittest.TestCase):
                 names = archive.namelist()
                 candidate = json.loads(archive.read("originplot-skill/examples/candidates/fig12.json"))
         self.assertFalse(any("/outputs/" in name for name in names))
+        self.assertFalse(
+            any(part.casefold().startswith("tmp_") for name in names for part in Path(name).parts)
+        )
         self.assertFalse(any(name.lower().endswith((".png", ".jpg", ".jpeg")) for name in names))
         self.assertFalse(any("/examples/candidates/source/" in name for name in names))
         self.assertEqual("AUTHORIZED_LOCAL_SOURCE_REQUIRED", candidate["source_crop"])
@@ -104,6 +110,215 @@ class OriginOnlyPackageTests(unittest.TestCase):
                 self.assertIn("originplot-skill/AUTHORIZED_LOCAL_SOURCE_REQUIRED", names)
                 marker = archive.read("originplot-skill/AUTHORIZED_LOCAL_SOURCE_REQUIRED").decode("utf-8")
         self.assertIn("local source authorization contract", marker)
+
+    def test_shareable_archive_excludes_local_virtual_environment(self) -> None:
+        builder = load_module("build_shareable_package_venv_test", SCRIPTS / "build_shareable_package.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            sentinel = root / ".venv" / "Lib" / "site-packages" / "sentinel.py"
+            sentinel.parent.mkdir(parents=True)
+            sentinel.write_text("LOCAL_ENVIRONMENT_SENTINEL", encoding="utf-8")
+            (root / "SKILL.md").write_text("---\nname: originplot\n---\n", encoding="utf-8")
+            archive_path = Path(tmp) / "originplot-skill.zip"
+
+            builder.build_zip(root, archive_path)
+
+            with zipfile.ZipFile(archive_path) as archive:
+                names = archive.namelist()
+                payload = b"\n".join(archive.read(name) for name in names)
+        self.assertFalse(any(".venv" in name.lower() for name in names))
+        self.assertNotIn(b"LOCAL_ENVIRONMENT_SENTINEL", payload)
+
+    def test_shareable_validator_rejects_polluted_virtual_environment(self) -> None:
+        validator = load_module("validate_shareable_package_polluted_venv", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr(
+                    "originplot-skill/.venv/Lib/site-packages/sentinel.py",
+                    "LOCAL_ENVIRONMENT_SENTINEL",
+                )
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn(
+            "forbidden_local_environment_path",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_shareable_validator_rejects_local_interpreter_binary(self) -> None:
+        validator = load_module("validate_shareable_package_interpreter", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("originplot-skill/tools/python.exe", b"local interpreter")
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn(
+            "forbidden_local_interpreter_binary",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_shareable_validator_rejects_parent_path_traversal(self) -> None:
+        validator = load_module("validate_shareable_package_parent_traversal", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("originplot-skill/../outside.py", "escape")
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn(
+            "unsafe_path_traversal",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_shareable_validator_rejects_zip_symlink_entry(self) -> None:
+        validator = load_module("validate_shareable_package_zip_symlink", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            info = zipfile.ZipInfo("originplot-skill/tools/outside-link")
+            info.create_system = 3
+            info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr(info, "../../outside")
+
+            result = validator.validate(archive_path)
+
+        self.assertIn(
+            "forbidden_zip_symlink",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_shareable_validator_rejects_environment_added_to_extracted_package(self) -> None:
+        validator = load_module("validate_shareable_package_extracted_venv", SCRIPTS / "validate_shareable_package_v5.py")
+        builder = load_module("build_shareable_package_extracted_venv", SCRIPTS / "build_shareable_package.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            temp = Path(tmp)
+            archive_path = temp / "clean.zip"
+            extracted = temp / "extracted"
+            builder.build_zip(ROOT, archive_path)
+            with zipfile.ZipFile(archive_path) as archive:
+                archive.extractall(extracted)
+            sentinel = extracted / "originplot-skill" / ".venv" / "Lib" / "site-packages" / "sentinel.py"
+            sentinel.parent.mkdir(parents=True)
+            sentinel.write_text("LOCAL_ENVIRONMENT_SENTINEL", encoding="utf-8")
+
+            result = validator.validate(extracted / "originplot-skill")
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn(
+            "forbidden_local_environment_path",
+            {failure["code"] for failure in result["failures"]},
+        )
+
+    def test_shareable_validator_rejects_duplicate_zip_entry(self) -> None:
+        validator = load_module("validate_shareable_package_duplicate_entry", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(archive_path, "w") as archive:
+                    archive.writestr("originplot-skill/scripts/versioning.py", "first")
+                    archive.writestr("originplot-skill/scripts/versioning.py", "second")
+
+            result = validator.validate(archive_path)
+
+        self.assertIn("duplicate_archive_entry", {failure["code"] for failure in result["failures"]})
+
+    def test_shareable_validator_rejects_zip_path_alias_collisions(self) -> None:
+        validator = load_module("validate_shareable_package_alias_collision", SCRIPTS / "validate_shareable_package_v5.py")
+        for alias in (
+            "originplot-skill/scripts/./versioning.py",
+            "originplot-skill/scripts//versioning.py",
+        ):
+            with self.subTest(alias=alias), tempfile.TemporaryDirectory() as tmp:
+                archive_path = Path(tmp) / "polluted.zip"
+                with zipfile.ZipFile(archive_path, "w") as archive:
+                    archive.writestr("originplot-skill/scripts/versioning.py", "first")
+                    archive.writestr(alias, "second")
+
+                result = validator.validate(archive_path)
+
+            self.assertIn("duplicate_archive_entry", {failure["code"] for failure in result["failures"]})
+
+    def test_shareable_validator_rejects_forbidden_coverage_file(self) -> None:
+        validator = load_module("validate_shareable_package_coverage", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("originplot-skill/.coverage", "local coverage metadata")
+
+            result = validator.validate(archive_path)
+
+        self.assertIn("forbidden_local_file_name", {failure["code"] for failure in result["failures"]})
+
+    def test_shareable_validator_returns_structured_failure_for_invalid_zip(self) -> None:
+        validator = load_module("validate_shareable_package_invalid_zip", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "invalid.zip"
+            archive_path.write_bytes(b"not a zip archive")
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn("invalid_archive", {failure["code"] for failure in result["failures"]})
+
+    def test_shareable_validator_rejects_backslash_entry_without_crashing(self) -> None:
+        validator = load_module("validate_shareable_package_backslash", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("originplot-skill/SKILL.md", "invalid portable path")
+            archive_path.write_bytes(
+                archive_path.read_bytes().replace(
+                    b"originplot-skill/SKILL.md",
+                    b"originplot-skill\\SKILL.md",
+                )
+            )
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn("backslash_zip_entry", {failure["code"] for failure in result["failures"]})
+
+    def test_shareable_validator_rejects_non_object_candidate_without_crashing(self) -> None:
+        validator = load_module("validate_shareable_package_candidate_type", SCRIPTS / "validate_shareable_package_v5.py")
+        with tempfile.TemporaryDirectory() as tmp:
+            archive_path = Path(tmp) / "polluted.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("originplot-skill/examples/candidates/fig3.json", "[]")
+
+            result = validator.validate(archive_path)
+
+        self.assertEqual("failed", result["status"])
+        self.assertIn("invalid_candidate_json", {failure["code"] for failure in result["failures"]})
+
+    def test_package_cli_rejects_nonexistent_skill_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            temp = Path(tmp)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "build_shareable_package.py"),
+                    "--skill-dir",
+                    str(temp / "missing"),
+                    "--zip-out",
+                    str(temp / "out.zip"),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertNotEqual(0, result.returncode)
+        payload = json.loads(result.stdout)
+        self.assertEqual("failed", payload["status"])
+        self.assertEqual("source_skill_dir_missing", payload["failures"][0]["code"])
 
     def test_v5_compiler_and_runtime_fail_closed(self) -> None:
         compiler = load_module("originplot_compile_v5", SCRIPTS / "originplot_compile_v5.py")

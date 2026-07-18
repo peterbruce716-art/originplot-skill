@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import unittest
 import sys
 import tempfile
@@ -1049,6 +1050,30 @@ class GeometryContractTests(unittest.TestCase):
             FIGURE_CANVAS,
         )
 
+    def test_digitized_curve_smoothing_is_endpoint_preserving_and_bounded(self) -> None:
+        from builders.aa2195.curve_processing import curve_roughness, smooth_digitized_curve
+
+        x = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+        y = [0.0, 0.72, 0.81, 0.77, 0.735, 0.742, 0.731, 0.738, 0.734]
+        smooth_x, smooth_y, evidence = smooth_digitized_curve(
+            x,
+            y,
+            window=5,
+            max_deviation=0.006,
+        )
+
+        self.assertEqual(x, smooth_x)
+        self.assertEqual(y[0], smooth_y[0])
+        self.assertEqual(y[-1], smooth_y[-1])
+        self.assertLessEqual(max(abs(a - b) for a, b in zip(y, smooth_y)), 0.006 + 1e-12)
+        self.assertLess(curve_roughness(smooth_y), curve_roughness(y))
+        self.assertTrue(evidence["endpoint_preserved"])
+        self.assertLess(evidence["roughness_ratio"], 1.0)
+        self.assertEqual(5, evidence["window"])
+
+        with self.assertRaisesRegex(ValueError, "same number of points"):
+            smooth_digitized_curve([0.0, 1.0], [0.0], window=5, max_deviation=0.1)
+
     def test_fig12_has_three_calibrated_finite_panels(self) -> None:
         import numpy as np
 
@@ -1342,6 +1367,19 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertTrue(all(label.properties["attach"] == 2 for layer in op.page.layers for label in layer.labels))
         self.assertTrue(any(getattr(label, "name", "") == "fig15_caption" for label in op.page.layers[0].labels))
         self.assertEqual(9.0, result["text_calibration"]["caption_font_size"])
+        guide_contracts = [
+            contract
+            for contract in result["direct_worksheet_plot_contracts"]
+            if contract["plot_index"] == 1
+        ]
+        self.assertEqual(2, len(guide_contracts))
+        self.assertTrue(all(contract["expected_plot_line_style"] == 2 for contract in guide_contracts))
+        self.assertTrue(
+            all(
+                "-d 2" in op.page.layers[layer_index].plots[1].properties["commands"]
+                for layer_index in range(2)
+            )
+        )
 
     def test_fig15_builder_applies_candidate_text_calibration(self) -> None:
         from builders.aa2195 import fig15_builder
@@ -1362,6 +1400,34 @@ class FigureBuilderContractTests(unittest.TestCase):
         self.assertAlmostEqual(11.0, inventory["fig15_caption"]["effective_font_size"])
         self.assertEqual(r"\b(Fig. 15.) Flow stress curve diagram", inventory["fig15_caption"]["text"])
         self.assertEqual(11.0, result["text_calibration"]["caption_font_size"])
+
+    def test_fig15_builder_sets_source_font_and_records_bounded_curve_smoothing(self) -> None:
+        from builders.aa2195 import fig15_builder
+
+        op = FakeBuilderOrigin()
+        result = fig15_builder.build(
+            op,
+            {
+                "fig15_curve_smoothing_window": 5,
+                "fig15_curve_smoothing_max_delta": 0.006,
+            },
+        )
+
+        self.assertEqual("Times New Roman", result["font_profile"])
+        self.assertEqual("Times New Roman", result["text_calibration"]["font_family"])
+        self.assertEqual(5, result["curve_processing"]["window"])
+        self.assertEqual(0.006, result["curve_processing"]["max_deviation"])
+        self.assertEqual(2, len(result["curve_processing"]["curves"]))
+        self.assertTrue(all(item["endpoint_preserved"] for item in result["curve_processing"]["curves"]))
+        self.assertTrue(all(item["max_abs_delta"] <= 0.006 + 1e-12 for item in result["curve_processing"]["curves"]))
+        self.assertTrue(all(label.properties["font"] == 429 for layer in op.page.layers for label in layer.labels))
+        self.assertTrue(
+            all(
+                any(f"{label.name}.font=font(Times New Roman)" in command for command in layer.commands)
+                for layer in op.page.layers
+                for label in layer.labels
+            )
+        )
 
     def test_fig12_builder_uses_calibrated_matrices_and_layout(self) -> None:
         import numpy as np
@@ -2481,8 +2547,12 @@ class VersionContractTests(unittest.TestCase):
     def test_test_runner_reports_v589_p12_schema(self) -> None:
         root = Path(__file__).resolve().parents[1]
         runner = (root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
-        self.assertIn('"schema": "originplot.run_all_tests.v5.8.9-p18"', runner)
-        self.assertIn('"skill_version": "5.8.9-p18"', runner)
+        versions = json.loads((root / "version.json").read_text(encoding="utf-8-sig"))
+        self.assertIn("load_versions", runner)
+        self.assertIn("VERSIONS.contract_version", runner)
+        self.assertEqual("5.8.9-p18.2", versions["release_version"])
+        self.assertEqual("5.8.9-p18", versions["contract_version"])
+        self.assertEqual("5.8.9-p18", versions["evidence_version"])
 
 
 if __name__ == "__main__":

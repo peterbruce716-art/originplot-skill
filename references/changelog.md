@@ -1,5 +1,21 @@
 # Changelog
 
+## v5.8.9-p18.2
+
+- Enforced explicit "reproduce again / do not use old data" requests as `fresh_extract` runs from the original PDF in a new output root; fresh manifests now reject any parent, reuse, or validated-source lineage before Origin attach.
+- Increased fresh Fig3 vector-path sampling to 181 points per curve without smoothing, retained endpoint and monotonic-X checks, and recorded the dense source route in the same-run bundle.
+- Matched Fig15 source typography with Times New Roman, added bounded endpoint-preserving raster stair-step suppression, and enforced dotted guide style code 2 after save/reopen in both layers.
+- Added `-LaunchOriginExe` to the elevated five-figure runner. It prepares fresh source data first, rejects all pre-existing visible or hidden Origin processes, launches one Origin instance, attaches immediately, and records `origin_launch_mode=batch_started`.
+- Recorded the final run007 same-run administrator Origin 2022 batch. All five figures passed live, structure, visual, source-data, and release gates with one stable visible PID and zero audit findings. The evidence remains identified as contract/evidence version p18 and is not relabeled as a p18.2 contract run.
+
+## v5.8.9-p18.1
+
+- Added `version.json` as the canonical release/contract/evidence version source. This release revision remains on the p18 functional contract and does not relabel the retained p18 Origin evidence.
+- Excluded `.venv`, `venv`, `site-packages`, local Python binaries, coverage output, type-checker/linter caches, and symlinked directories from shareable-package traversal; polluted archives now fail closed with stable contamination codes.
+- Removed the deprecated explicit Pillow mask mode while preserving 8-bit `L` pixels and dilation behavior.
+- Added machine validation for the sanitized AA2195 evidence index, including five-figure uniqueness, SHA-256 format, finite bounded metrics, Fig16's 21-segment boundary record, and explicit public-verification limits. Index-only validation never promotes live or pass-eligible status.
+- Corrected the offline CI package filename from the stale p14 label to p18.1. No new Windows + Origin 2022 live E2E was claimed for this maintenance release.
+
 ## v5.8.9-p18
 
 - Corrected Fig14 fresh-source marker extraction so the 250 degrees C data points are not averaged with same-x legend symbols.

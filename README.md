@@ -1,8 +1,10 @@
-# OriginPlot Skill v5.8.9-p18
+# OriginPlot Skill v5.8.9-p18.2
 
 OriginPlot is a verification framework for editable Origin/OriginPro projects. It includes AA2195-specific builders for Fig3, Fig12, Fig14, Fig15, and Fig16. It is not a universal system that converts any input image into a high-fidelity OPJU automatically.
 
 The core acceptance loop is native editable construction, save, release, reopen, live readback, second Origin export, and evidence-gated visual comparison. A look-alike raster alone is never sufficient.
+
+`5.8.9-p18.2` is the downloadable release revision. The active functional contract and AA2195 evidence identity are both `5.8.9-p18`; `version.json` is the machine-readable source for this distinction. The p18.2 package records a new same-run fresh-PDF administrator Origin 2022 batch without relabeling that p18 evidence as a new contract.
 
 ## Capability boundary
 
@@ -98,8 +100,11 @@ Five-figure live run with a fresh PDF extraction:
 .\scripts\run_five_figure_live_batch.ps1 `
   -OutputRoot outputs\aa2195-fresh `
   -SourceDataPolicy fresh_extract `
-  -SourcePdf path\to\paper.pdf
+  -SourcePdf path\to\paper.pdf `
+  -LaunchOriginExe path\to\Origin64.exe
 ```
+
+If the request says to reproduce again or not use old data, this fresh route is mandatory: use the original PDF and a new or empty output root, and do not substitute either validated reuse mode. `-LaunchOriginExe` is the preferred elevated workflow when an empty Origin window may auto-hide: the runner completes same-run PDF extraction first, rejects every pre-existing visible or hidden Origin process, starts one Origin instance, and attaches immediately. The generated source manifest must be same-run, declare `fresh_extraction=true`, and contain no parent or reuse lineage.
 
 Reuse scientific data from a prior promoted batch whose reproduction already passed:
 
@@ -183,8 +188,9 @@ python -m compileall .
 python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
-python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p18.zip"
-python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p18.zip"
+python scripts/validate_public_evidence_index.py references/aa2195-release-evidence.json
+python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p18.2.zip"
+python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p18.2.zip"
 ```
 
 None of these offline commands proves live Origin E2E.
@@ -197,7 +203,7 @@ The legacy `--figure fig12|fig15|fig16` options remain supported and resolve thr
 
 ## Packaging and assets
 
-The shareable archive includes code, docs, schemas, requirements, CI configuration, and rebuildable synthetic demo sources. It excludes generated outputs, caches, OPJUs, raster evidence, spreadsheets, private data, and commercial templates.
+The shareable archive includes code, docs, schemas, requirements, CI configuration, and rebuildable synthetic demo sources. It excludes generated outputs, caches, virtual environments, `site-packages`, local interpreters, OPJUs, raster evidence, spreadsheets, private data, and commercial templates. Its public AA2195 evidence JSON is a maintainer-attested hash-and-metric index, not an independently reproducible pixel-evidence bundle; index validation cannot set live or pass-eligible status.
 
 Code and repository-authored documentation are MIT licensed. Origin, OriginPro, Graph Gallery projects, paper figures, and user-provided assets retain their respective rights and are not redistributed here.
 

@@ -33,7 +33,7 @@ jobs:
           python scripts/origin_candidate_worker.py --builder generic_line --figure-spec examples/public_demo/figure_spec.json --candidate examples/public_demo/candidate.json --output-dir "$env:RUNNER_TEMP\originplot-public-demo\plan" --dry-run
       - name: Build and validate shareable package
         run: |
-          python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:RUNNER_TEMP\originplot-skill-v5.8.9-p14.zip"
-          python scripts/validate_shareable_package_v5.py --path "$env:RUNNER_TEMP\originplot-skill-v5.8.9-p14.zip"
+          python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:RUNNER_TEMP\originplot-skill-v5.8.9-p18.2.zip"
+          python scripts/validate_shareable_package_v5.py --path "$env:RUNNER_TEMP\originplot-skill-v5.8.9-p18.2.zip"
 
 # This workflow intentionally does not install Origin or claim live Origin E2E.

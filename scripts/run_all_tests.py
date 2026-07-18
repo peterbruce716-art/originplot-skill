@@ -6,12 +6,20 @@ import sys
 import unittest
 from pathlib import Path
 
+try:
+    from scripts.versioning import load_versions
+except ModuleNotFoundError:
+    from versioning import load_versions
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_MIN_TESTS = 165
+VERSIONS = load_versions(ROOT)
 
 
 CRITICAL_SCRIPTS = [
+    "scripts/versioning.py",
+    "scripts/package_policy.py",
+    "scripts/validate_public_evidence_index.py",
     "scripts/benchmark_materializer.py",
     "scripts/visual_evidence_engine.py",
     "scripts/semantic_figure_benchmark.py",
@@ -84,7 +92,9 @@ def run_unittest():
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run OriginPlot v5.8.9-p18 full test suite.")
+    parser = argparse.ArgumentParser(
+        description=f"Run OriginPlot {VERSIONS.release_version} full test suite for contract {VERSIONS.contract_version}."
+    )
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--expected-min-tests", type=int, default=EXPECTED_MIN_TESTS)
     args = parser.parse_args()
@@ -93,7 +103,18 @@ def main() -> int:
     discovery_failures = []
     if tests_run < args.expected_min_tests:
         discovery_failures.append({"code": "TEST_DISCOVERY_INCOMPLETE", "expected_min_tests": args.expected_min_tests, "actual": tests_run})
-    payload = {"schema": "originplot.run_all_tests.v5.8.9-p18", "skill_version": "5.8.9-p18", "status": "ok" if not compile_failures and not test_errors and skipped == 0 and not discovery_failures else "failed", "compile_failures": compile_failures, "tests_run": tests_run, "expected_min_tests": args.expected_min_tests, "skipped": skipped, "test_errors": test_errors, "discovery_failures": discovery_failures}
+    payload = {
+        "schema": f"originplot.run_all_tests.v{VERSIONS.contract_version}",
+        "skill_version": VERSIONS.contract_version,
+        **VERSIONS.as_dict(),
+        "status": "ok" if not compile_failures and not test_errors and skipped == 0 and not discovery_failures else "failed",
+        "compile_failures": compile_failures,
+        "tests_run": tests_run,
+        "expected_min_tests": args.expected_min_tests,
+        "skipped": skipped,
+        "test_errors": test_errors,
+        "discovery_failures": discovery_failures,
+    }
     text = json.dumps(payload, ensure_ascii=False, indent=2)
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)

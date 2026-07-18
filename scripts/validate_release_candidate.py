@@ -14,9 +14,14 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.versioning import load_versions
+except ModuleNotFoundError:
+    from versioning import load_versions
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
-EXPECTED_SKILL_VERSION = "5.8.9-p18"
+VERSIONS = load_versions(SKILL_ROOT)
+EXPECTED_SKILL_VERSION = VERSIONS.contract_version
 EXPECTED_MIN_TESTS = 117
 REQUIRED_FIGURES = ("fig12", "fig15", "fig16")
 RELEASE_GATE_ORDER = [
@@ -216,11 +221,11 @@ def cache_scan_gate(zip_bytes: bytes) -> dict[str, Any]:
 def report_version_gate(skill_root: Path, reports: list[Path]) -> dict[str, Any]:
     skill_text = (skill_root / "SKILL.md").read_text(encoding="utf-8-sig")
     failures: list[dict[str, Any]] = []
-    if f"OriginPlot Skill v{EXPECTED_SKILL_VERSION}" not in skill_text:
-        failures.append({"code": "skill_version_mismatch", "expected": EXPECTED_SKILL_VERSION})
+    if f"OriginPlot Skill v{VERSIONS.release_version}" not in skill_text:
+        failures.append({"code": "skill_version_mismatch", "expected": VERSIONS.release_version})
     runner_text = (skill_root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
-    if f"originplot.run_all_tests.v{EXPECTED_SKILL_VERSION}" not in runner_text:
-        failures.append({"code": "runner_version_mismatch", "expected": EXPECTED_SKILL_VERSION})
+    if "load_versions" not in runner_text:
+        failures.append({"code": "runner_version_source_missing", "expected": "version.json"})
     for report in reports:
         if not report.exists():
             failures.append({"code": "report_missing", "report": report.name})
@@ -366,6 +371,7 @@ def validate_release(
     return {
         "schema": "originplot.release_candidate_validation.v1",
         "skill_version": EXPECTED_SKILL_VERSION,
+        **VERSIONS.as_dict(),
         "release_status": release_status(gates),
         "gate_order": RELEASE_GATE_ORDER,
         "gates": gates,
@@ -373,7 +379,9 @@ def validate_release(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate OriginPlot v5.8.9-p18 release readiness.")
+    parser = argparse.ArgumentParser(
+        description=f"Validate OriginPlot {VERSIONS.release_version} release readiness."
+    )
     parser.add_argument("--skill-dir", type=Path, default=SKILL_ROOT)
     parser.add_argument(
         "--evidence-dir",

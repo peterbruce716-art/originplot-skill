@@ -1,19 +1,30 @@
-__pycache__/
-*.py[cod]
-*$py.class
-
-.pytest_cache/
+.venv/
+venv/
+.tox/
 .mypy_cache/
 .ruff_cache/
+.pytest_cache/
+__pycache__/
+.coverage
+htmlcov/
+*.py[cod]
 
+# Generated and local runtime state
 outputs/
-tmp_v5_validation/
 runs/
 comparison_boards/
+tmp_*/
+tmp_v5_validation/
+
+# Local environments and installed packages
+site-packages/
+
+# Private or user-supplied scientific data
 data/
 raw_data/
 private/
 
+# Origin projects, locks, logs, credentials, and local archives
 *.opju
 *.opj
 *.ogwu

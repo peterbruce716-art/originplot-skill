@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import fitz
 
 from builders.aa2195.fresh_source_data import load_fresh_figure_data
 from scripts import extract_aa2195_fresh_source_bundle, origin_candidate_worker
@@ -76,6 +77,36 @@ class FreshSourceGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "crop hash mismatch"):
                 origin_candidate_worker._validate_fresh_source_gate(
                     "fig3", candidate, candidate_path, crop
+                )
+
+    def test_fresh_policy_rejects_any_reuse_lineage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            crop, manifest, payload = self._write_bundle(root)
+            payload["parent_source_bundle_manifest_sha256"] = "c" * 64
+            manifest.write_text(json.dumps(payload), encoding="utf-8")
+            candidate_path = root / "fig3.json"
+            candidate = {
+                "figure": "fig3",
+                "source_crop": crop.name,
+                "source_data_manifest": manifest.name,
+                "source_data_policy": "fresh_extract",
+                "fresh_source_required": True,
+            }
+            candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "reuse lineage"):
+                origin_candidate_worker._validate_fresh_source_gate(
+                    "fig3", candidate, candidate_path, crop
+                )
+            with self.assertRaisesRegex(RuntimeError, "reuse lineage"):
+                load_fresh_figure_data(
+                    {
+                        "_runtime_source_crop": str(crop),
+                        "_runtime_data_manifest": str(manifest),
+                        "_runtime_source_data_policy": "fresh_extract",
+                    },
+                    "fig3",
                 )
 
     def test_worker_accepts_quality_validated_reuse_with_matching_hashes(self) -> None:
@@ -238,6 +269,38 @@ class FreshSourceGateTests(unittest.TestCase):
         self.assertNotIn("from builders.aa2195.fig3_data", text)
         self.assertNotIn("from builders.aa2195.fig14_builder", text)
         self.assertIn("fresh_pdf_vector_path_centerline_digitization", text)
+
+    def test_fig3_vector_centerline_uses_dense_origin_ready_sampling(self) -> None:
+        items = [
+            ("l", fitz.Point(float(index), 9.0 - 0.5 * index), fitz.Point(float(index + 1), 8.5 - 0.5 * index))
+            for index in range(10)
+        ]
+        drawing = {"items": items, "rect": fitz.Rect(0.0, 3.5, 10.0, 9.0)}
+
+        result = extract_aa2195_fresh_source_bundle._drawing_group_centerline(
+            [drawing],
+            (0.0, 0.0, 10.0, 10.0),
+            ymax=100.0,
+        )
+
+        self.assertEqual(181, extract_aa2195_fresh_source_bundle.FIG3_POINTS_PER_CURVE)
+        self.assertEqual(181, len(result["x"]))
+        self.assertEqual(181, len(result["y"]))
+        self.assertEqual(0.0, result["x"][0])
+        self.assertEqual(0.9, result["x"][-1])
+        self.assertTrue(all(left < right for left, right in zip(result["x"], result["x"][1:])))
+
+    def test_candidate_configs_declare_fresh_dense_and_bounded_routes(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        fig3 = json.loads((root / "examples" / "candidates" / "fig3.json").read_text(encoding="utf-8"))
+        fig15 = json.loads((root / "examples" / "candidates" / "fig15.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(181, fig3["curve_sampling_points"])
+        self.assertEqual("fresh_pdf_vector_path_centerline", fig3["source_strategy"])
+        self.assertEqual(5, fig15["fig15_curve_smoothing_window"])
+        self.assertEqual(0.006, fig15["fig15_curve_smoothing_max_delta"])
+        self.assertEqual("Times New Roman", fig15["font_family"])
+        self.assertTrue(fig15["caption_text"].startswith(r"\b(Fig. 15.)"))
 
     def test_fig14_error_extent_does_not_merge_series_at_same_x(self) -> None:
         rgb = np.full((150, 80, 3), 255, dtype=np.uint8)

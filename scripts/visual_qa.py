@@ -63,10 +63,14 @@ def _translate_white(array: np.ndarray, dx: int, dy: int) -> np.ndarray:
     return result
 
 
+def _mask_image(mask: np.ndarray) -> Image.Image:
+    return Image.fromarray(mask.astype(np.uint8) * 255)
+
+
 def _dilate(mask: np.ndarray, tolerance_px: int) -> np.ndarray:
     if tolerance_px <= 0:
         return mask
-    image = Image.fromarray(mask.astype(np.uint8) * 255, mode="L")
+    image = _mask_image(mask)
     return np.asarray(image.filter(ImageFilter.MaxFilter(tolerance_px * 2 + 1))) > 0
 
 
