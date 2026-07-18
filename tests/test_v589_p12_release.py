@@ -125,7 +125,7 @@ class ReleaseValidatorContractTests(unittest.TestCase):
         self.assertEqual({"returncode": 0}, result)
 
     def test_windows_absolute_path_detection_requires_separator_after_colon(self) -> None:
-        self.assertTrue(self.evidence.is_absolute_path_text(r"C:\Users\admin\file.json"))
+        self.assertTrue(self.evidence.is_absolute_path_text(r"C:\Users\example\file.json"))
         self.assertTrue(self.evidence.is_absolute_path_text("D:/portable/file.json"))
         self.assertFalse(self.evidence.is_absolute_path_text("H: Hardening level"))
         self.assertFalse(self.evidence.is_absolute_path_text("S: Softening level"))
