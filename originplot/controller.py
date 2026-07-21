@@ -268,7 +268,11 @@ def execute(
     result_path = output_dir / "candidate_summary.json"
     if result_path.is_file():
         result_path.unlink()
-    completed = _run_profile_worker(worker, task_path)
+    try:
+        completed = _run_profile_worker(worker, task_path)
+    finally:
+        # The task contains machine-local template paths needed only by the worker.
+        task_path.unlink(missing_ok=True)
     result = _read_object(result_path) if result_path.is_file() else None
     if result is None:
         result = {

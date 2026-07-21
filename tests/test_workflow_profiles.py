@@ -188,7 +188,9 @@ class ControllerTests(unittest.TestCase):
                 "structure_pass": True, "visual_pass": False, "gate_results": HARD_GATE_RESULTS,
             }
             completed = Mock(returncode=0, stdout="", stderr="")
+            captured_task = {}
             def complete_worker(*_args, **_kwargs):
+                captured_task.update(json.loads((output / "origin_worker_task.json").read_text(encoding="utf-8")))
                 (output / "candidate_summary.json").write_text(json.dumps(summary), encoding="utf-8")
                 return completed
             with patch("originplot.controller.is_administrator", return_value=False), patch(
@@ -206,8 +208,8 @@ class ControllerTests(unittest.TestCase):
             command = runner.call_args.args[0]
             self.assertIn("-File", command)
             self.assertTrue(any("run_origin_profile_worker_elevated.ps1" in str(item) for item in command))
-            task = json.loads((output / "origin_worker_task.json").read_text(encoding="utf-8"))
-            self.assertIsNone(task["candidate"])
+            self.assertIsNone(captured_task["candidate"])
+            self.assertFalse((output / "origin_worker_task.json").exists())
 
     def test_failed_live_worker_does_not_reuse_stale_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

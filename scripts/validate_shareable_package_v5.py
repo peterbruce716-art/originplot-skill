@@ -48,6 +48,7 @@ REQUIRED |= {
     "originplot-skill/scripts/package_policy.py",
     "originplot-skill/tests/test_publication_contract.py",
 }
+REQUIRED.add("originplot-skill/scripts/run_origin_profile_worker_elevated.ps1")
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
     "https://docs.originlab.com/zh/",
