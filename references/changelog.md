@@ -1,5 +1,10 @@
 # Changelog
 
+## v5.9.0
+
+- Promoted the shareable package and installed skill label to 5.9.0.
+- Retained the p18 functional contract and AA2195 evidence identity; no new live-Origin evidence is claimed by this version-label update.
+
 ## v5.8.9-p18.2
 
 - Enforced explicit "reproduce again / do not use old data" requests as `fresh_extract` runs from the original PDF in a new output root; fresh manifests now reject any parent, reuse, or validated-source lineage before Origin attach.

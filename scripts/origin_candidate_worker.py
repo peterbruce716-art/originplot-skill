@@ -19,6 +19,7 @@ if str(_IMPORT_ROOT) not in sys.path:
 
 from builders.registry import UnknownBuilderError, resolve_builder
 from builders.aa2195.fresh_source_data import fresh_lineage_fields
+from originplot.benchmarks.aa2195.config import load_config as load_aa2195_config
 
 AUTHORIZED_SOURCE_PLACEHOLDER = "AUTHORIZED_LOCAL_SOURCE_REQUIRED"
 
@@ -57,63 +58,32 @@ VERSIONS = load_versions(SKILL_ROOT)
 SKILL_VERSION = VERSIONS.contract_version
 RELEASE_VERSION = VERSIONS.release_version
 
+AA2195_CONFIG = load_aa2195_config()
 VISUAL_THRESHOLDS = {
-    "fig3": {"mae_max": 0.12, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
-    "fig12": {"mae_max": 0.15, "layout_min": 0.60, "demo_cyan_ratio_max": 0.0005},
-    "fig14": {"mae_max": 0.10, "layout_min": 0.90, "demo_cyan_ratio_max": 0.0005},
-    "fig15": {"mae_max": 0.08, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
-    "fig16": {"mae_max": 0.15, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
+    figure: dict(AA2195_CONFIG["thresholds"][figure])
+    for figure in ("fig3", "fig12", "fig14", "fig15", "fig16")
 }
-
-FIG15_FROZEN_BASELINE_THRESHOLDS = {
-    "mae_0_1_max": 0.040,
-    "ssim_score_min": 0.810,
-    "layout_score_min": 0.985,
-    "color_score_min": 0.925,
-    "registration_abs_dx_px_max": 4.0,
-    "registration_abs_dy_px_max": 2.0,
-    "demo_cyan_ratio_max": 0.0005,
-}
-GEOMETRY_TABLE_VERSIONS = {"fig3": "aa2195_fig3_continuous_native_line_styles_v2", "fig12": "aa2195_fig12_loggrid_threshold_centered_v22", "fig14": "aa2195_fig14_component_errorbars_native_scatter_dash_v4", "fig15": "aa2195_fig15_run047_v1", "fig16": "aa2195_fig16_segment_boundary_calibrated_v7"}
-TEMPLATE_IDS = {"fig3": ["GID27"], "fig12": ["GID499", "GID459", "GID27"], "fig14": ["GID1609", "GID27"], "fig15": ["GID1609", "GID27"], "fig16": ["GID399", "GID1652"]}
+FIG15_FROZEN_BASELINE_THRESHOLDS = dict(
+    AA2195_CONFIG["thresholds"]["fig15_frozen_baseline"]
+)
+GEOMETRY_TABLE_VERSIONS = dict(
+    AA2195_CONFIG["routes"]["geometry_table_versions"]
+)
+TEMPLATE_IDS = dict(AA2195_CONFIG["templates"])
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
     "https://docs.originlab.com/zh/",
     "https://www.originlab.com/videos/index.aspx?CID=11",
     "https://docs.originlab.com/quick-help/graphing/zh/",
 }
-FIG15_FROZEN_EFFECTIVE_ROUTE = {
-    "route": "worksheet_backed_source_calibrated_two_layer",
-    "reproduction_mode": "reconstructed_approximate",
-    "canvas_size": [850, 335],
-    "page_size_inches": [8.5, 3.35],
-    "expected_plot_count": 10,
-    "expected_plot_count_by_layer": {"0": 5, "1": 5},
-    "expected_graphobject_count": 29,
-}
-FIG15_SOURCE_CROP_SHA256 = "a0d3c0f0e106af6353579fa176524cb552ec22deb5107c33383cbf4aea9e63a0"
-FIG16_FROZEN_EFFECTIVE_ROUTE = {
-    "route": "gid399_stackcolumn_213_with_plot_derived_legend",
-    "reproduction_mode": "reconstructed_approximate",
-    "canvas_size": [720, 375],
-    "page_size_inches": [7.2, 3.75],
-    "expected_plot_count": 5,
-    "expected_plot_count_by_layer": {"0": 3, "1": 2},
-    "expected_graphobject_count": 22,
-    "fig16_tuning": {
-        "legend_dx": 0.0, "legend_dy": 6.0, "stage_text_dx": 0.0, "stage_text_dy": 0.0,
-        "stage_circle_dx": 0.0, "stage_circle_dy": 0.0, "bar_top_dy": -1.0,
-        "bar_bottom_dy": 1.0, "header_dx": 0.0, "header_dy": 0.0,
-        "relation_text_dx": 0.0, "relation_text_dy": 0.0,
-        "group_label_dx": 0.0, "group_label_dy": 0.0,
-    },
-    "fig16_colors": {"WH": "#ff9830", "DRV": "#00ff98", "DRX": "#d098ff"},
-    "fig16_text_sizes": {"header": 10.0, "legend": 9.5, "group_label": 12.0, "stage": 9.0, "relation": 10.0},
-    "fig16_column_gap_percent": 15.0,
-    "fig16_group_frame_width": 0.5,
-    "fig16_background_color": "#fefefe",
-}
-FIG16_SOURCE_CROP_SHA256 = "e2f127bf873aea613a73e878fa5ace6f458840ed64d4b5931cfb1f177dab6ede"
+FIG15_FROZEN_EFFECTIVE_ROUTE = dict(
+    AA2195_CONFIG["routes"]["fig15_frozen_effective_route"]
+)
+FIG15_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"]["fig15_source_crop_sha256"]
+FIG16_FROZEN_EFFECTIVE_ROUTE = dict(
+    AA2195_CONFIG["routes"]["fig16_frozen_effective_route"]
+)
+FIG16_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"]["fig16_source_crop_sha256"]
 
 
 class TemplateSearchError(ValueError):
@@ -567,6 +537,8 @@ def _effective_builder_route(fig_result: dict[str, Any]) -> dict[str, Any]:
         "fig12_matrix_contrasts",
         "fig12_matrix_region_values",
         "fig12_path_overlays",
+        "fig12_path_overlay_stroke_width",
+        "fig12_path_overlay_color",
         "fig12_axis_title_overlays",
         "path_overlay_inventory",
         "fig12_matrix_resolution_scale",
@@ -615,6 +587,8 @@ def _prepare_candidate_for_build(figure: str, candidate: dict[str, Any]) -> dict
         "fig12_y_minor_ticks", "fig12_panel_layout_offsets", "fig12_matrix_biases",
         "fig12_matrix_contrasts", "fig12_matrix_region_values",
         "fig12_path_overlays",
+        "fig12_path_overlay_stroke_width",
+        "fig12_path_overlay_color",
         "fig12_axis_title_overlays",
         "fig12_label_sizes",
     ):

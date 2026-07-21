@@ -84,6 +84,12 @@ Official entrances:
 - Keep the 15% native column gap. Use the explicit Origin layer background `#fefefe` to match the current PDF raster's near-white antialiased mean without changing WH/DRV/DRX scientific colors or post-processing the PNG.
 - Promotion requires all live visual gates plus a passing `source_data_gate`, source crop/data hashes, effective builder route, geometry version, Origin version, and export profile. A reused data bundle additionally requires a passing `originplot.aa2195_validated_data_reuse.v1` record. Metrics without that identity remain non-promoted.
 
+## Fresh-extract release execution
+
+When the source PDF is supplied and old data is disallowed, the accepted AA2195 route is a same-run `fresh_extract` batch. Use a new or empty output root, resolve Python 3.10 with `scripts/resolve_python310.ps1`, run `scripts/assert_admin_preflight.py` elevated, and attach to exactly one visible administrator Origin 2022 process. The batch must create a new `source_bundle/source_bundle.json`, materialize per-figure candidates from that same manifest, run Fig3/Fig12/Fig14/Fig15/Fig16 live workers, and finish with `live_validation_status.json` plus `five_figure_batch_audit.json`.
+
+A successful rerun must report `same_run_fresh_source_verified=true`, `source_data_policy=fresh_extract`, stable visible Origin PID across all five figures, and `overall_release_pass=true` for each figure. Keep dry-run outputs separate from live outputs; dry-runs can validate candidate shape, template records, and source references, but cannot satisfy save/reopen/readback/export or visual release gates.
+
 ## Official-template evidence
 
 Record candidate project/template hashes, reopen results, Worksheet rows, plot types, direct bindings, and selection reason. Official assets are not bundled and remain subject to OriginLab terms.

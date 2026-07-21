@@ -27,6 +27,8 @@
     ]
   },
   "fig12_path_overlays": true,
+  "fig12_path_overlay_stroke_width": 0.55,
+  "fig12_path_overlay_color": "#7C9A63",
   "fig12_axis_title_overlays": true,
   "fig12_label_sizes": {
     "panel": 11.0,

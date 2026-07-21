@@ -28,7 +28,7 @@ class ReleaseVersionModelTests(unittest.TestCase):
         self.assertTrue(path.is_file(), "version.json must be the canonical version source")
         self.assertEqual(
             {
-                "release_version": "5.8.9-p18.2",
+                "release_version": "5.9.0",
                 "contract_version": "5.8.9-p18",
                 "evidence_version": "5.8.9-p18",
             },
@@ -40,7 +40,7 @@ class ReleaseVersionModelTests(unittest.TestCase):
         self.assertTrue(path.is_file(), "scripts/versioning.py must load version.json")
         versioning = load_module("originplot_versioning_test", path)
         versions = versioning.load_versions(ROOT)
-        self.assertEqual("5.8.9-p18.2", versions.release_version)
+        self.assertEqual("5.9.0", versions.release_version)
         self.assertEqual("5.8.9-p18", versions.contract_version)
         self.assertEqual("5.8.9-p18", versions.evidence_version)
 
@@ -59,7 +59,7 @@ class ReleaseVersionModelTests(unittest.TestCase):
 
     def test_offline_ci_uses_release_version_in_package_name(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "offline-ci.yml").read_text(encoding="utf-8")
-        self.assertIn("originplot-skill-v5.8.9-p18.2.zip", workflow)
+        self.assertIn("originplot-skill-v5.9.0.zip", workflow)
         self.assertNotIn("originplot-skill-v5.8.9-p14.zip", workflow)
 
     def test_shareable_package_contains_version_source_and_reports_release(self) -> None:
@@ -72,18 +72,18 @@ class ReleaseVersionModelTests(unittest.TestCase):
             result = builder.build_zip(ROOT, archive_path)
             with zipfile.ZipFile(archive_path) as archive:
                 packaged = json.loads(archive.read("originplot-skill/version.json"))
-        self.assertEqual("5.8.9-p18.2", result["release_version"])
+        self.assertEqual("5.9.0", result["release_version"])
         self.assertEqual("5.8.9-p18", result["contract_version"])
         self.assertEqual("5.8.9-p18", result["evidence_version"])
-        self.assertEqual("5.8.9-p18.2", packaged["release_version"])
+        self.assertEqual("5.9.0", packaged["release_version"])
 
     def test_public_evidence_keeps_original_contract_version(self) -> None:
         evidence = json.loads(
             (ROOT / "references" / "aa2195-release-evidence.json").read_text(encoding="utf-8")
         )
-        self.assertEqual("5.8.9-p18.2", evidence["release_version"])
+        self.assertEqual("5.9.0", evidence["release_version"])
         self.assertEqual("5.8.9-p18", evidence["skill_version"])
-        self.assertNotEqual("5.8.9-p18.2", evidence["skill_version"])
+        self.assertNotEqual("5.9.0", evidence["skill_version"])
         self.assertEqual("fresh_extract", evidence["batch"]["source_data_policy"])
         self.assertTrue(evidence["batch"]["same_run_fresh_source_verified"])
         self.assertEqual("batch_started", evidence["batch"]["origin_launch_mode"])

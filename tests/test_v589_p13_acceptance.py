@@ -168,6 +168,40 @@ class ParameterNormalizationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "fig12_path_overlays must be boolean"):
             self.acceptance.normalize_fig12_parameters({"fig12_path_overlays": "true"}, strict=True)
 
+    def test_path_overlay_stroke_width_is_bounded_and_recorded(self) -> None:
+        result = self.acceptance.normalize_fig12_parameters(
+            {"fig12_path_overlay_stroke_width": 0.55}, strict=True
+        )
+        self.assertEqual(
+            0.55,
+            result["effective_parameters"]["fig12_path_overlay_stroke_width"],
+        )
+        self.assertEqual(
+            [0.25, 1.0],
+            result["parameter_normalization"]["fig12_path_overlay_stroke_width"]["allowed_range"],
+        )
+        with self.assertRaisesRegex(ValueError, "fig12_path_overlay_stroke_width"):
+            self.acceptance.normalize_fig12_parameters(
+                {"fig12_path_overlay_stroke_width": 1.01}, strict=True
+            )
+
+    def test_path_overlay_color_is_normalized_and_recorded(self) -> None:
+        result = self.acceptance.normalize_fig12_parameters(
+            {"fig12_path_overlay_color": "#7C9A63"}, strict=True
+        )
+        self.assertEqual(
+            "#7C9A63",
+            result["effective_parameters"]["fig12_path_overlay_color"],
+        )
+        self.assertEqual(
+            "valid_hex_color",
+            result["parameter_normalization"]["fig12_path_overlay_color"]["reason"],
+        )
+        with self.assertRaisesRegex(ValueError, "fig12_path_overlay_color"):
+            self.acceptance.normalize_fig12_parameters(
+                {"fig12_path_overlay_color": "green"}, strict=True
+            )
+
 
 class TargetVisualGateTests(unittest.TestCase):
     @classmethod

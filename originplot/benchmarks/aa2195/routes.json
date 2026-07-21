@@ -1,0 +1,50 @@
+{
+  "geometry_table_versions": {
+    "fig3": "aa2195_fig3_continuous_native_line_styles_v2",
+    "fig12": "aa2195_fig12_loggrid_threshold_centered_v22",
+    "fig14": "aa2195_fig14_component_errorbars_native_scatter_dash_v4",
+    "fig15": "aa2195_fig15_run047_v1",
+    "fig16": "aa2195_fig16_segment_boundary_calibrated_v7"
+  },
+  "fig15_frozen_effective_route": {
+    "route": "worksheet_backed_source_calibrated_two_layer",
+    "reproduction_mode": "reconstructed_approximate",
+    "canvas_size": [850, 335],
+    "page_size_inches": [8.5, 3.35],
+    "expected_plot_count": 10,
+    "expected_plot_count_by_layer": {"0": 5, "1": 5},
+    "expected_graphobject_count": 29
+  },
+  "fig16_frozen_effective_route": {
+    "route": "gid399_stackcolumn_213_with_plot_derived_legend",
+    "reproduction_mode": "reconstructed_approximate",
+    "canvas_size": [720, 375],
+    "page_size_inches": [7.2, 3.75],
+    "expected_plot_count": 5,
+    "expected_plot_count_by_layer": {"0": 3, "1": 2},
+    "expected_graphobject_count": 22,
+    "fig16_tuning": {
+      "legend_dx": 0.0,
+      "legend_dy": 6.0,
+      "stage_text_dx": 0.0,
+      "stage_text_dy": 0.0,
+      "stage_circle_dx": 0.0,
+      "stage_circle_dy": 0.0,
+      "bar_top_dy": -1.0,
+      "bar_bottom_dy": 1.0,
+      "header_dx": 0.0,
+      "header_dy": 0.0,
+      "relation_text_dx": 0.0,
+      "relation_text_dy": 0.0,
+      "group_label_dx": 0.0,
+      "group_label_dy": 0.0
+    },
+    "fig16_colors": {"WH": "#ff9830", "DRV": "#00ff98", "DRX": "#d098ff"},
+    "fig16_text_sizes": {"header": 10.0, "legend": 9.5, "group_label": 12.0, "stage": 9.0, "relation": 10.0},
+    "fig16_column_gap_percent": 15.0,
+    "fig16_group_frame_width": 0.5,
+    "fig16_background_color": "#fefefe"
+  },
+  "fig14_marker_shapes": [1, 2, 3],
+  "fig16_segment_count": 21
+}

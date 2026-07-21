@@ -12,9 +12,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 if (-not $SkillRoot) { $SkillRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath) }
-if (-not $PythonExe) {
-    $PythonExe = (& py -3.10 -c "import sys; print(sys.executable)").Trim()
-}
+$OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
+$pythonResolver = Join-Path $SkillRoot "scripts\resolve_python310.ps1"
+$PythonExe = (& $pythonResolver -PythonExe $PythonExe).Trim()
 if (-not $PythonExe -or -not (Test-Path -LiteralPath $PythonExe -PathType Leaf)) {
     throw "E120_ENVIRONMENT_MISMATCH: Python 3.10 executable was not found."
 }
@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0 -or -not $pythonVersion.StartsWith("3.10.")) {
     throw "E120_ENVIRONMENT_MISMATCH: five-figure live batch requires Python 3.10."
 }
 $figures = @("fig3", "fig12", "fig14", "fig15", "fig16")
-$worker = Join-Path $SkillRoot "scripts\origin_candidate_worker.py"
+$worker = Join-Path $SkillRoot "scripts\originplot.py"
 $audit = Join-Path $SkillRoot "scripts\audit_five_figure_batch.py"
 $preflight = Join-Path $SkillRoot "scripts\assert_admin_preflight.py"
 $extractor = Join-Path $SkillRoot "scripts\extract_aa2195_fresh_source_bundle.py"
@@ -169,7 +169,7 @@ foreach ($figure in $figures) {
     $stderr = Join-Path $OutputRoot "$figure.stderr.txt"
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
     $process = Start-Process -FilePath $PythonExe `
-        -ArgumentList @($worker, "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live") `
+        -ArgumentList @($worker, "--profile", "release", "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live") `
         -WorkingDirectory $SkillRoot `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr `

@@ -1,6 +1,6 @@
 # Current Contract
 
-This is the active OriginPlot v5.8.9-p18 contract, distributed by release v5.8.9-p18.2. The release revision does not alter the p18 live-evidence identity. Read `release_version`, `contract_version`, and `evidence_version` from `version.json`; older protocol files are inputs only where a current script or schema explicitly consumes them.
+This is the active OriginPlot v5.8.9-p18 contract, distributed by release v5.9.0. The release revision does not alter the p18 live-evidence identity. Read `release_version`, `contract_version`, and `evidence_version` from `version.json`; older protocol files are inputs only where a current script or schema explicitly consumes them.
 
 ## Result semantics
 

@@ -2495,7 +2495,7 @@ class VersionContractTests(unittest.TestCase):
         skill = (root / "SKILL.md").read_text(encoding="utf-8-sig")
         runtime = (root / "references" / "origin-runtime.md").read_text(encoding="utf-8-sig")
 
-        self.assertIn("OriginPlot Skill v5.8.9-p18", skill)
+        self.assertIn("OriginPlot Skill v5.9.0", skill)
         self.assertIn("administrator privilege for the entire live lifecycle", skill)
         self.assertIn("E121_ATTACH_POLICY_VIOLATION", skill)
         self.assertIn("op.detach()", skill)
@@ -2550,7 +2550,7 @@ class VersionContractTests(unittest.TestCase):
         versions = json.loads((root / "version.json").read_text(encoding="utf-8-sig"))
         self.assertIn("load_versions", runner)
         self.assertIn("VERSIONS.contract_version", runner)
-        self.assertEqual("5.8.9-p18.2", versions["release_version"])
+        self.assertEqual("5.9.0", versions["release_version"])
         self.assertEqual("5.8.9-p18", versions["contract_version"])
         self.assertEqual("5.8.9-p18", versions["evidence_version"])
 

@@ -1,0 +1,16 @@
+{
+  "fig3": {"mae_max": 0.12, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
+  "fig12": {"mae_max": 0.15, "layout_min": 0.60, "demo_cyan_ratio_max": 0.0005},
+  "fig14": {"mae_max": 0.10, "layout_min": 0.90, "demo_cyan_ratio_max": 0.0005},
+  "fig15": {"mae_max": 0.08, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
+  "fig16": {"mae_max": 0.15, "layout_min": 0.85, "demo_cyan_ratio_max": 0.0005},
+  "fig15_frozen_baseline": {
+    "mae_0_1_max": 0.040,
+    "ssim_score_min": 0.810,
+    "layout_score_min": 0.985,
+    "color_score_min": 0.925,
+    "registration_abs_dx_px_max": 4.0,
+    "registration_abs_dy_px_max": 2.0,
+    "demo_cyan_ratio_max": 0.0005
+  }
+}

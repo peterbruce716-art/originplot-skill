@@ -53,8 +53,10 @@ FIG12_Y_AXIS_TITLE_FSIZE = 23.0
 FIG12_AXIS_FONT = "Times New Roman"
 FIG12_CONTOUR_LINE_COLOR = (86, 107, 68)
 FIG12_CONTOUR_LINE_WIDTH = 0.05
-FIG12_PATH_OVERLAY_COLOR = "#708e57"
+FIG12_DEFAULT_PATH_OVERLAY_COLOR = "#708e57"
+FIG12_PATH_OVERLAY_COLOR = FIG12_DEFAULT_PATH_OVERLAY_COLOR
 FIG12_PATH_OVERLAY_TYPE = 34
+FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH = 0.5
 
 
 def _page_y(source_y: float) -> float:
@@ -174,6 +176,34 @@ def _fig12_path_overlays_enabled(candidate_params: dict[str, Any]) -> bool:
     return bool(value) if isinstance(value, bool) else False
 
 
+def _fig12_path_overlay_stroke_width(candidate_params: dict[str, Any]) -> float:
+    value = (
+        candidate_params.get("fig12_path_overlay_stroke_width")
+        if isinstance(candidate_params, dict)
+        else None
+    )
+    try:
+        width = FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH if value is None else float(value)
+    except (TypeError, ValueError):
+        width = FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH
+    return max(0.25, min(1.0, width))
+
+
+def _fig12_path_overlay_color(candidate_params: dict[str, Any]) -> str:
+    value = (
+        candidate_params.get("fig12_path_overlay_color")
+        if isinstance(candidate_params, dict)
+        else None
+    )
+    if isinstance(value, str) and len(value) == 7 and value.startswith("#"):
+        try:
+            int(value[1:], 16)
+        except ValueError:
+            return FIG12_DEFAULT_PATH_OVERLAY_COLOR
+        return "#" + value[1:].upper()
+    return FIG12_DEFAULT_PATH_OVERLAY_COLOR
+
+
 def _fig12_axis_title_overlays_enabled(candidate_params: dict[str, Any]) -> bool:
     value = candidate_params.get("fig12_axis_title_overlays") if isinstance(candidate_params, dict) else None
     return bool(value) if isinstance(value, bool) else False
@@ -222,6 +252,9 @@ def _fig12_boundary_svg(
     panel_name: str,
     source_crop: str | Path,
     output_path: Path,
+    *,
+    stroke_width: float = FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH,
+    stroke_color: str = FIG12_DEFAULT_PATH_OVERLAY_COLOR,
 ) -> tuple[int, int]:
     """Write source-palette class boundaries as an editable Origin SVG path."""
     import numpy as np
@@ -274,7 +307,7 @@ def _fig12_boundary_svg(
     output_path.write_text(
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{crop_width}" height="{crop_height}" viewBox="0 0 {crop_width} {crop_height}">'
         + "".join(fill_elements)
-        + f'<path d="{" ".join(paths)}" fill="none" stroke="{FIG12_PATH_OVERLAY_COLOR}" stroke-width="0.5"/>'
+        + f'<path d="{" ".join(paths)}" fill="none" stroke="{stroke_color}" stroke-width="{stroke_width:g}"/>'
         "</svg>",
         encoding="utf-8",
     )
@@ -286,6 +319,8 @@ def _add_fig12_path_overlay(
     panel: dict[str, Any],
     panel_index: int,
     source_crop: str | Path,
+    stroke_width: float,
+    stroke_color: str,
     expected_names: list[str],
     required_graphobject_contracts: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
@@ -294,7 +329,9 @@ def _add_fig12_path_overlay(
     name = f"fig12_boundary_{['a', 'b', 'c'][panel_index]}"
     with tempfile.TemporaryDirectory(prefix="originplot_fig12_") as temp_dir:
         svg_path = Path(temp_dir) / f"boundary_{panel_index}.svg"
-        contour_count, path_count = _fig12_boundary_svg(panel["name"], source_crop, svg_path)
+        contour_count, path_count = _fig12_boundary_svg(
+            panel["name"], source_crop, svg_path, stroke_width=stroke_width, stroke_color=stroke_color
+        )
         layer.lt_exec(f'draw -paths {name} "{svg_path.as_posix()}";')
         objects = [item for item in layer.obj.GraphObjects if str(item.GetName()).upper() == name.upper()]
         if not objects:
@@ -332,6 +369,8 @@ def _add_fig12_path_overlay(
         "object_type": FIG12_PATH_OVERLAY_TYPE,
         "contour_count": contour_count,
         "path_count": path_count,
+        "stroke_width": stroke_width,
+        "stroke_color": stroke_color,
         "page_bbox": [left, top, left + width, top + height],
         # The SVG is an intermediate import asset; keep the route portable.
         "svg_asset": "transient_unique_import.svg",
@@ -722,6 +761,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     matrix_contrasts = _fig12_matrix_contrasts(candidate_params)
     matrix_region_values = _fig12_matrix_region_values(candidate_params)
     path_overlays_enabled = _fig12_path_overlays_enabled(candidate_params)
+    path_overlay_stroke_width = _fig12_path_overlay_stroke_width(candidate_params)
+    path_overlay_color = _fig12_path_overlay_color(candidate_params)
     axis_title_overlays_enabled = _fig12_axis_title_overlays_enabled(candidate_params)
     panel_layout_offsets = _fig12_panel_layout_offsets(candidate_params)
     canvas_size = (805, 590)
@@ -931,6 +972,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
                     panel,
                     index,
                     matrix_source_crop,
+                    path_overlay_stroke_width,
+                    path_overlay_color,
                     expected_names_by_layer[3],
                     required_graphobject_contracts,
                 )
@@ -1119,6 +1162,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fig12_matrix_contrasts": matrix_contrasts,
         "fig12_matrix_region_values": matrix_region_values,
         "fig12_path_overlays": path_overlays_enabled,
+        "fig12_path_overlay_stroke_width": path_overlay_stroke_width,
+        "fig12_path_overlay_color": path_overlay_color,
         "path_overlay_inventory": path_overlay_inventory,
         "fig12_matrix_mode": matrix_mode,
         "fig12_matrix_resolution_scale": matrix_resolution_scale,

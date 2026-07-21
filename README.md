@@ -1,10 +1,30 @@
-# OriginPlot Skill v5.8.9-p18.2
+# OriginPlot Skill v5.9.0
+
+## Profile-aware workflow
+
+New commands use three profiles. `standard` is the default; `quick` reduces routine overhead; `release` preserves the retained p18 strict validation path.
+
+```powershell
+# Routine editable plot
+python scripts/originplot.py --figure-spec figure_spec.json --builder generic_line `
+  --profile quick --source-policy supplied --live --output-dir outputs\quick
+
+# SCI reconstruction (default profile)
+python scripts/originplot.py --figure-spec figure_spec.json --builder generic_line `
+  --profile standard --source-policy supplied --live --output-dir outputs\standard
+
+# Strict benchmark or release validation
+python scripts/originplot.py --figure fig15 --candidate candidate.json `
+  --profile release --live --require-live-success --output-dir outputs\release
+```
+
+The controller handles profile resolution, bounded template policy, task JSON, status, and reporting without administrator rights in Quick/Standard. The Origin worker owns attach, native construction, save, detach, reopen, binding readback, and Origin export. See [workflow migration](references/workflow-migration.md) and [the implementation report](references/implementation-report.md).
 
 OriginPlot is a verification framework for editable Origin/OriginPro projects. It includes AA2195-specific builders for Fig3, Fig12, Fig14, Fig15, and Fig16. It is not a universal system that converts any input image into a high-fidelity OPJU automatically.
 
 The core acceptance loop is native editable construction, save, release, reopen, live readback, second Origin export, and evidence-gated visual comparison. A look-alike raster alone is never sufficient.
 
-`5.8.9-p18.2` is the downloadable release revision. The active functional contract and AA2195 evidence identity are both `5.8.9-p18`; `version.json` is the machine-readable source for this distinction. The p18.2 package records a new same-run fresh-PDF administrator Origin 2022 batch without relabeling that p18 evidence as a new contract.
+`5.9.0` is the downloadable release revision. The active functional contract and AA2195 evidence identity remain `5.8.9-p18`; `version.json` is the machine-readable source for this distinction. The 5.9.0 package carries the retained same-run fresh-PDF administrator Origin 2022 evidence without relabeling that p18 evidence as a new contract.
 
 ## Capability boundary
 
@@ -21,7 +41,7 @@ Python/R/Matplotlib redraws are outside this repository. `scientific-figure-repr
 | Fig14 | One native layer with six direct Worksheet plots, line-symbol series, and editable error paths | Same-run Origin evidence passes structure and visual gates | Validated editable reconstruction route |
 | Fig15 | Specialized two-layer builder and frozen regression contract are retained | A known regression route exists; new runs still require same-run Origin evidence | Validated regression capability, not a universal reproduction claim |
 | Fig16 | Native GID399-style stacked-column structure and readback route exist | Frozen regression identity plus same-run visual gates | Validated regression capability, not a universal reproduction claim |
-| Any new figure | Registry and generic-line dry-run example only | Requires a new builder, data, gates, and live validation | No automatic fidelity guarantee |
+| Generic single-line figure | Native Worksheet-backed line builder with save/reopen/binding/export gates | Worker route has offline protocol tests; each delivery still requires a licensed live Origin run | Editable line capability, not an automatic fidelity guarantee |
 
 Details are in [the AA2195 benchmark contract](references/aa2195-benchmark.md).
 
@@ -40,7 +60,7 @@ Live Origin execution additionally requires:
 - Origin-provided `OriginExt` where the active adapter requires it;
 - an administrator-started visible Origin instance for the formal attach route.
 
-Every live phase remains elevated from preflight and template inspection through build, save, detach, reopen, readback, export, and cleanup. Offline tests and CI do not launch Origin and therefore do not require administrator privilege.
+Quick/Standard planning remains non-administrator; their dedicated Origin worker is elevated for attach, build, save, reopen, readback, and export. Release retains the continuous elevated envelope from preflight through evidence cleanup. Offline tests and CI do not launch Origin and therefore do not require administrator privilege.
 
 `OriginExt` is supplied by the Origin environment and is not represented as a normal cross-platform PyPI dependency.
 
@@ -189,8 +209,8 @@ python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
 python scripts/validate_public_evidence_index.py references/aa2195-release-evidence.json
-python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.8.9-p18.2.zip"
-python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.8.9-p18.2.zip"
+python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.9.0.zip"
+python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.9.0.zip"
 ```
 
 None of these offline commands proves live Origin E2E.

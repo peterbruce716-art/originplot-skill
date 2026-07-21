@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from typing import Any
 
 
@@ -17,6 +18,8 @@ FIG12_DEFAULTS = {
     "fig12_matrix_contrasts": {"0": 1.0, "1": 1.0, "2": 1.0},
     "fig12_matrix_region_values": {},
     "fig12_path_overlays": True,
+    "fig12_path_overlay_stroke_width": 0.5,
+    "fig12_path_overlay_color": "#7C9A63",
     "fig12_axis_title_overlays": True,
     "fig12_contour_label_size_offset": 0.0,
     "fig12_mechanism_label_size_offset": 0.0,
@@ -31,6 +34,7 @@ FIG12_NUMERIC_RANGES = {
     "fig12_y_minor_ticks": (0.0, 8.0),
     "fig12_contour_label_size_offset": (-6.0, 6.0),
     "fig12_mechanism_label_size_offset": (-6.0, 6.0),
+    "fig12_path_overlay_stroke_width": (0.25, 1.0),
 }
 TARGET_VISUAL_GATES = {
     "fig3": {
@@ -285,6 +289,33 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
         "clamped": path_overlays is not None and not isinstance(requested.get("fig12_path_overlays"), bool),
         "defaulted": path_overlays is None,
         "reason": "default_used" if path_overlays is None else "normalized",
+    }
+    raw_path_color = requested.get("fig12_path_overlay_color")
+    default_path_color = str(FIG12_DEFAULTS["fig12_path_overlay_color"])
+    color_pattern = re.compile(r"^#[0-9a-fA-F]{6}$")
+    if raw_path_color is None:
+        effective_path_color = default_path_color
+        color_reason = "default_used"
+        color_clamped = False
+    elif isinstance(raw_path_color, str) and color_pattern.fullmatch(raw_path_color):
+        effective_path_color = "#" + raw_path_color[1:].upper()
+        color_reason = "valid_hex_color"
+        color_clamped = False
+    else:
+        if strict:
+            raise ValueError("fig12_path_overlay_color must be a #RRGGBB hex color")
+        effective_path_color = default_path_color
+        color_reason = "invalid_hex_color_defaulted"
+        color_clamped = True
+        diagnostic = True
+    effective["fig12_path_overlay_color"] = effective_path_color
+    records["fig12_path_overlay_color"] = {
+        "requested": raw_path_color,
+        "effective": effective_path_color,
+        "clamped": color_clamped,
+        "defaulted": raw_path_color is None,
+        "allowed_pattern": "#RRGGBB",
+        "reason": color_reason,
     }
     axis_title_overlays = requested.get("fig12_axis_title_overlays")
     if axis_title_overlays is not None and not isinstance(axis_title_overlays, bool):
