@@ -217,7 +217,7 @@ None of these offline commands proves live Origin E2E.
 
 ## Add a builder
 
-Implement the interface in `builders/base.py`, register a unique ID through `builders/registry.py`, validate the FigureSpec/candidate relationship, and add behavior tests. Registry entries must not silently replace existing IDs. The generic-line builder is deliberately limited to offline planning until a live implementation and evidence contract are added.
+Implement the interface in `builders/base.py`, register a unique ID through `builders/registry.py`, validate the FigureSpec/candidate relationship, and add behavior tests. Registry entries must not silently replace existing IDs. The focused generic-line worker supports one Worksheet-backed line plot in Quick/Standard; it has offline protocol tests but no licensed-Origin E2E evidence and makes no release claim.
 
 The legacy `--figure fig12|fig15|fig16` options remain supported and resolve through the same registry.
 

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from originplot.benchmarks.aa2195.config import load_config
 from originplot.controller import execute
@@ -91,21 +91,31 @@ class TemplatePolicyTests(unittest.TestCase):
 
 
 class ControllerTests(unittest.TestCase):
-    def test_standard_dry_run_stays_non_live(self) -> None:
+    def test_standard_dry_run_rejects_generic_line_without_figure_spec(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            result = execute(
-                profile=resolve_profile(),
-                figure=None,
-                builder="generic_line",
-                figure_spec_path=None,
-                candidate_path=None,
-                output_dir=Path(tmp),
-                live=False,
-            )
-            self.assertEqual("standard", result["profile"])
-            self.assertEqual("planned_not_executed", result["overall_status"])
-            self.assertFalse(result["live_origin_verified"])
-            self.assertTrue((Path(tmp) / "candidate_summary.json").is_file())
+            with self.assertRaisesRegex(OriginPlotError, "generic_line requires --figure-spec"):
+                execute(
+                    profile=resolve_profile(),
+                    figure=None,
+                    builder="generic_line",
+                    figure_spec_path=None,
+                    candidate_path=None,
+                    output_dir=Path(tmp),
+                    live=False,
+                )
+
+    def test_quick_dry_run_rejects_empty_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(OriginPlotError, "supported builder"):
+                execute(
+                    profile=resolve_profile("quick"),
+                    figure=None,
+                    builder=None,
+                    figure_spec_path=None,
+                    candidate_path=None,
+                    output_dir=Path(tmp),
+                    live=False,
+                )
 
     def test_figurespec_loads_and_validates_csv_columns(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -113,16 +123,126 @@ class ControllerTests(unittest.TestCase):
             (root / "data.csv").write_text("time,value\n0,1\n1,2\n", encoding="utf-8")
             spec = {
                 "schema": "originplot.figurespec.v5",
-                "figure": {"id": "line"},
+                "figure": {"id": "line", "title": "Test line"},
                 "data": [{"id": "d", "source": "data.csv", "roles": {"x": "time", "y": "value"}}],
+                "page": {"size_mm": [120, 80]},
                 "layers": [{"x": {"label": "Time"}, "y": {"label": "Value"}}],
                 "plots": [{"data_ref": "d", "type": "line", "map": {"x": "time", "y": "value"}}],
+                "annotations": [],
             }
             spec_path = root / "figure_spec.json"
             spec_path.write_text(json.dumps(spec), encoding="utf-8")
             payload = load_figure_spec(spec_path)
             self.assertEqual([0.0, 1.0], payload["x"])
             self.assertEqual("value", payload["y_name"])
+            self.assertEqual("Test line", payload["title"])
+            self.assertEqual("Time", payload["x_label"])
+            self.assertEqual("Value", payload["y_label"])
+            self.assertEqual([120.0, 80.0], payload["page_size_mm"])
+
+    def test_standard_dry_run_redacts_local_template_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data.csv").write_text("time,value\n0,1\n1,2\n", encoding="utf-8")
+            spec_path = root / "figure_spec.json"
+            spec_path.write_text(json.dumps({
+                "schema": "originplot.figurespec.v5",
+                "figure": {"id": "line"},
+                "data": [{"id": "d", "source": "data.csv", "roles": {"x": "time", "y": "value"}}],
+                "layers": [{"x": {"label": "Time"}, "y": {"label": "Value"}}],
+                "plots": [{"data_ref": "d", "type": "line", "map": {"x": "time", "y": "value"}}],
+            }), encoding="utf-8")
+            local_path = str(Path.home() / "Documents" / "OriginLab" / "User Files" / "private-template.otpu")
+            with patch("originplot.controller._local_candidates", return_value=[{
+                "id": "private-template", "source": "local", "path": local_path, "reusable": True
+            }]):
+                result = execute(
+                    profile=resolve_profile("standard"),
+                    figure=None,
+                    builder="generic_line",
+                    figure_spec_path=spec_path,
+                    candidate_path=None,
+                    output_dir=root / "out",
+                    live=False,
+                )
+            serialized = json.dumps(result, ensure_ascii=False)
+            self.assertNotIn(local_path, serialized)
+            self.assertNotIn("path", result["template_decision"]["selected"])
+
+    def test_non_admin_live_controller_launches_elevated_worker(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data.csv").write_text("time,value\n0,1\n1,2\n", encoding="utf-8")
+            spec_path = root / "figure_spec.json"
+            spec_path.write_text(json.dumps({
+                "schema": "originplot.figurespec.v5",
+                "figure": {"id": "line"},
+                "data": [{"id": "d", "source": "data.csv", "roles": {"x": "time", "y": "value"}}],
+                "layers": [{"x": {"label": "Time"}, "y": {"label": "Value"}}],
+                "plots": [{"data_ref": "d", "type": "line", "map": {"x": "time", "y": "value"}}],
+            }), encoding="utf-8")
+            output = root / "out"
+            output.mkdir()
+            summary = {
+                "profile": "quick", "command_success": True, "live_origin_verified": True,
+                "structure_pass": True, "visual_pass": False, "gate_results": HARD_GATE_RESULTS,
+            }
+            completed = Mock(returncode=0, stdout="", stderr="")
+            def complete_worker(*_args, **_kwargs):
+                (output / "candidate_summary.json").write_text(json.dumps(summary), encoding="utf-8")
+                return completed
+            with patch("originplot.controller.is_administrator", return_value=False), patch(
+                "originplot.controller.subprocess.run", side_effect=complete_worker
+            ) as runner:
+                execute(
+                    profile=resolve_profile("quick"),
+                    figure=None,
+                    builder="generic_line",
+                    figure_spec_path=spec_path,
+                    candidate_path=None,
+                    output_dir=output,
+                    live=True,
+                )
+            command = runner.call_args.args[0]
+            self.assertIn("-File", command)
+            self.assertTrue(any("run_origin_profile_worker_elevated.ps1" in str(item) for item in command))
+            task = json.loads((output / "origin_worker_task.json").read_text(encoding="utf-8"))
+            self.assertIsNone(task["candidate"])
+
+    def test_failed_live_worker_does_not_reuse_stale_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "data.csv").write_text("time,value\n0,1\n1,2\n", encoding="utf-8")
+            spec_path = root / "figure_spec.json"
+            spec_path.write_text(json.dumps({
+                "schema": "originplot.figurespec.v5",
+                "figure": {"id": "line"},
+                "data": [{"id": "d", "source": "data.csv", "roles": {"x": "time", "y": "value"}}],
+                "layers": [{"x": {"label": "Time"}, "y": {"label": "Value"}}],
+                "plots": [{"data_ref": "d", "type": "line", "map": {"x": "time", "y": "value"}}],
+            }), encoding="utf-8")
+            output = root / "out"
+            output.mkdir()
+            stale = {
+                "profile": "quick", "command_success": True, "live_origin_verified": True,
+                "structure_pass": True, "visual_pass": False, "gate_results": HARD_GATE_RESULTS,
+            }
+            (output / "candidate_summary.json").write_text(json.dumps(stale), encoding="utf-8")
+            failed = Mock(returncode=1, stdout="", stderr="UAC elevation was cancelled")
+            with patch("originplot.controller.is_administrator", return_value=False), patch(
+                "originplot.controller.subprocess.run", return_value=failed
+            ):
+                result = execute(
+                    profile=resolve_profile("quick"),
+                    figure=None,
+                    builder="generic_line",
+                    figure_spec_path=spec_path,
+                    candidate_path=None,
+                    output_dir=output,
+                    live=True,
+                )
+            self.assertFalse(result.get("live_origin_verified", False))
+            self.assertEqual("E525_ORIGIN_WORKER_FAILED", result["error_code"])
 
     def test_generic_worker_save_reopen_binding_and_export(self) -> None:
         class FakePlot:
@@ -131,6 +251,7 @@ class ControllerTests(unittest.TestCase):
         class FakeLayer:
             def __init__(self) -> None:
                 self.plots = []
+                self.axes = {"x": Mock(title=""), "y": Mock(title="")}
 
             def add_plot(self, *_args, **_kwargs):
                 plot = FakePlot()
@@ -143,12 +264,16 @@ class ControllerTests(unittest.TestCase):
             def rescale(self):
                 return None
 
+            def axis(self, name):
+                return self.axes[name]
+
         class FakePage:
             def __init__(self, name: str) -> None:
                 self.lname = name
                 self.name = name
                 self.layer = FakeLayer()
                 self.show = False
+                self.commands = []
 
             def __getitem__(self, _index):
                 return self.layer
@@ -157,6 +282,12 @@ class ControllerTests(unittest.TestCase):
                 from PIL import Image
 
                 Image.new("RGB", (64, 64), "white").save(path)
+
+            def get_float(self, name):
+                return {"resx": 100.0, "resy": 100.0}[name]
+
+            def lt_exec(self, command):
+                self.commands.append(command)
 
         class FakeSheet:
             def from_list(self, *_args, **_kwargs):
@@ -169,6 +300,7 @@ class ControllerTests(unittest.TestCase):
         class FakeOrigin:
             def __init__(self) -> None:
                 self.graphs = []
+                self.session_events = None
 
             def new(self, **_kwargs):
                 return True
@@ -186,14 +318,23 @@ class ControllerTests(unittest.TestCase):
                 return True
 
             def open(self, *_args, **_kwargs):
+                if self.session_events != ["enter1", "exit1", "enter2"]:
+                    raise AssertionError("reopen must occur in a new attached session")
                 return True
 
             def pages(self, page_type=None):
                 return self.graphs if page_type == "g" else self.graphs
 
+        session_events = []
+
         @contextmanager
         def fake_session(_op):
-            yield {"origin_pid": 42}
+            phase = len([event for event in session_events if event.startswith("enter")]) + 1
+            session_events.append(f"enter{phase}")
+            try:
+                yield {"origin_pid": 42, "phase": phase}
+            finally:
+                session_events.append(f"exit{phase}")
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -202,11 +343,17 @@ class ControllerTests(unittest.TestCase):
                 "profile": resolve_profile("quick").to_dict(),
                 "builder": "generic_line",
                 "output_dir": str(root),
-                "data_payload": {"figure_id": "line", "x_name": "time", "y_name": "value", "x": [0.0, 1.0], "y": [1.0, 2.0]},
+                "data_payload": {
+                    "figure_id": "line", "title": "Test line", "x_label": "Time", "y_label": "Value",
+                    "page_size_mm": [120.0, 80.0], "x_name": "time", "y_name": "value",
+                    "x": [0.0, 1.0], "y": [1.0, 2.0],
+                },
             }
             task_path = root / "task.json"
             task_path.write_text(json.dumps(task), encoding="utf-8")
-            result = run_profile_worker(task_path, op_module=FakeOrigin(), session_factory=fake_session, admin_check=lambda: True)
+            fake_origin = FakeOrigin()
+            fake_origin.session_events = session_events
+            result = run_profile_worker(task_path, op_module=fake_origin, session_factory=fake_session, admin_check=lambda: True)
             self.assertTrue(result["command_success"])
             self.assertTrue(result["build_success"])
             self.assertTrue(result["reopen_success"])
@@ -215,6 +362,11 @@ class ControllerTests(unittest.TestCase):
             self.assertTrue(result["export_nonblank"])
             self.assertFalse(result["demo_watermark_detected"])
             self.assertEqual("pass", result["gate_results"]["worksheet_binding"])
+            self.assertEqual(["enter1", "exit1", "enter2", "exit2"], session_events)
+            self.assertEqual("Test line", fake_origin.graphs[0].lname)
+            self.assertEqual("Time", fake_origin.graphs[0].layer.axes["x"].title)
+            self.assertEqual("Value", fake_origin.graphs[0].layer.axes["y"].title)
+            self.assertTrue(any("page.width=" in command for command in fake_origin.graphs[0].commands))
             self.assertTrue((root / "candidate.opju").is_file())
             self.assertTrue((root / "candidate_export.png").is_file())
 

@@ -42,6 +42,16 @@ def _write(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _apply_page_size(page: Any, page_size_mm: Any) -> None:
+    if not isinstance(page_size_mm, list) or len(page_size_mm) != 2:
+        return
+    width_dots = round(float(page_size_mm[0]) / 25.4 * float(page.get_float("resx")))
+    height_dots = round(float(page_size_mm[1]) / 25.4 * float(page.get_float("resy")))
+    page.lt_exec(
+        f"page.width={width_dots}; page.height={height_dots}; page.emo=0; page.autoSize=2;"
+    )
+
+
 def _result(profile: dict[str, Any]) -> dict[str, Any]:
     visual_required = profile.get("visual_qa") != "off"
     return {
@@ -111,7 +121,7 @@ def run(
             book_name = f"{figure_id}_Data"
             opju = output_dir / "candidate.opju"
             export = output_dir / "candidate_export.png"
-            with session(op_module) as identity:
+            with session(op_module) as build_identity:
                 op_module.new(asksave=False)
                 book = op_module.new_book("w", lname=book_name)
                 sheet = book[0]
@@ -122,6 +132,10 @@ def run(
                 page = op_module.new_graph(lname=figure_id, template=template, hidden=True)
                 layer = page[0]
                 plot = layer.add_plot(sheet, colx=0, coly=1, type="line")
+                page.lname = str(data.get("title") or figure_id)
+                layer.axis("x").title = str(data.get("x_label") or data["x_name"])
+                layer.axis("y").title = str(data.get("y_label") or data["y_name"])
+                _apply_page_size(page, data.get("page_size_mm"))
                 style = data.get("style") or {}
                 if style.get("line_color"):
                     try:
@@ -153,12 +167,15 @@ def run(
                     page.save_fig(str(export), type="png", replace=True, width=1600)
                 except TypeError:
                     page.save_fig(str(export), type="png", replace=True)
+                result["origin_session_build"] = build_identity
+            with session(op_module) as reopen_identity:
                 if not op_module.open(str(opju), readonly=False, asksave=False):
                     raise RuntimeError("E502_OPJU_REOPEN_FAILED: Origin could not reopen the OPJU")
                 result["gate_results"]["opju_reopened"] = "pass"
                 result["reopen_success"] = True
                 pages = list(op_module.pages("g"))
-                reopened_page = next((item for item in pages if str(getattr(item, "lname", "")) == figure_id or str(getattr(item, "name", "")) == figure_id), None)
+                expected_names = {figure_id, str(data.get("title") or figure_id)}
+                reopened_page = next((item for item in pages if str(getattr(item, "lname", "")) in expected_names or str(getattr(item, "name", "")) in expected_names), None)
                 if reopened_page is None:
                     raise RuntimeError("E503_GRAPH_PAGE_MISSING: reopened graph page is absent")
                 result["gate_results"]["editable_plot_present"] = "pass"
@@ -184,7 +201,12 @@ def run(
                 result["export_nonblank"] = result["gate_results"]["origin_export_nonblank"] == "pass"
                 result["demo_watermark_detected"] = result["gate_results"]["demo_watermark_absent"] != "pass"
                 op_module.save(str(opju))
-                result["origin_session"] = identity
+                result["origin_session_reopen"] = reopen_identity
+                result["origin_session"] = {
+                    "mode": "administrator_attach_existing_authorized_two_phase",
+                    "build": build_identity,
+                    "reopen": reopen_identity,
+                }
                 result["readback"] = {"graph_pages": len(pages), "plot_count": len(plots), "binding": binding, "export": str(export)}
             result["live_origin_verified"] = True
             result["structure_pass"] = all(result["gate_results"].get(name) == "pass" for name in ("opju_saved", "opju_reopened", "editable_plot_present", "worksheet_binding"))

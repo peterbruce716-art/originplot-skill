@@ -80,6 +80,52 @@ def choose_templates(
     )
 
 
+def _public_template_decision(decision: TemplateDecision) -> dict[str, Any]:
+    payload = decision.to_dict()
+
+    def sanitize(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: sanitize(item) for key, item in value.items() if key != "path"}
+        if isinstance(value, list):
+            return [sanitize(item) for item in value]
+        return value
+
+    return sanitize(payload)
+
+
+def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedProcess[str]:
+    cwd = worker.parents[1]
+    if sys.platform != "win32" or is_administrator():
+        command = [sys.executable, str(worker), "--task", str(task_path)]
+    else:
+        launcher = worker.parent / "run_origin_profile_worker_elevated.ps1"
+        pwsh = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
+        command = [
+            str(pwsh),
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(launcher),
+            "-PythonExe",
+            sys.executable,
+            "-WorkerScript",
+            str(worker),
+            "-TaskPath",
+            str(task_path),
+            "-WorkingDirectory",
+            str(cwd),
+        ]
+    return subprocess.run(
+        command,
+        cwd=str(cwd),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+
 def _legacy_worker(
     *,
     profile: ProfileConfig,
@@ -173,16 +219,15 @@ def execute(
         )
         result["profile"] = "release"
         result["template_policy"] = "strict"
-        result["template_decision"] = templates.to_dict()
+        result["template_decision"] = _public_template_decision(templates)
         return result
 
     data_payload = None
-    if builder == "generic_line":
-        if figure_spec_path is None:
-            if live:
-                raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "generic_line requires --figure-spec for live execution")
-        else:
-            data_payload = load_figure_spec(figure_spec_path)
+    if builder != "generic_line":
+        raise OriginPlotError("E440_PLOT_FAMILY_NOT_IMPLEMENTED", "Quick/Standard require the supported builder generic_line")
+    if figure_spec_path is None:
+        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "generic_line requires --figure-spec")
+    data_payload = load_figure_spec(figure_spec_path)
     templates = choose_templates(profile, search_terms=figure or builder or "line", allow_network=live)
 
     if not live:
@@ -193,7 +238,7 @@ def execute(
                 "builder": builder,
                 "figure_spec": str(figure_spec_path) if figure_spec_path else None,
                 "candidate": str(candidate_path) if candidate_path else None,
-                "template_decision": templates.to_dict(),
+                "template_decision": _public_template_decision(templates),
                 "data_validation": {"status": "pass", "rows": len(data_payload["x"])} if data_payload else {"status": "not_requested"},
                 "source_policy": source_policy or "supplied",
                 "message": "Controller planning completed; no Origin process was started.",
@@ -209,7 +254,7 @@ def execute(
     task = build_worker_task(
         profile=profile.to_dict(),
         figure_spec=str(figure_spec_path) if figure_spec_path else None,
-        candidate=str(candidate_path),
+        candidate=str(candidate_path) if candidate_path is not None else None,
         builder=builder,
         figure=figure,
         output_dir=output_dir,
@@ -220,15 +265,10 @@ def execute(
     task_path = output_dir / "origin_worker_task.json"
     task_path.write_text(json.dumps(task, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     worker = Path(__file__).resolve().parents[1] / "scripts" / "origin_profile_worker.py"
-    completed = subprocess.run(
-        [sys.executable, str(worker), "--task", str(task_path)],
-        cwd=str(worker.parents[1]),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
     result_path = output_dir / "candidate_summary.json"
+    if result_path.is_file():
+        result_path.unlink()
+    completed = _run_profile_worker(worker, task_path)
     result = _read_object(result_path) if result_path.is_file() else None
     if result is None:
         result = {

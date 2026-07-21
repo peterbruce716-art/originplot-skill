@@ -36,5 +36,5 @@ def validate_plan(
         "expected_layers": 1,
         "expected_plots": 1,
         "validation": "offline_plan_validated",
-        "live_implementation": "not_implemented",
+        "live_implementation": "focused_generic_line_worker",
     }

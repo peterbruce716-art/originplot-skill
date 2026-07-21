@@ -77,6 +77,19 @@ def load_figure_spec(path: Path) -> dict[str, Any]:
         raise OriginPlotError("E308_DATA_TOO_SHORT", "at least two data rows are required")
     figure = spec.get("figure") or {}
     layer = layers[0]
+    page = spec.get("page") or {}
+    page_size = page.get("size_mm")
+    if page_size is not None:
+        if (
+            not isinstance(page_size, list)
+            or len(page_size) != 2
+            or not all(isinstance(value, (int, float)) and math.isfinite(float(value)) and float(value) > 0 for value in page_size)
+        ):
+            raise OriginPlotError("E304_GENERIC_LINE_CONTRACT", "page.size_mm must contain two positive numbers")
+        page_size = [float(value) for value in page_size]
+    annotations = spec.get("annotations") or []
+    if not isinstance(annotations, list) or annotations:
+        raise OriginPlotError("E304_GENERIC_LINE_CONTRACT", "generic_line does not support annotations")
     return {
         "figure_id": str(figure.get("id") or "figure"),
         "title": str(figure.get("title") or figure.get("id") or "OriginPlot line"),
@@ -89,4 +102,5 @@ def load_figure_spec(path: Path) -> dict[str, Any]:
         "source": {"path": str(source), "format": source.suffix.lower().lstrip("."), "data_id": data.get("id")},
         "plot_type": "line",
         "style": plot.get("style") if isinstance(plot.get("style"), dict) else {},
+        "page_size_mm": page_size,
     }
