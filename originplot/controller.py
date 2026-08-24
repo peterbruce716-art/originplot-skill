@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -93,13 +94,27 @@ def _public_template_decision(decision: TemplateDecision) -> dict[str, Any]:
     return sanitize(payload)
 
 
+def _resolve_powershell_executable() -> Path:
+    for executable in ("pwsh", "powershell"):
+        resolved = shutil.which(executable)
+        if resolved:
+            return Path(resolved)
+    fallback = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
+    if fallback.is_file():
+        return fallback
+    raise OriginPlotError(
+        "E120_ENVIRONMENT_MISMATCH",
+        "PowerShell is required for elevated Origin execution; install PowerShell 7 or make powershell.exe available on PATH",
+    )
+
+
 def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedProcess[str]:
     cwd = worker.parents[1]
     if sys.platform != "win32" or is_administrator():
         command = [sys.executable, str(worker), "--task", str(task_path)]
     else:
         launcher = worker.parent / "run_origin_profile_worker_elevated.ps1"
-        pwsh = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
+        pwsh = _resolve_powershell_executable()
         command = [
             str(pwsh),
             "-NoProfile",
@@ -116,14 +131,17 @@ def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedPr
             "-WorkingDirectory",
             str(cwd),
         ]
-    return subprocess.run(
-        command,
-        cwd=str(cwd),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
+    try:
+        return subprocess.run(
+            command,
+            cwd=str(cwd),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError as exc:
+        raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", f"failed to start Origin worker: {exc}") from exc
 
 
 def _legacy_worker(
