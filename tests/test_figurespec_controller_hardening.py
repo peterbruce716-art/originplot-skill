@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -30,11 +32,15 @@ class _FakeWorkbook:
         self.closed = True
 
 
-def test_xlsx_reader_closes_workbook(monkeypatch: pytest.MonkeyPatch) -> None:
-    import openpyxl
+def _install_fake_openpyxl(monkeypatch: pytest.MonkeyPatch, book: _FakeWorkbook) -> None:
+    module = types.ModuleType("openpyxl")
+    module.load_workbook = lambda *args, **kwargs: book
+    monkeypatch.setitem(sys.modules, "openpyxl", module)
 
+
+def test_xlsx_reader_closes_workbook(monkeypatch: pytest.MonkeyPatch) -> None:
     book = _FakeWorkbook()
-    monkeypatch.setattr(openpyxl, "load_workbook", lambda *args, **kwargs: book)
+    _install_fake_openpyxl(monkeypatch, book)
 
     rows = _read_rows(Path("sample.xlsx"), "Data")
 
@@ -43,10 +49,8 @@ def test_xlsx_reader_closes_workbook(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_xlsx_missing_sheet_is_stable_error_and_closes(monkeypatch: pytest.MonkeyPatch) -> None:
-    import openpyxl
-
     book = _FakeWorkbook()
-    monkeypatch.setattr(openpyxl, "load_workbook", lambda *args, **kwargs: book)
+    _install_fake_openpyxl(monkeypatch, book)
 
     with pytest.raises(OriginPlotError) as exc_info:
         _read_rows(Path("sample.xlsx"), "Missing")
