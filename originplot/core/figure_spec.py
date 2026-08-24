@@ -31,10 +31,16 @@ def _read_rows(source: Path, sheet: str | None) -> list[dict[str, Any]]:
         except ImportError as exc:
             raise OriginPlotError("E302_XLSX_READER_UNAVAILABLE", "openpyxl is required for XLSX FigureSpecs") from exc
         book = load_workbook(source, read_only=True, data_only=True)
-        worksheet = book[sheet] if sheet else book.active
-        values = worksheet.iter_rows(values_only=True)
-        headers = [str(value).strip() if value is not None else "" for value in next(values, ())]
-        return [dict(zip(headers, row)) for row in values]
+        try:
+            try:
+                worksheet = book[sheet] if sheet else book.active
+            except KeyError as exc:
+                raise OriginPlotError("E309_XLSX_SHEET_MISSING", f"worksheet does not exist: {sheet}") from exc
+            values = worksheet.iter_rows(values_only=True)
+            headers = [str(value).strip() if value is not None else "" for value in next(values, ())]
+            return [dict(zip(headers, row)) for row in values]
+        finally:
+            book.close()
     raise OriginPlotError("E303_DATA_FORMAT_UNSUPPORTED", f"only CSV, TSV, and XLSX are supported: {source}")
 
 
