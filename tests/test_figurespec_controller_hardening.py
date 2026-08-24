@@ -64,7 +64,7 @@ def test_powershell_resolver_falls_back_to_windows_powershell(monkeypatch: pytes
 
     executable = controller._resolve_powershell_executable()
 
-    assert executable.name.lower() == "powershell.exe"
+    assert str(executable).lower().endswith("powershell.exe")
 
 
 def test_powershell_resolver_reports_environment_mismatch(monkeypatch: pytest.MonkeyPatch) -> None:
