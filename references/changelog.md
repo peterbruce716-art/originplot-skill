@@ -1,5 +1,12 @@
 # Changelog
 
+## v5.9.1
+
+- Hardened XLSX FigureSpec loading so read-only workbooks close deterministically and missing worksheets fail with stable `E309_XLSX_SHEET_MISSING`.
+- Hardened elevated Windows worker launch by resolving `pwsh`/`powershell` from PATH before the legacy PowerShell 7 location and normalizing process-start failures to `E120_ENVIRONMENT_MISMATCH`.
+- Added dependency-free regression coverage for XLSX cleanup/error semantics and PowerShell fallback behavior.
+- Retained the `5.8.9-p18` functional contract and AA2195 evidence identity; this maintenance release does not claim new live-Origin evidence.
+
 ## v5.9.0
 
 - Promoted the shareable package and installed skill label to 5.9.0.
