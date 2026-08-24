@@ -3,9 +3,9 @@ name: originplot
 description: "Plan, build, inspect, debug, or reproduce editable Origin/OriginPro OPJU figures with native Worksheet-bound plots, save/reopen verification, Origin exports, and profile-scaled evidence. Use for Excel/CSV scientific plots, publication figure reconstruction, Origin 2022 automation, official template matching, editable OPJU delivery, and AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 release benchmarks."
 ---
 
-# OriginPlot Skill v5.9.0
+# OriginPlot Skill v5.9.1
 
-OriginPlot is a Verified Origin Runtime for an editable Origin project, organized into three profiles. Default to `standard`. Keep the `5.9.0` package identity while retaining the validated `5.8.9-p18` functional contract and evidence identity.
+OriginPlot is a Verified Origin Runtime for an editable Origin project, organized into three profiles. Default to `standard`. Keep the `5.9.1` package identity while retaining the validated `5.8.9-p18` functional contract and evidence identity.
 
 ## Capability Boundary
 
