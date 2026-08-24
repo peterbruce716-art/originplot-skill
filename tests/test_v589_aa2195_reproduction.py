@@ -8,18 +8,22 @@ from tests import _v589_aa2195_reproduction_suite as _suite
 
 
 # Preserve the full historical AA2195 regression suite byte-for-byte in the
-# non-discovered module above, then expose its TestCase classes from this
-# canonical test module. Only the two release-label assertions are overridden
-# for the 5.9.1 package revision; the retained contract/evidence identity stays
-# at 5.8.9-p18.
+# non-discovered module above. Re-export its helper surface because several
+# focused regression modules import fakes directly from this canonical path.
+# TestCase classes are localized so pytest/unittest collect the same suite from
+# this file, while the two release-label assertions below are overridden for
+# the 5.9.1 package revision. Contract/evidence identity remains 5.8.9-p18.
 for _name, _obj in vars(_suite).items():
-    if (
-        isinstance(_obj, type)
-        and issubclass(_obj, unittest.TestCase)
-        and _obj is not unittest.TestCase
-        and _name != "VersionContractTests"
-    ):
+    if _name.startswith("__") or _name == "VersionContractTests":
+        continue
+    if isinstance(_obj, type) and issubclass(_obj, unittest.TestCase):
         globals()[_name] = type(_name, (_obj,), {"__module__": __name__})
+    else:
+        globals()[_name] = _obj
+
+# Do not leave a TestCase class reachable through loop-temporary globals;
+# pytest's unittest collector inspects module values as well as public names.
+del _name, _obj
 
 
 class VersionContractTests(_suite.VersionContractTests):
