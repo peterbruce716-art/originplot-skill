@@ -1,6 +1,6 @@
 # Release Profile
 
-Use Release for AA2195 benchmarks, regression acceptance, package release, or a full live-validation claim. This profile is the compatibility home of the retained p18 strict workflow distributed in release 5.9.0.
+Use Release for AA2195 benchmarks, regression acceptance, package release, or a full live-validation claim. This profile is the compatibility home of the retained p18 strict workflow distributed in release 5.9.1.
 
 Require `template_policy=strict`, `evidence_level=full`, `reopen_check=strict`, and `visual_qa=benchmark`. Reject lighter overrides.
 
