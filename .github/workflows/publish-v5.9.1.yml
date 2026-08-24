@@ -1,0 +1,65 @@
+name: publish-v5.9.1
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-v5.9.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out verified release commit
+        uses: actions/checkout@v6
+        with:
+          ref: 44495864e24c7e9a9d427cbcd26a79cef7ce5e6a
+
+      - name: Verify release identity
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          version = json.loads(Path("version.json").read_text(encoding="utf-8"))
+          expected = {
+              "release_version": "5.9.1",
+              "contract_version": "5.8.9-p18",
+              "evidence_version": "5.8.9-p18",
+          }
+          if version != expected:
+              raise SystemExit(f"release identity mismatch: {version!r}")
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v5.9.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v5.9.1 release already exists; nothing to do."
+            exit 0
+          fi
+
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          ## OriginPlot Skill v5.9.1
+
+          Maintenance reliability release for the OriginPlot 5.9 line.
+
+          - Close read-only XLSX workbooks deterministically and report missing worksheets as stable `E309_XLSX_SHEET_MISSING` errors.
+          - Resolve elevated Windows launchers through `pwsh` / `powershell` on PATH before the legacy PowerShell 7 location, and normalize worker-start failures to `E120_ENVIRONMENT_MISMATCH`.
+          - Add dependency-free regression coverage for XLSX cleanup/error handling and PowerShell fallback behavior.
+          - Keep the validated functional contract and AA2195 evidence identity at `5.8.9-p18`; this maintenance release does not claim new live-Origin evidence.
+
+          Verification before release: Windows offline CI passed compile, 367 pytest tests, 363 packaged tests, dependency audit, public-demo dry-run, and shareable-package validation for release `5.9.1`.
+          EOF
+
+          gh release create v5.9.1 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 44495864e24c7e9a9d427cbcd26a79cef7ce5e6a \
+            --title "OriginPlot Skill v5.9.1" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
