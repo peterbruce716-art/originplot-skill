@@ -1,4 +1,4 @@
-# OriginPlot Skill v5.9.0
+# OriginPlot Skill v5.9.1
 
 ## Profile-aware workflow
 
@@ -24,7 +24,7 @@ OriginPlot is a verification framework for editable Origin/OriginPro projects. I
 
 The core acceptance loop is native editable construction, save, release, reopen, live readback, second Origin export, and evidence-gated visual comparison. A look-alike raster alone is never sufficient.
 
-`5.9.0` is the downloadable release revision. The active functional contract and AA2195 evidence identity remain `5.8.9-p18`; `version.json` is the machine-readable source for this distinction. The 5.9.0 package carries the retained same-run fresh-PDF administrator Origin 2022 evidence without relabeling that p18 evidence as a new contract.
+`5.9.1` is the downloadable release revision. The active functional contract and AA2195 evidence identity remain `5.8.9-p18`; `version.json` is the machine-readable source for this distinction. The 5.9.1 package carries the retained same-run fresh-PDF administrator Origin 2022 evidence without relabeling that p18 evidence as a new contract.
 
 ## Capability boundary
 
@@ -209,8 +209,8 @@ python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
 python scripts/validate_public_evidence_index.py references/aa2195-release-evidence.json
-python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.9.0.zip"
-python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.9.0.zip"
+python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:TEMP\originplot-skill-v5.9.1.zip"
+python scripts/validate_shareable_package_v5.py --path "$env:TEMP\originplot-skill-v5.9.1.zip"
 ```
 
 None of these offline commands proves live Origin E2E.
