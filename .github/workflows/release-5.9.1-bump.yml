@@ -4,13 +4,16 @@ on:
   push:
     branches:
       - release/5.9.1
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   bump:
-    if: github.event.head_commit.message == 'chore: prepare 5.9.1 release metadata bump'
+    if: (github.event_name == 'push' && github.event.head_commit.message == 'chore: allow release bump from PR event') || (github.event_name == 'pull_request' && github.head_ref == 'release/5.9.1')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
