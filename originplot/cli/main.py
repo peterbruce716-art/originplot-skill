@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -41,6 +40,15 @@ def _write(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _read_json_object(path: Path | None) -> dict[str, Any] | None:
+    if path is None:
+        return None
+    payload = json.loads(path.resolve().read_text(encoding="utf-8-sig"))
+    if not isinstance(payload, dict):
+        raise OriginPlotError("E340_STYLE_SPEC_INVALID", f"style JSON must contain an object: {path}")
+    return payload
+
+
 def _add_mapping_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--x")
     parser.add_argument("--y")
@@ -48,6 +56,11 @@ def _add_mapping_flags(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--y-error")
     parser.add_argument("--category")
     parser.add_argument("--z")
+
+
+def _add_style_flags(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--reference-style-json", type=Path, help="confirmed visual-only suggestions extracted from a reference figure")
+    parser.add_argument("--style-json", type=Path, help="explicit user visual choices; highest precedence")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument("--profile", choices=PROFILE_NAMES, default="standard")
     plan_parser.add_argument("--output", type=Path)
     _add_mapping_flags(plan_parser)
+    _add_style_flags(plan_parser)
 
     render_parser = sub.add_parser("render", help="compile and execute an existing FigureSpec")
     render_parser.add_argument("figure_spec", type=Path)
@@ -84,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     draw_parser.add_argument("--output-dir", type=Path)
     draw_parser.add_argument("--dry-run", action="store_true")
     _add_mapping_flags(draw_parser)
+    _add_style_flags(draw_parser)
 
     verify_parser = sub.add_parser("verify", help="check canonical v6 artifacts")
     verify_parser.add_argument("output_dir", type=Path)
@@ -114,6 +129,13 @@ def _verify_output(output_dir: Path) -> dict[str, Any]:
     }
 
 
+def _planned_style_args(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        "reference_style": _read_json_object(getattr(args, "reference_style_json", None)),
+        "user_style": _read_json_object(getattr(args, "style_json", None)),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -132,6 +154,7 @@ def main(argv: list[str] | None = None) -> int:
                 sheet=args.sheet,
                 mapping=_mapping(args),
                 profile=args.profile,
+                **_planned_style_args(args),
             )
             output = (args.output or args.data.with_suffix(".figure.json")).resolve()
             _write(output, result)
@@ -159,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
                 sheet=args.sheet,
                 mapping=_mapping(args),
                 profile=args.profile,
+                **_planned_style_args(args),
             )
             spec_path = output / "figure_spec.json"
             _write(spec_path, figure_spec)
