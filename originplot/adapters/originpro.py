@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -20,7 +19,7 @@ def _template_for(plan: OperationPlan) -> str:
     if plan.plot_type in {"bar", "grouped_bar", "stacked_bar"}:
         return "COLUMN"
     if plan.plot_type == "contour":
-        return "CONTOUR"
+        return "TriContour"
     if plan.plot_type == "heatmap":
         return "HEATMAP"
     return "LINE"
@@ -96,65 +95,50 @@ class _SheetWriter:
         self.columns[key] = col
         return col
 
-    def derived(self, name: str, values: list[Any], axis: str) -> int:
-        col = self.next_col
-        self.next_col += 1
-        self.sheet.from_list(col, values, lname=name, axis=axis)
-        return col
-
-
-def _error_path(rows: list[dict[str, Any]], mapping: dict[str, Any]) -> tuple[list[float], list[float]]:
-    xs: list[float] = []
-    ys: list[float] = []
-    x_name, y_name = str(mapping["x"]), str(mapping["y"])
-    yerr = mapping.get("y_error")
-    xerr = mapping.get("x_error")
-    for row in rows:
-        x = float(row[x_name])
-        y = float(row[y_name])
-        if yerr:
-            delta = abs(float(row[str(yerr)]))
-            cap = max(abs(x) * 0.005, 1e-9)
-            xs.extend([x, x, math.nan, x - cap, x + cap, math.nan, x - cap, x + cap, math.nan])
-            ys.extend([y - delta, y + delta, math.nan, y - delta, y - delta, math.nan, y + delta, y + delta, math.nan])
-        if xerr:
-            delta = abs(float(row[str(xerr)]))
-            cap = max(abs(y) * 0.005, 1e-9)
-            xs.extend([x - delta, x + delta, math.nan, x - delta, x - delta, math.nan, x + delta, x + delta, math.nan])
-            ys.extend([y, y, math.nan, y - cap, y + cap, math.nan, y - cap, y + cap, math.nan])
-    return xs, ys
-
 
 def _add_xy(layer: Any, writer: _SheetWriter, rows: list[dict[str, Any]], operation: dict[str, Any]) -> int:
+    del rows  # source values are written by _SheetWriter; Origin owns error rendering.
     mapping = operation["mapping"]
     x_col = writer.column(str(mapping["x"]), "X")
     y_col = writer.column(str(mapping["y"]), "Y")
     kind = operation.get("kind")
-    plots: list[Any] = []
-    if kind == "scatter":
-        plots.append(layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="scatter"))
-    elif kind == "line_scatter":
-        plots.append(layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="line"))
-        plots.append(layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="scatter"))
-    else:
-        plots.append(layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="line"))
-    for plot in plots:
-        _style_plot(plot, dict(operation.get("style") or {}))
+    style = dict(operation.get("style") or {})
+
     if kind == "errorbar":
-        error_x, error_y = _error_path(rows, mapping)
-        ex_col = writer.derived(f"{operation['series_id']}_error_x", error_x, "X")
-        ey_col = writer.derived(f"{operation['series_id']}_error_y", error_y, "Y")
-        error_plot = layer.add_plot(writer.sheet, colx=ex_col, coly=ey_col, type="line")
-        _style_plot(error_plot, {"line_width_pt": 0.8, "color": "#444444"})
-        plots.append(error_plot)
-    return len(plots)
+        xerr_col = writer.column(str(mapping["x_error"]), "M") if mapping.get("x_error") else -1
+        yerr_col = writer.column(str(mapping["y_error"]), "E") if mapping.get("y_error") else -1
+        plot = layer.add_plot(
+            writer.sheet,
+            colx=x_col,
+            coly=y_col,
+            colxerr=xerr_col,
+            colyerr=yerr_col,
+            type="y",
+        )
+        _style_plot(plot, style)
+        return 1
+
+    if kind == "scatter":
+        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="s")
+        _style_plot(plot, style)
+        return 1
+    if kind == "line_scatter":
+        line = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="l")
+        scatter = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="s")
+        _style_plot(line, style)
+        _style_plot(scatter, style)
+        return 2
+    plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="l")
+    _style_plot(plot, style)
+    return 1
 
 
 def _add_bar(layer: Any, writer: _SheetWriter, operation: dict[str, Any]) -> int:
     mapping = operation["mapping"]
     x_col = writer.column(str(mapping["category"]), "X")
     y_col = writer.column(str(mapping["y"]), "Y")
-    plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="column")
+    yerr_col = writer.column(str(mapping["y_error"]), "E") if mapping.get("y_error") else -1
+    plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colyerr=yerr_col, type="c")
     _style_plot(plot, dict(operation.get("style") or {}))
     return 1
 
@@ -165,9 +149,10 @@ def _add_matrix(layer: Any, writer: _SheetWriter, operation: dict[str, Any]) -> 
     y_col = writer.column(str(mapping["y"]), "Y")
     z_col = writer.column(str(mapping["z"]), "Z")
     kind = str(operation.get("kind") or "contour")
+    plot_type: int | str = 243 if kind == "contour" else "?"
     try:
-        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colz=z_col, type=kind)
-    except TypeError as exc:
+        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colz=z_col, type=plot_type)
+    except (TypeError, RuntimeError) as exc:
         raise RuntimeError(f"E523_MATRIX_PLOT_UNAVAILABLE: Origin adapter rejected {kind} XYZ plot") from exc
     _style_plot(plot, dict(operation.get("style") or {}))
     return 1
