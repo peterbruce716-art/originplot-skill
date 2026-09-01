@@ -15,7 +15,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-from retrieve_official_template import USER_AGENT, is_allowed_url, retrieve, validate_archive
+try:
+    from .retrieve_official_template import USER_AGENT, is_allowed_url, retrieve, validate_archive
+except ImportError:  # Direct script execution keeps the historical CLI working.
+    from retrieve_official_template import USER_AGENT, is_allowed_url, retrieve, validate_archive
 
 
 GALLERY_URL = "https://www.originlab.com/www/products/GraphGallery.aspx"
