@@ -32,10 +32,12 @@ def test_capabilities_separate_compile_support_from_live_evidence() -> None:
     assert capabilities["primitive_maturity"]["line"]["live_status"] == "requires_same_run_verification"
 
 
-def test_v6_runtime_prefers_v6_capability_profile() -> None:
-    capabilities = resolve_origin_capabilities("2022")
-    assert Path(capabilities["profile_path"]).name == "origin-2022-v6.json"
-    assert capabilities["profile_schema"] == "originplot.capabilities.v6"
+def test_known_origin_versions_use_native_v6_capability_profiles() -> None:
+    for version in ("2022", "2024", "2026"):
+        capabilities = resolve_origin_capabilities(version)
+        assert Path(capabilities["profile_path"]).name == f"origin-{version}-v6.json"
+        assert capabilities["profile_schema"] == "originplot.capabilities.v6"
+        assert capabilities["live_evidence_primitives"] == []
 
 
 def test_doctor_never_relaxes_admin_requirement() -> None:
