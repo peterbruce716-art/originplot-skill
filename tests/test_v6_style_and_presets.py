@@ -5,15 +5,25 @@ from originplot.spec.style import resolve_style
 
 
 def test_domain_presets_are_semantic_hints_only() -> None:
-    assert "stress_strain" in match_presets(["Engineering Strain (%)", "Engineering Stress (MPa)"])
+    assert "stress_strain" in match_presets(
+        ["Engineering Strain (%)", "Engineering Stress (MPa)"]
+    )
     assert "xrd" in match_presets(["2Theta", "Intensity"])
 
 
 def test_style_precedence_is_user_reference_preset_default() -> None:
     result = resolve_style(
-        defaults={"legend": {"visible": True, "frame": False}, "series": {"s1": {"color": "#111111"}}},
-        preset={"series": {"s1": {"color": "#222222", "line_width_pt": 1.0}}},
-        reference={"legend": {"visible": False}, "series": {"s1": {"color": "#333333"}}},
+        defaults={
+            "legend": {"visible": True, "frame": False},
+            "series": {"s1": {"color": "#111111"}},
+        },
+        preset={
+            "series": {"s1": {"color": "#222222", "line_width_pt": 1.0}}
+        },
+        reference={
+            "legend": {"visible": False},
+            "series": {"s1": {"color": "#333333"}},
+        },
         user={"series": {"s1": {"color": "#444444"}}},
     )
     assert result["style"]["series"]["s1"]["color"] == "#444444"
@@ -29,7 +39,11 @@ def test_reference_style_cannot_inject_scientific_content() -> None:
             "series": {"s1": {"color": "#333333", "fit": "invented"}},
             "x": [1, 2, 3],
             "phase": "FCC",
-            "legend": {"visible": True, "position": "upper-right", "label": "copied paper label"},
+            "legend": {
+                "visible": True,
+                "position": "upper-right",
+                "label": "copied paper label",
+            },
         }
     )
     assert result["style"] == {
@@ -58,11 +72,21 @@ def test_unimplemented_precise_style_fields_are_rejected_instead_of_silently_acc
                     "fill_transparency_percent": 30,
                 }
             },
-            "matrix": {"colormap": "Maple.pal", "levels": [0, 1, 2], "show_colorbar": True},
+            "matrix": {
+                "colormap": "Maple.pal",
+                "levels": [0, 1, 2],
+                "show_colorbar": True,
+            },
         }
     )
     assert result["style"] == {
-        "series": {"s1": {"color": "red", "line_width_pt": 1.5, "symbol": 3}},
+        "series": {
+            "s1": {
+                "color": "red",
+                "line_width_pt": 1.5,
+                "symbol": 3,
+            }
+        },
     }
     assert {item["path"] for item in result["rejected"]} >= {
         "theme",
