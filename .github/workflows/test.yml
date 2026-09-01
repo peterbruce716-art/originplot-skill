@@ -44,6 +44,9 @@ jobs:
       - name: Version consistency check
         run: python scripts/check_version_consistency.py
 
+      - name: Skill health check
+        run: python scripts/check_skill_health.py
+
       - name: Skill repository hygiene check
         run: python scripts/check_skill_hygiene.py
 
