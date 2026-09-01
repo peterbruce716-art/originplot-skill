@@ -20,4 +20,4 @@ originplot = "originplot.cli.main:main"
 include = ["originplot*"]
 
 [tool.setuptools.package-data]
-"originplot.runtime" = ["*.ps1"]
+"originplot.runtime" = ["*.ps1", "profiles/*.json"]
