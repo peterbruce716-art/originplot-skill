@@ -5,7 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from originplot.adapters.originpro import _add_matrix, _add_xy, _all_exports_nonblank, _set_legend, _template_for
+from originplot.adapters.originpro import (
+    _add_matrix,
+    _add_xy,
+    _all_exports_nonblank,
+    _set_legend,
+    _template_for,
+    _validate_operation_names,
+)
 from originplot.operation_plan import OperationPlan
 from originplot.runtime.protocol import WORKER_TASK_SCHEMA, build_worker_task
 from originplot.runtime.worker import run
@@ -49,6 +56,27 @@ def test_worker_fails_before_origin_when_not_elevated(tmp_path: Path) -> None:
     result = run(task_path, admin_check=lambda: False)
     assert result["error_code"] == "E120_ENVIRONMENT_MISMATCH"
     assert result["origin_attach_not_attempted"] is True
+
+
+def test_adapter_rejects_unknown_operation_before_origin_execution() -> None:
+    plan = OperationPlan(
+        figure_id="demo",
+        plot_type="line",
+        source={"path": "data.csv"},
+        profile="standard",
+        operations=(
+            {"op": "create_workbook"},
+            {"op": "create_graph", "layers": 1},
+            {"op": "add_xy_plot", "mapping": {"x": "X", "y": "Y"}},
+            {"op": "set_axes"},
+            {"op": "set_legend"},
+            {"op": "set_page"},
+            {"op": "export"},
+            {"op": "typo_silent_operation"},
+        ),
+    )
+    with pytest.raises(RuntimeError, match="E520_OPERATION_PLAN_INVALID.*typo_silent_operation"):
+        _validate_operation_names(plan)
 
 
 def test_adapter_uses_reusable_selected_template_path() -> None:
