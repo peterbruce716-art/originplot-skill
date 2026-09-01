@@ -66,8 +66,9 @@ def run(
                 admin_check=admin_check or is_administrator,
             )
             spec_path = Path(str(task.get("figure_spec") or ""))
-            if spec_path.is_file():
-                shutil.copyfile(spec_path, output_dir / "figure_spec.json")
+            destination = output_dir / "figure_spec.json"
+            if spec_path.is_file() and spec_path.resolve() != destination.resolve():
+                shutil.copyfile(spec_path, destination)
         except Exception as exc:
             result = {
                 "schema": "originplot.origin_worker_result.v2",
