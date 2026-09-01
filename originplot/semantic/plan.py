@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from originplot.core.errors import OriginPlotError
-from originplot.spec import FIGURE_SPEC_SCHEMA
+from originplot.spec import FIGURE_SPEC_SCHEMA, resolve_style
 
 from .inspect import inspect_table
 
@@ -20,6 +20,9 @@ def build_figurespec(
     sheet: str | None = None,
     mapping: dict[str, str] | None = None,
     profile: str = "standard",
+    reference_style: dict[str, Any] | None = None,
+    user_style: dict[str, Any] | None = None,
+    preset_style: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     understanding = inspect_table(path, sheet)
     columns = [dict(item) for item in understanding["columns"]]
@@ -62,7 +65,10 @@ def build_figurespec(
     elif selected in {"bar", "grouped_bar", "stacked_bar"}:
         if not category or not y:
             raise OriginPlotError("E322_CATEGORY_MAPPING_REQUIRED", f"{selected} requires confirmed category and y columns")
-        data = {"series": [{"id": "series_1", "category": category, "y": y}]}
+        series = {"id": "series_1", "category": category, "y": y}
+        if y_error:
+            series["y_error"] = y_error
+        data = {"series": [series]}
     elif selected in {"heatmap", "contour"}:
         if not x or not y or not z:
             raise OriginPlotError("E323_MATRIX_MAPPING_REQUIRED", f"{selected} requires confirmed x, y and z columns")
@@ -78,6 +84,13 @@ def build_figurespec(
         for item in columns:
             item["role"] = role_by_name[item["name"]]
 
+    style_result = resolve_style(
+        defaults={"theme": "publication", "legend": {"visible": True, "frame": False}},
+        preset=preset_style,
+        reference=reference_style,
+        user=user_style,
+    )
+
     return {
         "schema": FIGURE_SPEC_SCHEMA,
         "source": {
@@ -92,11 +105,17 @@ def build_figurespec(
             "x_axis": {"title": x or category or "X"},
             "y_axis": {"title": y or "Y"},
         },
-        "style": {"theme": "publication", "legend": {"visible": True, "frame": False}},
+        "style": style_result["style"],
+        "style_audit": {
+            "precedence": "user > confirmed_reference > preset > default",
+            "sources": style_result["sources"],
+            "rejected": style_result["rejected"],
+        },
         "layout": {"page": {"width_cm": 18.0, "height_cm": 12.0}},
         "verification": {"profile": profile, "require_reopen": True, "require_binding_readback": True, "require_origin_export": True},
         "semantic_confirmation": {
             "mode": "explicit_mapping" if explicit else "high_confidence_auto",
             "columns": columns,
+            "matched_presets": understanding.get("matched_presets") or [],
         },
     }
