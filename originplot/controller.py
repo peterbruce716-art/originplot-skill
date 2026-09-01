@@ -14,6 +14,7 @@ from originplot.builders import compile_figure
 from originplot.core.errors import OriginPlotError
 from originplot.core.profiles import ProfileConfig
 from originplot.operation_plan import OperationPlan
+from originplot.runtime.capabilities import live_execution_block
 from originplot.runtime.origin_session import is_administrator
 from originplot.runtime.protocol import build_worker_task
 from originplot.spec import load_figure_spec
@@ -42,7 +43,7 @@ def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
 def _gallery_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
     from scripts.search_official_templates import build_gallery_url, discover
 
-    result = discover(build_gallery_url(search_terms or "line", ""), max_items=max(1, limit), attempts=1, timeout=8.0, backoff=0.0)
+    result = discover(build_gallery_url(search_terms or "line", ""), max_items=max(1, limit), attempts=3, timeout=8.0, backoff=0.5)
     return [
         {"id": item.get("gid"), "title": item.get("title"), "source": "originlab_gallery", "detail_url": item.get("detail_url"), "reusable": False}
         for item in result.get("candidates", [])
@@ -106,6 +107,32 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _blocked_live_result(
+    *,
+    profile: ProfileConfig,
+    plot_type: str,
+    source_hash: str,
+    templates: TemplateDecision,
+    block: dict[str, str],
+) -> dict[str, Any]:
+    return {
+        "schema": "originplot.verification.v1",
+        "profile": profile.name,
+        "status": "failed",
+        "overall_status": "failed",
+        "command_success": False,
+        "live_origin_verified": False,
+        "pass_eligible": False,
+        "plot_type": plot_type,
+        "builder": plot_type,
+        "source_hash": source_hash,
+        "error_code": block["error_code"],
+        "live_block_reason": block["reason"],
+        "message": block["message"],
+        "template_decision": _public_template_decision(templates),
+    }
+
+
 def execute(
     *,
     profile: ProfileConfig,
@@ -164,22 +191,15 @@ def execute(
         _write_json(output_dir / "verification.json", result)
         return result
 
-    if spec.plot_type == "heatmap":
-        result = {
-            "schema": "originplot.verification.v1",
-            "profile": profile.name,
-            "status": "failed",
-            "overall_status": "failed",
-            "command_success": False,
-            "live_origin_verified": False,
-            "pass_eligible": False,
-            "plot_type": spec.plot_type,
-            "builder": spec.plot_type,
-            "source_hash": spec.source_hash,
-            "error_code": "E524_HEATMAP_LIVE_UNVERIFIED",
-            "message": "heatmap compiles offline but live execution is blocked until the regular-grid/matrix Origin adapter has promoted same-run evidence",
-            "template_decision": _public_template_decision(templates),
-        }
+    block = live_execution_block(spec.plot_type)
+    if block is not None:
+        result = _blocked_live_result(
+            profile=profile,
+            plot_type=spec.plot_type,
+            source_hash=spec.source_hash,
+            templates=templates,
+            block=block,
+        )
         _write_json(output_dir / "verification.json", result)
         return result
 
