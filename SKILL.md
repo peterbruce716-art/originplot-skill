@@ -1,11 +1,11 @@
 ---
 name: originplot
-description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap, contour, multi-panel, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
+description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap planning, contour, multi-panel, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
 ---
 
 # OriginPlot Skill v6.0
 
-OriginPlot turns a read-only scientific table into an auditable FigureSpec, a deterministic OperationPlan, and—when authorized—a native editable Origin project. The ordinary v6 core is general-purpose; AA2195 lives only under `benchmarks/aa2195/` as retained regression evidence.
+OriginPlot turns a read-only scientific table into an auditable FigureSpec, a deterministic OperationPlan, and—when authorized and live-mature—native editable Origin objects. The ordinary v6 core is general-purpose; AA2195 lives only under `benchmarks/aa2195/` as retained regression evidence.
 
 ## Hard runtime invariant
 
@@ -71,7 +71,7 @@ If the source hash changes, the prior confirmed spec is stale. Builders must nev
 
 ## Ten v6 primitives
 
-The public registry contains exactly:
+The public planning/compile registry contains exactly:
 
 - `line`
 - `scatter`
@@ -87,6 +87,19 @@ The public registry contains exactly:
 They are implemented through four compact compiler families: XY, categorical bars, matrix/XYZ, and composition. `multi_panel` composes child builders rather than duplicating plot logic.
 
 Domain workflows such as stress-strain, XRD, Rietveld, electrochemistry, or spectroscopy should be semantic/style presets that compile to these primitives. Do not create a new Origin API subsystem for each scientific field.
+
+### Capability maturity is separate from compile support
+
+Never equate a registered builder with promoted live Origin evidence. `doctor` exposes:
+
+- `compile_primitives`: FigureSpec/OperationPlan support;
+- `live_candidate_primitives`: primitives that may enter the live worker but still require same-run verification;
+- `live_evidence_primitives`: primitives with explicitly promoted v6 evidence;
+- `primitive_maturity`: per-primitive compile/live status and reason.
+
+At v6.0, repository-wide `live_evidence_primitives` remains empty until new licensed-Origin evidence is deliberately promoted. A successful individual live run proves that run only.
+
+`heatmap` is compile-only in v6.0. If live execution is requested, fail in the controller with `E524_HEATMAP_LIVE_UNVERIFIED` **before launching the elevated Origin worker**. The adapter has the same fail-closed guard. Do not silently grid/bin XYZ data or synthesize a matrix to make a heatmap work. Promotion requires an explicit regular-grid/matrix contract and new same-run live evidence.
 
 ## Builder and adapter boundary
 
@@ -115,7 +128,7 @@ A successful live Quick/Standard run requires the native lifecycle:
 9. export from the reopened Origin project;
 10. reject blank export or Demo watermark.
 
-A Python/Matplotlib redraw, screenshot, raster background, or dry run is never a completed Origin deliverable.
+A Python/Matplotlib redraw, screenshot, raster background, dry run, or capability declaration is never a completed Origin deliverable.
 
 Canonical ordinary outputs are:
 
@@ -150,12 +163,12 @@ Python 3.10 remains the validated baseline. `doctor` is read-only and does not l
 
 Capability status is explicit:
 
-- Origin 2022: validated baseline;
+- Origin 2022: validated environment baseline;
 - Origin 2024: compatible-unverified until receiving-machine smoke/readback passes;
 - Origin 2026: experimental;
 - unknown versions: fail closed for live claims.
 
-Capability metadata never waives administrator or same-run verification requirements.
+`ready_for_live_worker` means only that the environment can attempt an authorized worker. It does not promote a primitive to live evidence. Capability metadata never waives administrator or same-run verification requirements.
 
 ## Reference figures
 
@@ -179,6 +192,7 @@ Report exactly what ran:
 
 - semantic inspection is not scientific analysis;
 - dry run is planning only;
+- compile support is not live evidence;
 - editable completion is not release eligibility;
 - compatibility is not verification;
 - historical AA2195 evidence applies only to its recorded identities;
