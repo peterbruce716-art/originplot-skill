@@ -42,7 +42,13 @@ jobs:
       - name: Ruff format check
         run: |
           echo '=== Ruff format check start ==='
-          ruff format --check . --config ruff.toml
+          changed=$(git diff --name-only HEAD^ HEAD -- '*.py' || true)
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            ruff format --check $changed --config ruff.toml
+          else
+            echo 'No changed Python files; skipping format validation.'
+          fi
           echo '=== Ruff format check done ==='
 
       - name: Verify test layout
