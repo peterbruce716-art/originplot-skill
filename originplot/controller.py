@@ -13,12 +13,14 @@ from typing import Any
 from originplot.builders import compile_figure
 from originplot.core.errors import OriginPlotError
 from originplot.core.profiles import ProfileConfig
-from originplot.operation_plan import OperationPlan
 from originplot.runtime.capabilities import live_execution_block
 from originplot.runtime.origin_session import is_administrator
 from originplot.runtime.protocol import build_worker_task
 from originplot.spec import load_figure_spec
+from originplot.template.gallery import build_gallery_url, discover
 from originplot.template.policy import TemplateDecision, apply_template_policy
+
+_WORKER_MODULE = "originplot.runtime.worker"
 
 
 def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
@@ -41,9 +43,13 @@ def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
 
 
 def _gallery_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
-    from scripts.search_official_templates import build_gallery_url, discover
-
-    result = discover(build_gallery_url(search_terms or "line", ""), max_items=max(1, limit), attempts=3, timeout=8.0, backoff=0.5)
+    result = discover(
+        build_gallery_url(search_terms or "line", ""),
+        max_items=max(1, limit),
+        attempts=3,
+        timeout=8.0,
+        backoff=0.5,
+    )
     return [
         {"id": item.get("gid"), "title": item.get("title"), "source": "originlab_gallery", "detail_url": item.get("detail_url"), "reusable": False}
         for item in result.get("candidates", [])
@@ -85,21 +91,23 @@ def _resolve_powershell_executable() -> Path:
     raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", "PowerShell is required for elevated Origin execution")
 
 
-def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedProcess[str]:
-    cwd = worker.parents[1]
+def _run_profile_worker(worker_module: str, task_path: Path) -> subprocess.CompletedProcess[str]:
+    package_parent = Path(__file__).resolve().parents[1]
     if sys.platform != "win32" or is_administrator():
-        command = [sys.executable, str(worker), "--task", str(task_path)]
+        command = [sys.executable, "-m", worker_module, "--task", str(task_path)]
     else:
-        launcher = worker.parent / "run_origin_profile_worker_elevated.ps1"
+        launcher = Path(__file__).resolve().parent / "runtime" / "run_origin_worker_elevated.ps1"
+        if not launcher.is_file():
+            raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", f"elevated Origin launcher is missing: {launcher}")
         pwsh = _resolve_powershell_executable()
         command = [
             str(pwsh), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(launcher),
             "-PythonExe", sys.executable,
-            "-WorkerScript", str(worker),
+            "-WorkerModule", worker_module,
             "-TaskPath", str(task_path),
-            "-WorkingDirectory", str(cwd),
+            "-WorkingDirectory", str(package_parent),
         ]
-    return subprocess.run(command, cwd=str(cwd), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    return subprocess.run(command, cwd=str(package_parent), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -213,9 +221,8 @@ def execute(
     )
     task_path = output_dir / ".origin_worker_task.json"
     _write_json(task_path, task)
-    worker = Path(__file__).resolve().parents[1] / "scripts" / "origin_profile_worker.py"
     try:
-        completed = _run_profile_worker(worker, task_path)
+        completed = _run_profile_worker(_WORKER_MODULE, task_path)
     finally:
         task_path.unlink(missing_ok=True)
     verification_path = output_dir / "verification.json"
