@@ -48,3 +48,17 @@ jobs:
 
       - name: Run tests
         run: pytest -q
+
+      - name: CI diagnostics on failure
+        if: failure()
+        run: |
+          echo '=== Python ==='
+          python --version
+          echo '=== Tool versions ==='
+          python -m pip --version
+          ruff --version
+          pytest --version
+          echo '=== Installed packages ==='
+          python -m pip freeze
+          echo '=== Git revision ==='
+          git rev-parse HEAD
