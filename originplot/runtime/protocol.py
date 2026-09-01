@@ -4,33 +4,28 @@ from pathlib import Path
 from typing import Any
 
 
-WORKER_TASK_SCHEMA = "originplot.origin_worker_task.v1"
-WORKER_RESULT_SCHEMA = "originplot.origin_worker_result.v1"
+WORKER_TASK_SCHEMA = "originplot.origin_worker_task.v2"
+WORKER_RESULT_SCHEMA = "originplot.origin_worker_result.v2"
 
 
 def build_worker_task(
     *,
     profile: dict[str, Any],
-    figure_spec: str | None,
-    candidate: str | None,
-    builder: str | None,
-    figure: str | None,
+    figure_spec: str,
     output_dir: Path,
-    template_decision: dict[str, Any],
-    data_payload: dict[str, Any] | None = None,
+    operation_plan: dict[str, Any],
+    template_decision: dict[str, Any] | None = None,
     source_policy: str = "supplied",
 ) -> dict[str, Any]:
     return {
         "schema": WORKER_TASK_SCHEMA,
         "profile": profile,
         "figure_spec": figure_spec,
-        "candidate": candidate,
-        "builder": builder,
-        "figure": figure,
         "output_dir": str(output_dir.resolve()),
-        "template_decision": template_decision,
-        "data_payload": data_payload,
+        "operation_plan": operation_plan,
+        "template_decision": dict(template_decision or {}),
         "source_policy": source_policy,
         "controller_privilege": "standard_user_allowed",
         "worker_privilege": "administrator_required_for_origin",
+        "admin_policy": "unchanged_from_v5",
     }
