@@ -46,3 +46,24 @@ def test_template_search_module_imports_from_product_context() -> None:
     module = importlib.import_module("scripts.search_official_templates")
     assert callable(module.discover)
     assert callable(module.build_gallery_url)
+
+
+def test_installable_product_core_does_not_depend_on_root_scripts_package() -> None:
+    root = Path(__file__).resolve().parents[1] / "originplot"
+    offenders = []
+    for path in root.rglob("*.py"):
+        text = path.read_text(encoding="utf-8")
+        if "from scripts." in text or "import scripts." in text:
+            offenders.append(str(path.relative_to(root.parent)))
+    assert offenders == []
+
+
+def test_installable_runtime_assets_live_inside_originplot_package() -> None:
+    root = Path(__file__).resolve().parents[1]
+    required = [
+        root / "originplot" / "runtime" / "worker.py",
+        root / "originplot" / "runtime" / "run_origin_worker_elevated.ps1",
+        root / "originplot" / "template" / "gallery.py",
+        root / "originplot" / "template" / "retrieve.py",
+    ]
+    assert [str(path.relative_to(root)) for path in required if not path.is_file()] == []
