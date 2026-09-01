@@ -81,8 +81,6 @@ def build_figurespec(
                 {"id": f"series_{index + 1}", "category": category, "y": y_name}
                 for index, y_name in enumerate(y_columns)
             ]
-            # A single generic uncertainty column cannot be safely assigned to
-            # multiple Y series.  Only attach it when the mapping is unambiguous.
             if y_error and len(bar_series) == 1:
                 bar_series[0]["y_error"] = y_error
             data = {"series": bar_series}
@@ -107,7 +105,7 @@ def build_figurespec(
             item["role"] = role_by_name[item["name"]]
 
     style_result = resolve_style(
-        defaults={"theme": "publication", "legend": {"visible": True, "frame": False}},
+        defaults={"legend": {"visible": True, "frame": False}},
         preset=preset_style,
         reference=reference_style,
         user=user_style,
