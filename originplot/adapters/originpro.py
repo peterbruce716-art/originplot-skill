@@ -11,6 +11,12 @@ from originplot.verification import artifact_is_nonblank, inspect_reopened_proje
 
 
 def _template_for(plan: OperationPlan) -> str:
+    decision = plan.metadata.get("template_decision") if isinstance(plan.metadata, dict) else None
+    selected = decision.get("selected") if isinstance(decision, dict) else None
+    if isinstance(selected, dict):
+        path = selected.get("path")
+        if isinstance(path, str) and path.strip() and selected.get("reusable", True) is not False:
+            return path
     if plan.plot_type in {"bar", "grouped_bar", "stacked_bar"}:
         return "COLUMN"
     if plan.plot_type == "contour":
@@ -185,11 +191,18 @@ def _export_page(page: Any, output_dir: Path) -> dict[str, str]:
     for suffix, kind in (("png", "png"), ("pdf", "pdf"), ("tif", "tif")):
         path = output_dir / f"figure.{suffix}"
         try:
-            page.save_fig(str(path), type=kind, replace=True, width=1600 if kind in {"png", "tif"} else None)
+            if kind in {"png", "tif"}:
+                page.save_fig(str(path), type=kind, replace=True, width=1600)
+            else:
+                page.save_fig(str(path), type=kind, replace=True)
         except TypeError:
             page.save_fig(str(path), type=kind, replace=True)
         outputs[suffix] = str(path)
     return outputs
+
+
+def _all_exports_nonblank(output_dir: Path) -> bool:
+    return all(artifact_is_nonblank(output_dir / f"figure.{suffix}") for suffix in ("png", "pdf", "tif"))
 
 
 def execute_operation_plan(
@@ -287,6 +300,7 @@ def execute_operation_plan(
         "editable_plot_present": "pass" if readback["plot_count"] > 0 else "failed",
         "worksheet_binding": "pass" if readback["worksheet_binding_ok"] else "failed",
         "origin_export_nonblank": "pass" if artifact_is_nonblank(png) else "failed",
+        "origin_exports_complete": "pass" if _all_exports_nonblank(output_dir) else "failed",
         "demo_watermark_absent": "pass" if no_demo_watermark(png) else "failed",
     }
     command_success = all(value == "pass" for value in gates.values())
@@ -303,6 +317,7 @@ def execute_operation_plan(
         "editable_plot_count": readback["plot_count"],
         "worksheet_binding_ok": readback["worksheet_binding_ok"],
         "export_nonblank": gates["origin_export_nonblank"] == "pass",
+        "exports_complete": gates["origin_exports_complete"] == "pass",
         "demo_watermark_detected": gates["demo_watermark_absent"] != "pass",
         "gate_results": gates,
         "readback": readback,
