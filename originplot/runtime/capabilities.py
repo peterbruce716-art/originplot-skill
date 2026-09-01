@@ -29,6 +29,18 @@ _COMPILE_PRIMITIVES = (
 
 _LIVE_BLOCKED = {
     "heatmap": "regular_grid_adapter_not_live_verified",
+    "multi_panel": "panel_layout_adapter_not_live_verified",
+}
+
+_LIVE_BLOCK_ERRORS = {
+    "heatmap": (
+        "E524_HEATMAP_LIVE_UNVERIFIED",
+        "heatmap compiles offline but live execution is blocked until the regular-grid/matrix Origin adapter has promoted same-run evidence",
+    ),
+    "multi_panel": (
+        "E527_LIVE_PRIMITIVE_BLOCKED",
+        "multi_panel compiles offline but live execution is blocked until Origin panel arrangement has a verified adapter and promoted same-run evidence",
+    ),
 }
 
 
@@ -37,6 +49,15 @@ def normalize_origin_version(version: str | None) -> str | None:
         return None
     match = re.search(r"20\d{2}", str(version))
     return match.group(0) if match else None
+
+
+def live_execution_block(plot_type: str | None) -> dict[str, str] | None:
+    key = str(plot_type or "").strip().lower()
+    reason = _LIVE_BLOCKED.get(key)
+    if reason is None:
+        return None
+    error_code, message = _LIVE_BLOCK_ERRORS[key]
+    return {"plot_type": key, "reason": reason, "error_code": error_code, "message": message}
 
 
 def _profile_path(version: str) -> Path | None:
