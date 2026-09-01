@@ -78,6 +78,23 @@ v6.0 exposes exactly ten public primitives:
 
 Internally these are four compiler families, not ten duplicated plotting engines. New scientific domains should normally add semantic/style presets that compile to these primitives.
 
+### Compile support vs live evidence
+
+The ten names above are the **v6 planning/compile surface**. They do not mean that all ten primitives have blanket live-Origin evidence.
+
+`originplot.cmd doctor` reports the distinction explicitly through:
+
+```text
+compile_primitives
+live_candidate_primitives
+live_evidence_primitives
+primitive_maturity
+```
+
+At v6.0, no general primitive is promoted as repository-wide v6 live evidence merely because offline CI passes. A successful live run still has to earn its own same-run save/reopen/binding/export verification.
+
+`heatmap` is stricter: FigureSpec and OperationPlan compilation are supported, but live execution is deliberately blocked with `E524_HEATMAP_LIVE_UNVERIFIED` before the elevated Origin worker starts. Promotion requires a regular-grid/matrix adapter plus fresh licensed-Origin evidence. The other live candidates remain subject to the same-run verification gates and are not automatically promoted by capability metadata.
+
 ## Conservative data understanding
 
 Every source column is assigned one role:
@@ -166,12 +183,12 @@ verification.json
 
 Current status model:
 
-- **Origin 2022** — validated baseline;
+- **Origin 2022** — validated environment baseline;
 - **Origin 2024** — compatible-unverified until same-machine smoke/readback passes;
 - **Origin 2026** — experimental;
 - unknown versions — no automatic live claim.
 
-Capability metadata never overrides administrator requirements or the same-run verification gate.
+`ready_for_live_worker` is an environment-readiness signal only. Primitive maturity and same-run evidence are separate. Capability metadata never overrides administrator requirements or the verification gates.
 
 ## Profiles
 
