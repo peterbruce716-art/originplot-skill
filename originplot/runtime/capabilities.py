@@ -41,6 +41,7 @@ def normalize_origin_version(version: str | None) -> str | None:
 
 def _profile_path(version: str) -> Path | None:
     preferred = [
+        CAPABILITY_DIR / f"origin-{version}-v6.json",
         CAPABILITY_DIR / f"origin-{version}-v5.json",
         CAPABILITY_DIR / f"origin-{version}.json",
     ]
