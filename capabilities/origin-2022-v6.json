@@ -21,7 +21,8 @@
   ],
   "live_evidence_primitives": [],
   "live_blocked": {
-    "heatmap": "regular_grid_adapter_not_live_verified"
+    "heatmap": "regular_grid_adapter_not_live_verified",
+    "multi_panel": "panel_layout_adapter_not_live_verified"
   },
   "verification": {
     "same_run_save_reopen_readback_export_required": true,
