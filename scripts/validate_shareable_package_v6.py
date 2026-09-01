@@ -5,6 +5,12 @@ import json
 import zipfile
 from pathlib import Path
 
+PROFILE_PATHS = (
+    "originplot/runtime/profiles/origin-2022-v6.json",
+    "originplot/runtime/profiles/origin-2024-v6.json",
+    "originplot/runtime/profiles/origin-2026-v6.json",
+)
+
 REQUIRED = {
     "SKILL.md",
     "README.md",
@@ -25,9 +31,7 @@ REQUIRED = {
     "originplot/runtime/run_origin_worker_elevated.ps1",
     "originplot/template/gallery.py",
     "originplot/template/retrieve.py",
-    "capabilities/origin-2022-v6.json",
-    "capabilities/origin-2024-v6.json",
-    "capabilities/origin-2026-v6.json",
+    *PROFILE_PATHS,
     "schemas/figurespec-v6.schema.json",
     "schemas/capabilities-v6.schema.json",
     "schemas/doctor-v3.schema.json",
@@ -68,6 +72,9 @@ BANNED_FILES = {
     "capabilities/origin-2022.json",
     "capabilities/origin-2024.json",
     "capabilities/origin-2026.json",
+    "capabilities/origin-2022-v6.json",
+    "capabilities/origin-2024-v6.json",
+    "capabilities/origin-2026-v6.json",
 }
 
 
@@ -89,7 +96,7 @@ def validate(path: Path) -> list[str]:
 
         legacy_files = sorted(BANNED_FILES & names)
         if legacy_files:
-            errors.append("default v6 package contains legacy files: " + ", ".join(legacy_files))
+            errors.append("default v6 package contains legacy or duplicate files: " + ", ".join(legacy_files))
 
         if any("-v5" in Path(name).name.lower() for name in names):
             errors.append("default v6 package must not ship v5-named contracts")
@@ -101,11 +108,7 @@ def validate(path: Path) -> list[str]:
             if (version.get("benchmark_evidence") or {}).get("aa2195") != "5.8.9-p18":
                 errors.append("AA2195 historical evidence identity must remain recorded in version metadata")
 
-        for profile in (
-            "capabilities/origin-2022-v6.json",
-            "capabilities/origin-2024-v6.json",
-            "capabilities/origin-2026-v6.json",
-        ):
+        for profile in PROFILE_PATHS:
             if profile not in names:
                 continue
             payload = json.loads(archive.read(profile).decode("utf-8"))
