@@ -34,10 +34,16 @@ jobs:
         run: python -c "import originplot"
 
       - name: Ruff check
-        run: ruff check .
+        run: |
+          echo '=== Ruff check start ==='
+          ruff check . --config ruff.toml
+          echo '=== Ruff check done ==='
 
       - name: Ruff format check
-        run: ruff format --check .
+        run: |
+          echo '=== Ruff format check start ==='
+          ruff format --check . --config ruff.toml
+          echo '=== Ruff format check done ==='
 
       - name: Verify test layout
         run: |
