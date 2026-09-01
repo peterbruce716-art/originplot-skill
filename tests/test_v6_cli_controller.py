@@ -19,6 +19,27 @@ def test_cli_plan_with_explicit_mapping(tmp_path: Path) -> None:
     assert payload["data"]["series"][0]["x"] == "A"
 
 
+def test_cli_plan_resolves_confirmed_reference_style_below_user_style(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Signal\n0,1\n1,2\n", encoding="utf-8")
+    reference = tmp_path / "reference-style.json"
+    reference.write_text(json.dumps({"series": {"series_1": {"color": "#333333"}}, "legend": {"visible": False}, "phase": "FCC"}), encoding="utf-8")
+    user_style = tmp_path / "user-style.json"
+    user_style.write_text(json.dumps({"series": {"series_1": {"color": "#444444", "line_width_pt": 2.0}}}), encoding="utf-8")
+    output = tmp_path / "plan.json"
+    code = main(
+        [
+            "plan", str(source), "--plot-type", "line", "--x", "Time", "--y", "Signal",
+            "--reference-style-json", str(reference), "--style-json", str(user_style), "--output", str(output),
+        ]
+    )
+    assert code == 0
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["style"]["series"]["series_1"]["color"] == "#444444"
+    assert payload["style"]["legend"]["visible"] is False
+    assert any(item["path"] == "phase" for item in payload["style_audit"]["rejected"])
+
+
 def test_controller_dry_run_dispatches_without_generic_line_special_case(tmp_path: Path) -> None:
     source = tmp_path / "data.csv"
     source.write_text("Category,Stress\nA,1\nB,2\n", encoding="utf-8")
