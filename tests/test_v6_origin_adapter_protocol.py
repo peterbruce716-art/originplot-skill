@@ -9,8 +9,11 @@ from originplot.adapters.originpro import (
     _add_matrix,
     _add_xy,
     _all_exports_nonblank,
+    _finalize_bar_layers,
     _live_origin_verified,
+    _set_axes,
     _set_legend,
+    _style_plot,
     _template_for,
     _validate_operation_names,
 )
@@ -226,3 +229,63 @@ def test_heatmap_live_adapter_fails_closed_before_origin_plot_call() -> None:
             },
         )
     assert layer.calls == 0
+
+
+def test_supported_series_style_fails_closed_when_origin_rejects_it() -> None:
+    class Plot:
+        @property
+        def color(self):
+            return None
+
+        @color.setter
+        def color(self, _value):
+            raise RuntimeError("color rejected")
+
+        def set_float(self, *_args):
+            raise RuntimeError("float rejected")
+
+        def set_int(self, *_args):
+            raise RuntimeError("int rejected")
+
+    with pytest.raises(RuntimeError, match="E529_STYLE_APPLY_FAILED.*color"):
+        _style_plot(Plot(), {"color": "red"})
+    with pytest.raises(RuntimeError, match="E529_STYLE_APPLY_FAILED.*line_width_pt"):
+        _style_plot(Plot(), {"line_width_pt": 1.5})
+    with pytest.raises(RuntimeError, match="E529_STYLE_APPLY_FAILED.*symbol"):
+        _style_plot(Plot(), {"symbol": 3})
+
+
+def test_axis_title_fails_closed_when_origin_rejects_it() -> None:
+    class Axis:
+        @property
+        def title(self):
+            return ""
+
+        @title.setter
+        def title(self, _value):
+            raise RuntimeError("axis title rejected")
+
+    class Layer:
+        def axis(self, _name):
+            return Axis()
+
+    with pytest.raises(RuntimeError, match="E530_AXIS_STYLE_FAILED.*x"):
+        _set_axes(Layer(), {"x": {"title": "Time", "unit": "s"}})
+
+
+def test_grouped_and_stacked_bar_finalization_fails_closed() -> None:
+    class GroupFailLayer:
+        def group(self):
+            raise RuntimeError("group rejected")
+
+    class StackFailLayer:
+        def group(self):
+            return None
+
+        def lt_exec(self, _command):
+            raise RuntimeError("stack rejected")
+
+    with pytest.raises(RuntimeError, match="E531_BAR_GROUP_FAILED"):
+        _finalize_bar_layers([GroupFailLayer()], {0}, set())
+    with pytest.raises(RuntimeError, match="E532_BAR_STACK_FAILED"):
+        _finalize_bar_layers([StackFailLayer()], {0}, {0})
