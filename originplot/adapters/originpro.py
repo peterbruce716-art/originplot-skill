@@ -8,6 +8,32 @@ from originplot.runtime.origin_session import attached_origin, is_administrator
 from originplot.spec.io import read_table
 from originplot.verification import artifact_is_nonblank, inspect_reopened_project, no_demo_watermark
 
+_SUPPORTED_OPERATIONS = {
+    "create_workbook",
+    "create_graph",
+    "add_xy_plot",
+    "add_bar_plot",
+    "add_matrix_plot",
+    "set_axes",
+    "set_legend",
+    "set_page",
+    "export",
+}
+
+
+def _validate_operation_names(plan: OperationPlan) -> None:
+    unknown = sorted(
+        {
+            str(operation.get("op") or "<missing>")
+            for operation in plan.operations
+            if str(operation.get("op") or "") not in _SUPPORTED_OPERATIONS
+        }
+    )
+    if unknown:
+        raise RuntimeError(
+            "E520_OPERATION_PLAN_INVALID: unsupported operation(s): " + ", ".join(unknown)
+        )
+
 
 def _template_for(plan: OperationPlan) -> str:
     decision = plan.metadata.get("template_decision") if isinstance(plan.metadata, dict) else None
@@ -97,7 +123,7 @@ class _SheetWriter:
 
 
 def _add_xy(layer: Any, writer: _SheetWriter, rows: list[dict[str, Any]], operation: dict[str, Any]) -> int:
-    del rows  # source values are written by _SheetWriter; Origin owns error rendering.
+    del rows
     mapping = operation["mapping"]
     x_col = writer.column(str(mapping["x"]), "X")
     y_col = writer.column(str(mapping["y"]), "Y")
@@ -175,13 +201,6 @@ def _set_axes(layer: Any, axes: dict[str, Any]) -> None:
 
 
 def _set_legend(layer: Any, legend_spec: dict[str, Any]) -> None:
-    """Apply the narrow legend style surface supported by the v6 adapter.
-
-    Origin exposes the data legend as the graph-layer label named ``Legend``.
-    v6 deliberately supports only visibility and frame at this stage; exact
-    positioning remains rejected by StyleSpec until it has a verified mapping.
-    """
-
     if not legend_spec:
         return
     try:
@@ -232,6 +251,7 @@ def execute_operation_plan(
 ) -> dict[str, Any]:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    _validate_operation_names(plan)
     if not (admin_check or is_administrator)():
         raise RuntimeError("E120_ENVIRONMENT_MISMATCH: Origin worker requires an administrator process")
     if op_module is None:
