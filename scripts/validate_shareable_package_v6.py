@@ -21,9 +21,10 @@ REQUIRED = {
     "originplot/builders/registry.py",
     "originplot/adapters/originpro.py",
     "originplot/runtime/origin_session.py",
-    "scripts/origin_profile_worker.py",
-    "scripts/run_origin_profile_worker_elevated.ps1",
-    "scripts/search_official_templates.py",
+    "originplot/runtime/worker.py",
+    "originplot/runtime/run_origin_worker_elevated.ps1",
+    "originplot/template/gallery.py",
+    "originplot/template/retrieve.py",
     "capabilities/origin-2022-v6.json",
     "capabilities/origin-2024-v6.json",
     "capabilities/origin-2026-v6.json",
@@ -55,13 +56,10 @@ BANNED_PREFIXES = (
     "runtime/",
     "references/",
     "examples/candidates/",
+    "scripts/",
 )
 
 BANNED_FILES = {
-    "scripts/origin_candidate_worker.py",
-    "scripts/originplot_compile_v5.py",
-    "scripts/originplot_runtime_v5.py",
-    "scripts/validate_shareable_package_v5.py",
     "schemas/capabilities-v5.schema.json",
     "schemas/figurespec-v5.schema.json",
     "schemas/operation-plan-v5.schema.json",
@@ -87,7 +85,7 @@ def validate(path: Path) -> list[str]:
 
         legacy_prefix = sorted(name for name in names if name.startswith(BANNED_PREFIXES))
         if legacy_prefix:
-            errors.append("default v6 package contains benchmark/legacy roots: " + ", ".join(legacy_prefix[:10]))
+            errors.append("default v6 package contains benchmark/legacy/tooling roots: " + ", ".join(legacy_prefix[:10]))
 
         legacy_files = sorted(BANNED_FILES & names)
         if legacy_files:
