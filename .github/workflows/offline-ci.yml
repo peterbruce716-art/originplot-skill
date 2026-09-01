@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  offline-contracts:
+  v6-contracts:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -16,24 +16,21 @@ jobs:
           cache-dependency-path: |
             requirements-core.txt
             requirements-dev.txt
-            requirements-origin.txt
       - name: Install offline dependencies
         run: python -m pip install -r requirements-core.txt -r requirements-dev.txt
-      - name: Compile
-        run: python -m compileall .
+      - name: Compile v6 core
+        run: python -m compileall originplot scripts tests benchmarks
       - name: Pytest
         run: python -m pytest -q
-      - name: Packaged test runner
+      - name: Packaged v6 test runner
         run: python scripts/run_all_tests.py
-      - name: Dependency audit
+      - name: Dependency boundary audit
         run: python scripts/audit_dependencies.py
-      - name: Public demo dry-run
-        run: |
-          python examples/public_demo/generate_source.py --output-dir "$env:RUNNER_TEMP\originplot-public-demo"
-          python scripts/origin_candidate_worker.py --builder generic_line --figure-spec examples/public_demo/figure_spec.json --candidate examples/public_demo/candidate.json --output-dir "$env:RUNNER_TEMP\originplot-public-demo\plan" --dry-run
+      - name: Read-only doctor contract
+        run: python -m originplot.cli.main doctor --origin-version 2022
       - name: Build and validate shareable package
         run: |
-          python scripts/build_shareable_package.py --skill-dir . --zip-out "$env:RUNNER_TEMP\originplot-skill-v5.9.1.zip"
-          python scripts/validate_shareable_package_v5.py --path "$env:RUNNER_TEMP\originplot-skill-v5.9.1.zip"
+          python scripts/build_shareable_package_v6.py --skill-dir . --zip-out "$env:RUNNER_TEMP\originplot-v6.zip"
+          python scripts/validate_shareable_package_v6.py --path "$env:RUNNER_TEMP\originplot-v6.zip"
 
-# This workflow intentionally does not install Origin or claim live Origin E2E.
+# Offline CI intentionally does not launch Origin and never claims live Origin E2E.
