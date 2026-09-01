@@ -1,0 +1,27 @@
+from __future__ import annotations
+
+from originplot.core.profiles import resolve_profile
+from originplot.runtime.capabilities import resolve_origin_capabilities
+from originplot.runtime.doctor import doctor
+
+
+def test_admin_policy_is_unchanged_in_v6() -> None:
+    assert resolve_profile("quick").require_admin_origin_worker is True
+    assert resolve_profile("standard").require_admin_origin_worker is True
+    release = resolve_profile("release")
+    assert release.require_admin_origin_worker is True
+    assert release.require_admin_controller is True
+
+
+def test_origin_capabilities_are_version_gated() -> None:
+    assert resolve_origin_capabilities("OriginPro 2022b")["compatibility"] == "verified_baseline"
+    assert resolve_origin_capabilities("2024b")["compatibility"] == "compatible_unverified"
+    assert resolve_origin_capabilities("2026")["compatibility"] == "experimental"
+    assert resolve_origin_capabilities("2030")["plot_primitives"] == []
+
+
+def test_doctor_never_relaxes_admin_requirement() -> None:
+    result = doctor("2022")
+    assert result["administrator"]["origin_worker_required"] is True
+    assert result["administrator"]["release_controller_required"] is True
+    assert result["administrator"]["policy_changed_in_v6"] is False
