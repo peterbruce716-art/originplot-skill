@@ -2,7 +2,18 @@ line-length = 88
 
 [lint]
 select = ["E", "F", "I"]
-ignore = ["E501", "I001", "E402", "E731", "F401", "F811", "F841"]
+ignore = ["E501", "I001", "E402"]
+
+# Migrate legacy files one at a time so lint cleanup does not hide behind
+# thousand-line formatter-only diffs.
+[lint.per-file-ignores]
+"adapters/originpro/adapter.py" = ["E731"]
+"benchmarks/aa2195/builders/__init__.py" = ["F811"]
+"benchmarks/aa2195/builders/fig12_builder.py" = ["F841"]
+"scripts/extract_aa2195_fresh_source_bundle.py" = ["F401"]
+"scripts/origin_candidate_worker.py" = ["F401", "F841"]
+"scripts/origin_doctor.py" = ["F841"]
+"scripts/originplot_runtime_v5.py" = ["F841"]
 
 [format]
 quote-style = "double"

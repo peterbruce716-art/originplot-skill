@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
 
 
-def run_runtime(command: list[str], timeout_seconds: int) -> subprocess.CompletedProcess[str]:
+def run_runtime(
+    command: list[str], timeout_seconds: int
+) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
             command,
@@ -28,12 +29,15 @@ def run_runtime(command: list[str], timeout_seconds: int) -> subprocess.Complete
             command,
             124,
             stdout,
-            str(stderr) + f"\norigin_build_worker runtime timeout after {timeout_seconds} seconds.\n",
+            str(stderr)
+            + f"\norigin_build_worker runtime timeout after {timeout_seconds} seconds.\n",
         )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run only OriginPlot v5 build-worker operations in a separate process.")
+    parser = argparse.ArgumentParser(
+        description="Run only OriginPlot v5 build-worker operations in a separate process."
+    )
     parser.add_argument("--operation-plan", required=True, type=Path)
     parser.add_argument("--capabilities", required=True, type=Path)
     parser.add_argument("--manifest-out", required=True, type=Path)
