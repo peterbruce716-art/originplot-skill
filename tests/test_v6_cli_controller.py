@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import originplot.controller as controller_module
 from originplot.cli.main import main
 from originplot.controller import execute
 from originplot.core.profiles import resolve_profile
@@ -60,3 +61,36 @@ def test_controller_dry_run_dispatches_without_generic_line_special_case(tmp_pat
     assert result["command_success"] is True
     assert result["builder"] == "bar"
     assert (tmp_path / "out" / "operation_plan.json").is_file()
+
+
+def test_controller_blocks_live_heatmap_before_worker_launch(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "matrix.csv"
+    source.write_text("X,Y,Z\n0,0,1\n1,0,2\n0,1,3\n1,1,4\n", encoding="utf-8")
+    spec = tmp_path / "heatmap.json"
+    spec.write_text(
+        json.dumps(
+            {
+                "schema": "originplot.figurespec.v6",
+                "source": {"file": str(source)},
+                "data": {"matrix": {"x": "X", "y": "Y", "z": "Z"}},
+                "figure": {"id": "hm", "type": "heatmap"},
+                "verification": {"profile": "standard"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class Decision:
+        def to_dict(self):
+            return {"policy": "builtin", "selected": None, "candidates": []}
+
+    monkeypatch.setattr(controller_module, "choose_templates", lambda *args, **kwargs: Decision())
+
+    def forbidden_worker(*_args, **_kwargs):
+        raise AssertionError("live heatmap must be blocked before the Origin worker launches")
+
+    monkeypatch.setattr(controller_module, "_run_profile_worker", forbidden_worker)
+    result = execute(profile=resolve_profile("standard"), figure_spec_path=spec, output_dir=tmp_path / "out", live=True)
+    assert result["command_success"] is False
+    assert result["error_code"] == "E524_HEATMAP_LIVE_UNVERIFIED"
+    assert result["live_origin_verified"] is False
