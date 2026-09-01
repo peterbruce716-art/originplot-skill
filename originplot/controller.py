@@ -164,6 +164,25 @@ def execute(
         _write_json(output_dir / "verification.json", result)
         return result
 
+    if spec.plot_type == "heatmap":
+        result = {
+            "schema": "originplot.verification.v1",
+            "profile": profile.name,
+            "status": "failed",
+            "overall_status": "failed",
+            "command_success": False,
+            "live_origin_verified": False,
+            "pass_eligible": False,
+            "plot_type": spec.plot_type,
+            "builder": spec.plot_type,
+            "source_hash": spec.source_hash,
+            "error_code": "E524_HEATMAP_LIVE_UNVERIFIED",
+            "message": "heatmap compiles offline but live execution is blocked until the regular-grid/matrix Origin adapter has promoted same-run evidence",
+            "template_decision": _public_template_decision(templates),
+        }
+        _write_json(output_dir / "verification.json", result)
+        return result
+
     task = build_worker_task(
         profile=profile.to_dict(),
         figure_spec=str((output_dir / "figure_spec.json").resolve()),
