@@ -1,0 +1,50 @@
+name: v6.1 validation
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+      - 'refactor/**'
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+          if [ -f pyproject.toml ]; then pip install -e '.[test]' || pip install -e .; fi
+
+      - name: Import boundary check
+        run: python -c "import originplot"
+
+      - name: Ruff check
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Verify test layout
+        run: |
+          test -d tests || (echo 'Missing tests directory' && exit 1)
+          test -d tests/capability || (echo 'Missing capability tests' && exit 1)
+          test -d tests/fail_closed || (echo 'Missing fail-closed tests' && exit 1)
+          test -d tests/package_boundary || (echo 'Missing package boundary tests' && exit 1)
+
+      - name: Run tests
+        run: pytest -q
