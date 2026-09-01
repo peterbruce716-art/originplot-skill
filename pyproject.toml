@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "originplot-skill"
-version = "6.0.0"
+version = "6.1.0rc1"
 description = "Auditable editable scientific plotting workflow for Origin/OriginPro"
 requires-python = ">=3.10,<3.11"
 dependencies = [
