@@ -3,10 +3,12 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-_TOP_LEVEL = {"theme", "legend", "series", "matrix"}
-_LEGEND_FIELDS = {"visible", "frame", "position"}
-_SERIES_FIELDS = {"color", "line_color", "line_width_pt", "symbol", "symbol_size_pt", "fill_transparency_percent"}
-_MATRIX_FIELDS = {"colormap", "levels", "show_colorbar"}
+# Keep the executable style surface deliberately smaller than the aspirational
+# FigureSpec vocabulary. A field belongs here only when the Origin adapter has
+# deterministic handling for it; everything else is surfaced in style_audit.
+_TOP_LEVEL = {"theme", "legend", "series"}
+_LEGEND_FIELDS = {"visible", "frame"}
+_SERIES_FIELDS = {"color", "line_color", "line_width_pt", "symbol"}
 
 
 def _filter_style(payload: dict[str, Any] | None) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -15,23 +17,26 @@ def _filter_style(payload: dict[str, Any] | None) -> tuple[dict[str, Any], list[
     rejected: list[dict[str, Any]] = []
     for key, value in payload.items():
         if key not in _TOP_LEVEL:
-            rejected.append({"path": key, "reason": "not an allow-listed visual style field"})
+            rejected.append({"path": key, "reason": "not an executable allow-listed visual style field"})
             continue
         if key == "theme":
-            if isinstance(value, str):
-                accepted[key] = value
+            if isinstance(value, str) and value.strip():
+                accepted[key] = value.strip()
             else:
-                rejected.append({"path": key, "reason": "theme must be a string"})
+                rejected.append({"path": key, "reason": "theme must be a non-empty string"})
         elif key == "legend":
             if not isinstance(value, dict):
                 rejected.append({"path": key, "reason": "legend must be an object"})
                 continue
             clean: dict[str, Any] = {}
             for field, item in value.items():
-                if field in _LEGEND_FIELDS:
-                    clean[field] = item
+                path = f"legend.{field}"
+                if field not in _LEGEND_FIELDS:
+                    rejected.append({"path": path, "reason": "legend field is not executed by the v6 Origin adapter"})
+                elif not isinstance(item, bool):
+                    rejected.append({"path": path, "reason": "legend visibility/frame values must be boolean"})
                 else:
-                    rejected.append({"path": f"legend.{field}", "reason": "not an allow-listed legend style field"})
+                    clean[field] = item
             if clean:
                 accepted[key] = clean
         elif key == "series":
@@ -45,26 +50,28 @@ def _filter_style(payload: dict[str, Any] | None) -> tuple[dict[str, Any], list[
                     continue
                 clean: dict[str, Any] = {}
                 for field, item in series_style.items():
-                    if field in _SERIES_FIELDS:
-                        clean[field] = item
-                    else:
-                        rejected.append({"path": f"series.{series_id}.{field}", "reason": "not an allow-listed series style field"})
+                    path = f"series.{series_id}.{field}"
+                    if field not in _SERIES_FIELDS:
+                        rejected.append({"path": path, "reason": "series field is not executed by the v6 Origin adapter"})
+                    elif field in {"color", "line_color"}:
+                        if isinstance(item, (str, int)) and not isinstance(item, bool):
+                            clean[field] = item
+                        else:
+                            rejected.append({"path": path, "reason": "color must be an Origin-compatible string or integer"})
+                    elif field == "line_width_pt":
+                        if isinstance(item, (int, float)) and not isinstance(item, bool) and float(item) >= 0:
+                            clean[field] = item
+                        else:
+                            rejected.append({"path": path, "reason": "line_width_pt must be a non-negative number"})
+                    elif field == "symbol":
+                        if isinstance(item, int) and not isinstance(item, bool):
+                            clean[field] = item
+                        else:
+                            rejected.append({"path": path, "reason": "symbol must be an integer Origin symbol id"})
                 if clean:
                     clean_series[str(series_id)] = clean
             if clean_series:
                 accepted[key] = clean_series
-        elif key == "matrix":
-            if not isinstance(value, dict):
-                rejected.append({"path": key, "reason": "matrix must be an object"})
-                continue
-            clean = {}
-            for field, item in value.items():
-                if field in _MATRIX_FIELDS:
-                    clean[field] = item
-                else:
-                    rejected.append({"path": f"matrix.{field}", "reason": "not an allow-listed matrix style field"})
-            if clean:
-                accepted[key] = clean
     return accepted, rejected
 
 
@@ -92,8 +99,9 @@ def resolve_style(
     """Resolve visual style without allowing reference material to alter scientific semantics.
 
     Precedence is explicit user > confirmed reference > preset > defaults. All four
-    sources are filtered through the same narrow visual allow-list; rejected fields are
-    returned for audit rather than silently becoming executable instructions.
+    sources are filtered through the same executable visual allow-list; fields that the
+    live adapter cannot honor are rejected into the audit instead of being silently
+    accepted and ignored.
     """
 
     style: dict[str, Any] = {}
