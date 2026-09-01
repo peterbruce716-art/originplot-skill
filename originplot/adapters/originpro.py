@@ -144,14 +144,17 @@ def _add_bar(layer: Any, writer: _SheetWriter, operation: dict[str, Any]) -> int
 
 
 def _add_matrix(layer: Any, writer: _SheetWriter, operation: dict[str, Any]) -> int:
+    kind = str(operation.get("kind") or "contour")
+    if kind == "heatmap":
+        raise RuntimeError(
+            "E524_HEATMAP_LIVE_UNVERIFIED: v6 can compile heatmap intent, but live Origin heatmap execution remains blocked until a regular-grid/matrix adapter has same-run verification"
+        )
     mapping = operation["mapping"]
     x_col = writer.column(str(mapping["x"]), "X")
     y_col = writer.column(str(mapping["y"]), "Y")
     z_col = writer.column(str(mapping["z"]), "Z")
-    kind = str(operation.get("kind") or "contour")
-    plot_type: int | str = 243 if kind == "contour" else "?"
     try:
-        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colz=z_col, type=plot_type)
+        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colz=z_col, type=243)
     except (TypeError, RuntimeError) as exc:
         raise RuntimeError(f"E523_MATRIX_PLOT_UNAVAILABLE: Origin adapter rejected {kind} XYZ plot") from exc
     _style_plot(plot, dict(operation.get("style") or {}))
