@@ -16,10 +16,6 @@ ROOT_FILES = {
 }
 
 RUNTIME_FILES = {
-    "scripts/origin_profile_worker.py",
-    "scripts/run_origin_profile_worker_elevated.ps1",
-    "scripts/search_official_templates.py",
-    "scripts/retrieve_official_template.py",
     "capabilities/origin-2022-v6.json",
     "capabilities/origin-2024-v6.json",
     "capabilities/origin-2026-v6.json",
