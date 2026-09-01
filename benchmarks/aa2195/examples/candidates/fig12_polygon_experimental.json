@@ -1,0 +1,39 @@
+{
+  "candidate_id": "portable_fig12_type34_polygon_experimental",
+  "figure": "fig12",
+  "route": "worksheet_xyz_source_calibrated_three_panel_contour",
+  "reproduction_mode": "reconstructed_approximate",
+  "template_search_record": "../template_search/aa2195_official_template_search.json",
+  "strict_parameter_validation": true,
+  "source_crop": "AUTHORIZED_LOCAL_SOURCE_REQUIRED",
+  "fig12_matrix_resolution_scale": 0.5,
+  "fig12_matrix_smoothing_sigma": 0.5,
+  "fig12_y_minor_ticks": 0,
+  "fig12_matrix_biases": {
+    "PSC": 0.0,
+    "UC": 0.0,
+    "TR": 0.0
+  },
+  "fig12_matrix_contrasts": {
+    "PSC": 1.0,
+    "UC": 1.0,
+    "TR": 1.0
+  },
+  "fig12_matrix_region_values": {
+    "TR": [
+      67.1,
+      59.2,
+      49.05
+    ]
+  },
+  "fig12_path_overlays": true,
+  "fig12_axis_title_overlays": true,
+  "fig12_label_sizes": {
+    "panel": 11.0,
+    "contour": 9.2,
+    "mechanism": 10.0,
+    "colorbar_title": 10.0,
+    "colorbar_tick": 8.0
+  },
+  "source_crop_policy": "supply_an_authorized_local_path_before_live_execution"
+}
