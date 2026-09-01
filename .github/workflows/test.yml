@@ -35,7 +35,12 @@ jobs:
       - name: Ruff format check
         run: ruff format --check .
 
-      - name: Run tests
+      - name: Verify test layout
         run: |
           test -d tests || (echo 'Missing tests directory' && exit 1)
-          pytest -q
+          test -d tests/capability || (echo 'Missing capability tests' && exit 1)
+          test -d tests/fail_closed || (echo 'Missing fail-closed tests' && exit 1)
+          test -d tests/package_boundary || (echo 'Missing package boundary tests' && exit 1)
+
+      - name: Run tests
+        run: pytest -q
