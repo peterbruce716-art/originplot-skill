@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 import originplot.controller as controller_module
@@ -39,6 +41,19 @@ def test_cli_plan_resolves_confirmed_reference_style_below_user_style(tmp_path: 
     assert payload["style"]["series"]["series_1"]["color"] == "#444444"
     assert payload["style"]["legend"]["visible"] is False
     assert any(item["path"] == "phase" for item in payload["style_audit"]["rejected"])
+
+
+def test_cli_module_entrypoint_has_no_runpy_warning() -> None:
+    completed = subprocess.run(
+        [sys.executable, "-m", "originplot.cli.main", "doctor", "--origin-version", "2022"],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert "RuntimeWarning" not in completed.stderr
 
 
 def test_controller_dry_run_dispatches_without_generic_line_special_case(tmp_path: Path) -> None:
