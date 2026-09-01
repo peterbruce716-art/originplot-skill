@@ -1,6 +1,6 @@
 ---
 name: originplot
-description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap planning, contour, multi-panel, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
+description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap planning, contour, multi-panel planning, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
 ---
 
 # OriginPlot Skill v6.0
@@ -52,9 +52,18 @@ Classify every source column as exactly one of:
 - create error bars from unstated assumptions;
 - identify peaks, phases, transitions, or materials;
 - calculate scientific quantities;
-- invent or fill measurements.
+- invent or fill measurements;
+- pivot, split, aggregate, or reshape long-form groups.
 
 An explicit user mapping resolves semantic uncertainty for the selected plot; unrelated unknown columns are retained, not rendered.
+
+### Categorical tables
+
+Automatic categorical planning is limited to transformations that do not change the source-table meaning:
+
+- `category + one Y` may compile to `bar`;
+- `category + multiple Y columns` is wide form and may compile to `grouped_bar`, with one series per Y column;
+- `category + group + one Y` is long form. Do not infer a pivot, group split, aggregation, or stacked layout. Automatic `bar`/`grouped_bar`/`stacked_bar` planning must fail closed and require a manually confirmed FigureSpec with explicit series mappings or an explicitly transformed source.
 
 ## FigureSpec v6 is the ordinary-workflow contract
 
@@ -99,7 +108,7 @@ Never equate a registered builder with promoted live Origin evidence. `doctor` e
 
 At v6.0, repository-wide `live_evidence_primitives` remains empty until new licensed-Origin evidence is deliberately promoted. A successful individual live run proves that run only.
 
-`heatmap` is compile-only in v6.0. If live execution is requested, fail in the controller with `E524_HEATMAP_LIVE_UNVERIFIED` **before launching the elevated Origin worker**. The adapter has the same fail-closed guard. Do not silently grid/bin XYZ data or synthesize a matrix to make a heatmap work. Promotion requires an explicit regular-grid/matrix contract and new same-run live evidence.
+`heatmap` and `multi_panel` are compile-only in v6.0 and must fail **before launching the elevated Origin worker** when live execution is requested. `heatmap` uses `E524_HEATMAP_LIVE_UNVERIFIED`; `multi_panel` uses `E527_LIVE_PRIMITIVE_BLOCKED`. Do not silently grid/bin XYZ data, synthesize a matrix, or pretend panel composition was executed. Promotion requires the missing native adapter behavior plus fresh same-run licensed-Origin evidence.
 
 ## Builder and adapter boundary
 
@@ -168,7 +177,7 @@ Capability status is explicit:
 - Origin 2026: experimental;
 - unknown versions: fail closed for live claims.
 
-`ready_for_live_worker` means only that the environment can attempt an authorized worker. It does not promote a primitive to live evidence. Capability metadata never waives administrator or same-run verification requirements.
+The authoritative v6 capability profiles live inside `originplot/runtime/profiles/` and are packaged with the installable runtime. Source checkout, installed wheel, and compact Skill package must therefore resolve the same v6 profiles. `ready_for_live_worker` means only that the environment can attempt an authorized worker. It does not promote a primitive to live evidence. Capability metadata never waives administrator or same-run verification requirements.
 
 ## Reference figures
 
@@ -181,6 +190,12 @@ explicit user style > confirmed reference suggestion > preset > OriginPlot defau
 ```
 
 Reference-derived choices must ultimately become normal FigureSpec `style`/`layout` fields. Do not create a parallel image-reproduction execution engine.
+
+## Packaging boundary
+
+The installable `originplot` package owns all ordinary runtime assets required by the product path: administrator worker, PowerShell elevation launcher, template discovery/retrieval logic, and v6 capability profiles. Product code under `originplot/` must not import the repository-root `scripts` package.
+
+The default shareable Skill package intentionally excludes root `scripts/`, benchmark content, generated/private scientific files, and v5-named contracts. Repository-root scripts may remain only as development/benchmark compatibility tooling; ordinary installed execution must not depend on them.
 
 ## AA2195 benchmark
 
