@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.origin_worker_result.v2",
+  "type": "object",
+  "required": ["schema", "command_success", "overall_status"],
+  "properties": {
+    "schema": {"const": "originplot.origin_worker_result.v2"},
+    "profile": {"type": ["string", "null"]},
+    "mode": {"type": "string"},
+    "command_success": {"type": "boolean"},
+    "structure_pass": {"type": "boolean"},
+    "live_origin_verified": {"type": "boolean"},
+    "overall_status": {"type": "string", "minLength": 1},
+    "build_success": {"type": "boolean"},
+    "reopen_success": {"type": "boolean"},
+    "editable_plot_count": {"type": "integer", "minimum": 0},
+    "worksheet_binding_ok": {"type": "boolean"},
+    "export_nonblank": {"type": "boolean"},
+    "exports_complete": {"type": "boolean"},
+    "demo_watermark_detected": {"type": "boolean"},
+    "gate_results": {"type": "object"},
+    "readback": {"type": "object"},
+    "exports": {"type": "object"},
+    "opju": {"type": "string"},
+    "origin_session": {"type": "object"},
+    "build_plot_count": {"type": "integer", "minimum": 0},
+    "error_code": {"type": ["string", "null"]},
+    "message": {"type": "string"}
+  },
+  "additionalProperties": true
+}
