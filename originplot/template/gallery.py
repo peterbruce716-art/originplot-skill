@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-"""Discover and optionally download OriginLab Graph Gallery projects."""
-
 from __future__ import annotations
 
-import argparse
 import json
 import re
 import time
@@ -15,11 +11,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-try:
-    from .retrieve_official_template import USER_AGENT, is_allowed_url, retrieve, validate_archive
-except ImportError:  # Direct script execution keeps the historical CLI working.
-    from retrieve_official_template import USER_AGENT, is_allowed_url, retrieve, validate_archive
-
+from .retrieve import USER_AGENT, is_allowed_url, retrieve, validate_archive
 
 GALLERY_URL = "https://www.originlab.com/www/products/GraphGallery.aspx"
 MAX_ITEMS_LIMIT = 20
@@ -251,40 +243,3 @@ def discover(
         "discovered_count": discovered,
         "candidates": candidates,
     }
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("--search-terms")
-    source.add_argument("--gallery-url")
-    parser.add_argument("--max-items", type=int, default=5)
-    parser.add_argument("--attempts", type=int, default=3)
-    parser.add_argument("--timeout", type=float, default=30.0)
-    parser.add_argument("--backoff", type=float, default=2.0)
-    parser.add_argument("--download-dir", type=Path)
-    parser.add_argument("--force", action="store_true")
-    parser.add_argument("--manifest", type=Path, required=True)
-    return parser
-
-
-def main() -> int:
-    args = build_parser().parse_args()
-    gallery_url = build_gallery_url(args.search_terms or "", args.gallery_url or "")
-    result = discover(
-        gallery_url,
-        args.max_items,
-        args.attempts,
-        args.timeout,
-        args.backoff,
-        args.download_dir.resolve() if args.download_dir else None,
-        args.force,
-    )
-    args.manifest.parent.mkdir(parents=True, exist_ok=True)
-    args.manifest.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"status": result["status"], "manifest": str(args.manifest)}, ensure_ascii=False))
-    return 0 if result["status"] == "ok" else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

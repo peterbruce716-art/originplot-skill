@@ -1,0 +1,33 @@
+{
+  "schema": "originplot.capabilities.v6",
+  "origin_version": "2024",
+  "compatibility": "compatible_unverified",
+  "authorization": {
+    "origin_worker": "administrator_required",
+    "release_controller": "administrator_required",
+    "policy_changed_in_v6": false
+  },
+  "compile_primitives": [
+    "line",
+    "scatter",
+    "line_scatter",
+    "errorbar",
+    "bar",
+    "grouped_bar",
+    "stacked_bar",
+    "heatmap",
+    "contour",
+    "multi_panel"
+  ],
+  "live_evidence_primitives": [],
+  "live_blocked": {
+    "heatmap": "regular_grid_adapter_not_live_verified",
+    "multi_panel": "panel_layout_adapter_not_live_verified"
+  },
+  "verification": {
+    "machine_smoke_required": true,
+    "same_run_save_reopen_readback_export_required": true,
+    "general_release_fail_closed_without_promoted_live_evidence": true
+  },
+  "note": "Origin 2024 is a compatibility target only; this profile does not claim receiving-machine or licensed-Origin verification."
+}

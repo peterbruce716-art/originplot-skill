@@ -21,7 +21,7 @@ from .session import (
     origin_session,
 )
 from .source_geometry import validate_source_geometry_groups
-from runtime.editable_opju import ensure_opju_file_editable, open_opju_editable
+from ..runtime.editable_opju import ensure_opju_file_editable, open_opju_editable
 
 
 BUILDERS = {

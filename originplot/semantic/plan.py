@@ -13,6 +13,10 @@ def _first(columns: list[dict[str, Any]], role: str) -> str | None:
     return next((str(item["name"]) for item in columns if item.get("role") == role), None)
 
 
+def _all(columns: list[dict[str, Any]], role: str) -> list[str]:
+    return [str(item["name"]) for item in columns if item.get("role") == role]
+
+
 def build_figurespec(
     path: Path,
     *,
@@ -46,9 +50,11 @@ def build_figurespec(
 
     x = mapping.get("x") or _first(columns, "x")
     y = mapping.get("y") or _first(columns, "y")
+    y_columns = [mapping["y"]] if mapping.get("y") else _all(columns, "y")
     y_error = mapping.get("y_error") or _first(columns, "y_error")
     x_error = mapping.get("x_error") or _first(columns, "x_error")
     category = mapping.get("category") or _first(columns, "category")
+    group = mapping.get("group") or _first(columns, "group")
     z = mapping.get("z") or _first(columns, "z")
 
     if selected in {"line", "scatter", "line_scatter", "errorbar"}:
@@ -63,12 +69,28 @@ def build_figurespec(
             raise OriginPlotError("E321_ERROR_MAPPING_REQUIRED", "errorbar requires confirmed x_error or y_error")
         data = {"series": [series]}
     elif selected in {"bar", "grouped_bar", "stacked_bar"}:
-        if not category or not y:
+        if group:
+            raise OriginPlotError(
+                "E324_LONG_FORM_BAR_CONFIRMATION_REQUIRED",
+                "long-form grouped/stacked bar data requires an explicit FigureSpec with manually confirmed series mapping; automatic planning will not pivot or split group values",
+            )
+        if not category or not y_columns:
             raise OriginPlotError("E322_CATEGORY_MAPPING_REQUIRED", f"{selected} requires confirmed category and y columns")
-        series = {"id": "series_1", "category": category, "y": y}
-        if y_error:
-            series["y_error"] = y_error
-        data = {"series": [series]}
+        if selected in {"grouped_bar", "stacked_bar"}:
+            bar_series = [
+                {"id": f"series_{index + 1}", "category": category, "y": y_name}
+                for index, y_name in enumerate(y_columns)
+            ]
+            # A single generic uncertainty column cannot be safely assigned to
+            # multiple Y series.  Only attach it when the mapping is unambiguous.
+            if y_error and len(bar_series) == 1:
+                bar_series[0]["y_error"] = y_error
+            data = {"series": bar_series}
+        else:
+            series = {"id": "series_1", "category": category, "y": y_columns[0]}
+            if y_error:
+                series["y_error"] = y_error
+            data = {"series": [series]}
     elif selected in {"heatmap", "contour"}:
         if not x or not y or not z:
             raise OriginPlotError("E323_MATRIX_MAPPING_REQUIRED", f"{selected} requires confirmed x, y and z columns")

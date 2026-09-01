@@ -12,8 +12,13 @@ def recommend_plots(understanding: dict[str, Any]) -> list[str]:
         recommendations.append("errorbar")
     if counts.get("x", 0) and counts.get("y", 0):
         recommendations.extend(["line_scatter", "scatter", "line"])
-    if counts.get("category", 0) and counts.get("y", 0):
-        recommendations.append("grouped_bar" if counts.get("y", 0) > 1 or counts.get("group", 0) else "bar")
+
+    # Bar auto-planning is deliberately limited to wide-form tables.  A group
+    # column plus a single Y is long-form data and would require a pivot/split,
+    # which is a scientific data transformation that OriginPlot must not invent.
+    if counts.get("category", 0) and counts.get("y", 0) and not counts.get("group", 0):
+        recommendations.append("grouped_bar" if counts.get("y", 0) > 1 else "bar")
+
     if counts.get("x", 0) and counts.get("y", 0) and counts.get("z", 0):
         recommendations.extend(["heatmap", "contour"])
 
