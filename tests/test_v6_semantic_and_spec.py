@@ -65,6 +65,47 @@ def test_figurespec_rejects_missing_columns(tmp_path: Path) -> None:
         load_figure_spec(spec_path)
 
 
+def test_handwritten_figurespec_rejects_non_executable_style(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    spec_path = tmp_path / "figure.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "schema": FIGURE_SPEC_SCHEMA,
+                "source": {"file": "data.csv"},
+                "data": {"series": [{"id": "s1", "x": "Time", "y": "Intensity"}]},
+                "figure": {"id": "demo", "type": "line"},
+                "style": {"theme": "publication", "series": {"s1": {"symbol_size_pt": 8}}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(OriginPlotError, match="style field.*not executable"):
+        load_figure_spec(spec_path)
+
+
+def test_handwritten_figurespec_normalizes_supported_style(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    spec_path = tmp_path / "figure.json"
+    spec_path.write_text(
+        json.dumps(
+            {
+                "schema": FIGURE_SPEC_SCHEMA,
+                "source": {"file": "data.csv"},
+                "data": {"series": [{"id": "s1", "x": "Time", "y": "Intensity"}]},
+                "figure": {"id": "demo", "type": "line"},
+                "style": {"legend": {"visible": True, "frame": False}, "series": {"s1": {"color": "red", "line_width_pt": 1.5}}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    spec = load_figure_spec(spec_path)
+    assert spec.style == {"legend": {"visible": True, "frame": False}, "series": {"s1": {"color": "red", "line_width_pt": 1.5}}}
+    assert spec.to_dict()["style"] == spec.style
+
+
 def test_grouped_bar_auto_planning_uses_all_wide_y_columns(tmp_path: Path) -> None:
     source = tmp_path / "wide.csv"
     source.write_text("Category,Signal A,Signal B\nA,1,2\nB,3,4\n", encoding="utf-8")
