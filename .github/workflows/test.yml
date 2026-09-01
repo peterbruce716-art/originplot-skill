@@ -41,6 +41,9 @@ jobs:
       - name: Import boundary check
         run: python -c "import originplot"
 
+      - name: Version consistency check
+        run: python scripts/check_version_consistency.py
+
       - name: Ruff check
         run: |
           echo '=== Ruff check start ==='
