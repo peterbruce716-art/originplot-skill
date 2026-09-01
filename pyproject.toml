@@ -17,7 +17,7 @@ dependencies = [
 originplot = "originplot.cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["originplot*"]
+include = ["originplot*", "contracts*"]
 
 [tool.setuptools.package-data]
 "originplot.runtime" = ["*.ps1", "profiles/*.json"]
