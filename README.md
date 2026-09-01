@@ -28,7 +28,7 @@ Windows + Python 3.10:
 
 ```powershell
 py -3.10 -m venv .venv
-.\.venv\Scripts\python -m pip install -r requirements-core.txt -r requirements-dev.txt
+.\.venv\Scripts\python -m pip install .
 .\.venv\Scripts\python -m pip install -r requirements-origin.txt
 ```
 
@@ -93,7 +93,7 @@ primitive_maturity
 
 At v6.0, no general primitive is promoted as repository-wide v6 live evidence merely because offline CI passes. A successful live run still has to earn its own same-run save/reopen/binding/export verification.
 
-`heatmap` is stricter: FigureSpec and OperationPlan compilation are supported, but live execution is deliberately blocked with `E524_HEATMAP_LIVE_UNVERIFIED` before the elevated Origin worker starts. Promotion requires a regular-grid/matrix adapter plus fresh licensed-Origin evidence. The other live candidates remain subject to the same-run verification gates and are not automatically promoted by capability metadata.
+`heatmap` and `multi_panel` are currently compile-only. FigureSpec and OperationPlan compilation are supported, but live execution is deliberately blocked **before the elevated Origin worker starts**. `heatmap` fails with `E524_HEATMAP_LIVE_UNVERIFIED`; `multi_panel` fails with `E527_LIVE_PRIMITIVE_BLOCKED`. Promotion requires the missing native adapter behavior plus fresh licensed-Origin same-run evidence. The other live candidates remain subject to the same-run verification gates and are not automatically promoted by capability metadata.
 
 ## Conservative data understanding
 
@@ -105,7 +105,13 @@ x / y / x_error / y_error / z / group / category / label / support / retain / un
 
 A numeric column with unclear meaning remains `uncertain`. OriginPlot will not quietly turn it into another curve. Explicit user mappings resolve the selected scientific roles; unrelated columns are retained.
 
-OriginPlot does **not** silently smooth, normalize, fit, remove outliers, calculate error bars, identify peaks/phases, or compute scientific results.
+Categorical auto-planning is intentionally conservative:
+
+- `category + one Y` may become `bar`;
+- `category + multiple Y columns` is treated as wide-form data and may become `grouped_bar`, with one explicit series per Y column;
+- `category + group + one Y` is long-form data and is **not** silently pivoted, split, grouped, or stacked. Automatic planning fails closed; use a manually confirmed FigureSpec with explicit series mappings or transform the source explicitly outside OriginPlot.
+
+OriginPlot does **not** silently smooth, normalize, fit, remove outliers, calculate error bars, identify peaks/phases, pivot long-form groups, or compute scientific results.
 
 ## FigureSpec v6
 
@@ -188,7 +194,7 @@ Current status model:
 - **Origin 2026** — experimental;
 - unknown versions — no automatic live claim.
 
-`ready_for_live_worker` is an environment-readiness signal only. Primitive maturity and same-run evidence are separate. Capability metadata never overrides administrator requirements or the verification gates.
+The v6 capability profiles are package-owned runtime data under `originplot/runtime/profiles/`, so the same profiles are used from a source checkout, an installed wheel, and the compact Skill package. `ready_for_live_worker` is an environment-readiness signal only. Primitive maturity and same-run evidence are separate. Capability metadata never overrides administrator requirements or the verification gates.
 
 ## Profiles
 
@@ -212,18 +218,21 @@ Reference choices must become normal FigureSpec `style`/`layout` fields; there i
 
 [`benchmarks/aa2195`](benchmarks/aa2195/) contains the retained specialized builders, candidate/configuration material and historical evidence/protocol documents. `originplot/` is forbidden from importing it; an offline package-boundary test enforces that separation.
 
-## Offline tests
+## Packaging and offline tests
+
+The installable `originplot` package owns the runtime worker, elevation launcher, template discovery/retrieval code, and v6 capability profiles. The default shareable Skill ZIP intentionally excludes root `scripts/`, AA2195 benchmark material, generated data, and v5 contracts.
 
 ```powershell
-python -m compileall originplot scripts tests
+python -m compileall originplot scripts tests benchmarks
 python -m pytest -q
 python scripts/run_all_tests.py
 python scripts/audit_dependencies.py
+python -m pip install . --no-deps --target "$env:TEMP\originplot-installed"
 python scripts/build_shareable_package_v6.py --skill-dir . --zip-out "$env:TEMP\originplot-v6.zip"
 python scripts/validate_shareable_package_v6.py --path "$env:TEMP\originplot-v6.zip"
 ```
 
-These commands test planning/contracts/package boundaries. They do **not** prove live Origin execution. A live claim still requires the licensed administrator-Origin lifecycle on Windows.
+CI also runs an installed-package isolation smoke test from outside the repository tree. These commands test planning/contracts/package boundaries. They do **not** prove live Origin execution. A live claim still requires the licensed administrator-Origin lifecycle on Windows.
 
 ## License and evidence
 
