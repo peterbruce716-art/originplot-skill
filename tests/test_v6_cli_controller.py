@@ -78,6 +78,14 @@ def test_controller_dry_run_dispatches_without_generic_line_special_case(tmp_pat
     assert (tmp_path / "out" / "operation_plan.json").is_file()
 
 
+def _decision():
+    class Decision:
+        def to_dict(self):
+            return {"policy": "builtin", "selected": None, "candidates": []}
+
+    return Decision()
+
+
 def test_controller_blocks_live_heatmap_before_worker_launch(tmp_path: Path, monkeypatch) -> None:
     source = tmp_path / "matrix.csv"
     source.write_text("X,Y,Z\n0,0,1\n1,0,2\n0,1,3\n1,1,4\n", encoding="utf-8")
@@ -94,12 +102,7 @@ def test_controller_blocks_live_heatmap_before_worker_launch(tmp_path: Path, mon
         ),
         encoding="utf-8",
     )
-
-    class Decision:
-        def to_dict(self):
-            return {"policy": "builtin", "selected": None, "candidates": []}
-
-    monkeypatch.setattr(controller_module, "choose_templates", lambda *args, **kwargs: Decision())
+    monkeypatch.setattr(controller_module, "choose_templates", lambda *args, **kwargs: _decision())
 
     def forbidden_worker(*_args, **_kwargs):
         raise AssertionError("live heatmap must be blocked before the Origin worker launches")
@@ -108,4 +111,41 @@ def test_controller_blocks_live_heatmap_before_worker_launch(tmp_path: Path, mon
     result = execute(profile=resolve_profile("standard"), figure_spec_path=spec, output_dir=tmp_path / "out", live=True)
     assert result["command_success"] is False
     assert result["error_code"] == "E524_HEATMAP_LIVE_UNVERIFIED"
+    assert result["live_origin_verified"] is False
+
+
+def test_controller_blocks_live_multi_panel_before_worker_launch(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,SignalA,SignalB\n0,1,2\n1,2,3\n", encoding="utf-8")
+    spec = tmp_path / "multi.json"
+    spec.write_text(
+        json.dumps(
+            {
+                "schema": "originplot.figurespec.v6",
+                "source": {"file": str(source)},
+                "data": {},
+                "figure": {
+                    "id": "multi",
+                    "type": "multi_panel",
+                    "panels": [
+                        {"data": {"series": [{"x": "Time", "y": "SignalA"}]}, "figure": {"type": "line"}},
+                        {"data": {"series": [{"x": "Time", "y": "SignalB"}]}, "figure": {"type": "scatter"}},
+                    ],
+                },
+                "layout": {"panels": {"rows": 1, "columns": 2}},
+                "verification": {"profile": "standard"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(controller_module, "choose_templates", lambda *args, **kwargs: _decision())
+
+    def forbidden_worker(*_args, **_kwargs):
+        raise AssertionError("live multi_panel must be blocked before the Origin worker launches")
+
+    monkeypatch.setattr(controller_module, "_run_profile_worker", forbidden_worker)
+    result = execute(profile=resolve_profile("standard"), figure_spec_path=spec, output_dir=tmp_path / "out", live=True)
+    assert result["command_success"] is False
+    assert result["error_code"] == "E527_LIVE_PRIMITIVE_BLOCKED"
+    assert result["plot_type"] == "multi_panel"
     assert result["live_origin_verified"] is False
