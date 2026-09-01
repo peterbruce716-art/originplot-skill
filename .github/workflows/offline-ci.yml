@@ -28,6 +28,16 @@ jobs:
         run: python scripts/audit_dependencies.py
       - name: Read-only doctor contract
         run: python -m originplot.cli.main doctor --origin-version 2022
+      - name: Installed package isolation smoke
+        shell: pwsh
+        run: |
+          python -m pip install . --no-deps --target "$env:RUNNER_TEMP\originplot-installed"
+          $smoke = Join-Path $env:RUNNER_TEMP "originplot-smoke"
+          New-Item -ItemType Directory -Force -Path $smoke | Out-Null
+          Push-Location $smoke
+          $env:PYTHONPATH = "$env:RUNNER_TEMP\originplot-installed"
+          python -c "from pathlib import Path; import originplot.controller; import originplot.template.gallery; import originplot.runtime.worker; import originplot.runtime as rt; from originplot.runtime.doctor import doctor; launcher=Path(rt.__file__).resolve().parent/'run_origin_worker_elevated.ps1'; assert launcher.is_file(), launcher; result=doctor('2022'); caps=result['origin']['capabilities']; assert caps['profile_found'], caps; assert caps['profile_schema']=='originplot.capabilities.v6', caps; assert result['administrator']['policy_changed_in_v6'] is False"
+          Pop-Location
       - name: Build and validate shareable package
         run: |
           python scripts/build_shareable_package_v6.py --skill-dir . --zip-out "$env:RUNNER_TEMP\originplot-v6.zip"
