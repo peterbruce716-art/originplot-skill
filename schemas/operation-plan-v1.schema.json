@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.operation_plan.v1",
+  "type": "object",
+  "required": ["schema", "figure_id", "plot_type", "source", "profile", "operations", "metadata"],
+  "properties": {
+    "schema": {"const": "originplot.operation_plan.v1"},
+    "figure_id": {"type": "string", "minLength": 1},
+    "plot_type": {
+      "enum": [
+        "line",
+        "scatter",
+        "line_scatter",
+        "errorbar",
+        "bar",
+        "grouped_bar",
+        "stacked_bar",
+        "heatmap",
+        "contour",
+        "multi_panel"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "hash": {"type": "string"},
+        "sheet": {"type": ["string", "null"]}
+      },
+      "additionalProperties": true
+    },
+    "profile": {"enum": ["quick", "standard", "release"]},
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["op"],
+        "properties": {
+          "op": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": true
+      }
+    },
+    "metadata": {"type": "object"}
+  },
+  "additionalProperties": false
+}
