@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from originplot.adapters.originpro import _add_matrix, _add_xy, _all_exports_nonblank, _template_for
+from originplot.adapters.originpro import _add_matrix, _add_xy, _all_exports_nonblank, _set_legend, _template_for
 from originplot.operation_plan import OperationPlan
 from originplot.runtime.protocol import WORKER_TASK_SCHEMA, build_worker_task
-from scripts.origin_profile_worker import run
+from originplot.runtime.worker import run
 
 
 def test_worker_protocol_carries_declarative_plan(tmp_path: Path) -> None:
@@ -130,6 +130,36 @@ def test_errorbar_uses_native_origin_error_arguments() -> None:
     assert layer.calls[0][1]["colxerr"] == 2
     assert layer.calls[0][1]["colyerr"] == 3
     assert layer.calls[0][1]["type"] == "y"
+
+
+def test_legend_adapter_applies_visibility_and_frame() -> None:
+    class Legend:
+        def __init__(self) -> None:
+            self.removed = False
+            self.ints = []
+
+        def remove(self) -> None:
+            self.removed = True
+
+        def set_int(self, name, value) -> None:
+            self.ints.append((name, value))
+
+    class Layer:
+        def __init__(self) -> None:
+            self.legend = Legend()
+
+        def label(self, name):
+            assert name == "Legend"
+            return self.legend
+
+    visible = Layer()
+    _set_legend(visible, {"visible": True, "frame": False})
+    assert visible.legend.removed is False
+    assert ("showframe", 0) in visible.legend.ints
+
+    hidden = Layer()
+    _set_legend(hidden, {"visible": False})
+    assert hidden.legend.removed is True
 
 
 def test_heatmap_live_adapter_fails_closed_before_origin_plot_call() -> None:
