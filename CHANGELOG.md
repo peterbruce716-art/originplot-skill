@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.1.2
+
+### Changed
+- Reduced SKILL guidance duplication to improve AI context efficiency.
+- Kept scientific safety rules, capability boundaries, and verification requirements explicit.
+- Improved agent workflow readability for faster decision routing.
+
+### Validation
+- Existing CI validation remains authoritative:
+  - ruff check
+  - ruff format
+  - pytest
+  - package validation
+
 ## 6.1.1
 
 ### Added
@@ -27,11 +41,6 @@
 - Explicit release validation workflow documentation.
 - Stronger CI and package boundary validation.
 - Clearer documentation for FigureSpec, OperationPlan, primitive maturity, and fail-closed execution boundaries.
-
-### Changed
-- Improved capability, fail-closed, and package-boundary quality gates.
-- Aligned package metadata with the v6.1.0 release candidate.
-- Clarified that offline validation does not replace licensed Origin live evidence.
 
 ## 6.0.0
 
