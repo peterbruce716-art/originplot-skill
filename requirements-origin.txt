@@ -1,3 +1,2 @@
-# Live Windows + Origin 2022 execution. OriginExt is supplied by Origin, not PyPI.
+# Live Windows Origin execution. OriginExt is supplied by Origin, not PyPI.
 originpro>=3,<4; platform_system == "Windows"
-pandas>=1.5,<3; platform_system == "Windows"
