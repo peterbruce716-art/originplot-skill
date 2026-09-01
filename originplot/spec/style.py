@@ -6,7 +6,7 @@ from typing import Any
 # Keep the executable style surface deliberately smaller than the aspirational
 # FigureSpec vocabulary. A field belongs here only when the Origin adapter has
 # deterministic handling for it; everything else is surfaced in style_audit.
-_TOP_LEVEL = {"theme", "legend", "series"}
+_TOP_LEVEL = {"legend", "series"}
 _LEGEND_FIELDS = {"visible", "frame"}
 _SERIES_FIELDS = {"color", "line_color", "line_width_pt", "symbol"}
 
@@ -19,12 +19,7 @@ def _filter_style(payload: dict[str, Any] | None) -> tuple[dict[str, Any], list[
         if key not in _TOP_LEVEL:
             rejected.append({"path": key, "reason": "not an executable allow-listed visual style field"})
             continue
-        if key == "theme":
-            if isinstance(value, str) and value.strip():
-                accepted[key] = value.strip()
-            else:
-                rejected.append({"path": key, "reason": "theme must be a non-empty string"})
-        elif key == "legend":
+        if key == "legend":
             if not isinstance(value, dict):
                 rejected.append({"path": key, "reason": "legend must be an object"})
                 continue
@@ -96,12 +91,12 @@ def resolve_style(
     reference: dict[str, Any] | None = None,
     user: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Resolve visual style without allowing reference material to alter scientific semantics.
+    """Resolve only visual fields that the v6 Origin adapter actually executes.
 
     Precedence is explicit user > confirmed reference > preset > defaults. All four
-    sources are filtered through the same executable visual allow-list; fields that the
-    live adapter cannot honor are rejected into the audit instead of being silently
-    accepted and ignored.
+    sources are filtered through the same executable visual allow-list; themes,
+    precise layout aliases, and other fields that the live adapter cannot honor are
+    rejected into the audit instead of being silently accepted and ignored.
     """
 
     style: dict[str, Any] = {}
