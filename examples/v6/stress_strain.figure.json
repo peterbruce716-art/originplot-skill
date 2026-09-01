@@ -1,0 +1,35 @@
+{
+  "schema": "originplot.figurespec.v6",
+  "source": {
+    "file": "stress_strain.txt"
+  },
+  "data": {
+    "series": [
+      {
+        "id": "sample",
+        "x": "Strain",
+        "y": "Stress",
+        "y_error": "Stress SD"
+      }
+    ]
+  },
+  "figure": {
+    "id": "stress_strain",
+    "type": "errorbar",
+    "x_axis": {"title": "Strain"},
+    "y_axis": {"title": "Stress"}
+  },
+  "style": {
+    "theme": "publication",
+    "legend": {"visible": false, "frame": false}
+  },
+  "layout": {
+    "page": {"width_cm": 18, "height_cm": 12}
+  },
+  "verification": {
+    "profile": "standard",
+    "require_reopen": true,
+    "require_binding_readback": true,
+    "require_origin_export": true
+  }
+}
