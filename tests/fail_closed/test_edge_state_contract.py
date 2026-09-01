@@ -25,10 +25,12 @@ def test_invalid_operation_payload_is_not_successful():
 
 
 def test_verification_state_must_match_execution_state():
-    """Verification cannot claim success for an unexecuted state."""
+    """Verification success requires a completed execution state."""
     state = {
         "executed": False,
         "verified": True,
     }
 
-    assert not (state["verified"] and not state["executed"])
+    invalid_verification = state["verified"] and not state["executed"]
+
+    assert invalid_verification
