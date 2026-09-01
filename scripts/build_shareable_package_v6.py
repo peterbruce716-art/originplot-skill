@@ -16,9 +16,6 @@ ROOT_FILES = {
 }
 
 RUNTIME_FILES = {
-    "capabilities/origin-2022-v6.json",
-    "capabilities/origin-2024-v6.json",
-    "capabilities/origin-2026-v6.json",
     "schemas/figurespec-v6.schema.json",
     "schemas/capabilities-v6.schema.json",
     "schemas/doctor-v3.schema.json",
