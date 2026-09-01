@@ -63,28 +63,41 @@ def _apply_page_size(page: Any, page_spec: dict[str, Any]) -> None:
 
 
 def _style_plot(plot: Any, style: dict[str, Any]) -> None:
-    color = style.get("color") if style.get("color") is not None else style.get("line_color")
+    color_field = "color" if style.get("color") is not None else "line_color"
+    color = style.get(color_field)
     if color is not None:
         try:
             plot.color = color
-        except Exception:
-            pass
+        except Exception as exc:
+            raise RuntimeError(f"E529_STYLE_APPLY_FAILED: {color_field}: {exc}") from exc
+
     width = style.get("line_width_pt")
     if width is not None:
+        last_error: Exception | None = None
+        applied = False
         for prop in ("line.width", "linewidth", "width"):
             try:
                 plot.set_float(prop, float(width))
+                applied = True
                 break
-            except Exception:
-                continue
+            except Exception as exc:
+                last_error = exc
+        if not applied:
+            raise RuntimeError(f"E529_STYLE_APPLY_FAILED: line_width_pt: {last_error}") from last_error
+
     symbol = style.get("symbol")
     if isinstance(symbol, int):
+        last_error = None
+        applied = False
         for prop in ("symbol.kind", "symbol.type", "symbol"):
             try:
                 plot.set_int(prop, symbol)
+                applied = True
                 break
-            except Exception:
-                continue
+            except Exception as exc:
+                last_error = exc
+        if not applied:
+            raise RuntimeError(f"E529_STYLE_APPLY_FAILED: symbol: {last_error}") from last_error
 
 
 def _ensure_layers(page: Any, count: int) -> None:
@@ -141,8 +154,8 @@ def _add_xy(layer: Any, writer: _SheetWriter, rows: list[dict[str, Any]], operat
     if kind == "line_scatter":
         line = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="l")
         scatter = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="s")
-        _style_plot(line, style)
-        _style_plot(scatter, style)
+        _style_plot(line, {key: value for key, value in style.items() if key != "symbol"})
+        _style_plot(scatter, {key: value for key, value in style.items() if key != "line_width_pt"})
         return 2
     plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="l")
     _style_plot(plot, style)
@@ -186,8 +199,8 @@ def _set_axes(layer: Any, axes: dict[str, Any]) -> None:
             text = str(title) + (f" ({unit})" if unit else "")
             try:
                 layer.axis(axis_name).title = text
-            except Exception:
-                pass
+            except Exception as exc:
+                raise RuntimeError(f"E530_AXIS_STYLE_FAILED: {axis_name}: {exc}") from exc
 
 
 def _set_legend(layer: Any, legend_spec: dict[str, Any]) -> None:
@@ -210,6 +223,20 @@ def _set_legend(layer: Any, legend_spec: dict[str, Any]) -> None:
             legend.set_int("showframe", 1 if legend_spec["frame"] else 0)
         except Exception as exc:
             raise RuntimeError(f"E528_LEGEND_STYLE_FAILED: cannot set Origin legend frame: {exc}") from exc
+
+
+def _finalize_bar_layers(page: Any, bar_layers: set[int], stacked_layers: set[int]) -> None:
+    for layer_index in sorted(bar_layers):
+        layer = page[layer_index]
+        try:
+            layer.group()
+        except Exception as exc:
+            raise RuntimeError(f"E531_BAR_GROUP_FAILED: layer {layer_index}: {exc}") from exc
+        if layer_index in stacked_layers:
+            try:
+                layer.lt_exec("layer.stack=1;")
+            except Exception as exc:
+                raise RuntimeError(f"E532_BAR_STACK_FAILED: layer {layer_index}: {exc}") from exc
 
 
 def _export_page(page: Any, output_dir: Path) -> dict[str, str]:
@@ -282,8 +309,10 @@ def execute_operation_plan(
                 build_plot_count += _add_xy(layer, writer, rows, operation)
             elif name == "add_bar_plot":
                 build_plot_count += _add_bar(layer, writer, operation)
-                bar_layers.add(layer_index)
-                if operation.get("kind") == "stacked_bar":
+                kind = str(operation.get("kind") or "bar")
+                if kind in {"grouped_bar", "stacked_bar"}:
+                    bar_layers.add(layer_index)
+                if kind == "stacked_bar":
                     stacked_layers.add(layer_index)
             elif name == "add_matrix_plot":
                 build_plot_count += _add_matrix(layer, writer, operation)
@@ -293,17 +322,7 @@ def execute_operation_plan(
                 _set_legend(layer, dict(operation.get("legend") or {}))
             elif name == "set_page":
                 _apply_page_size(page, dict(operation.get("page") or {}))
-        for layer_index in sorted(bar_layers):
-            layer = page[layer_index]
-            try:
-                layer.group()
-            except Exception:
-                pass
-            if layer_index in stacked_layers:
-                try:
-                    layer.lt_exec("layer.stack=1;")
-                except Exception:
-                    pass
+        _finalize_bar_layers(page, bar_layers, stacked_layers)
         for index in range(len(page)):
             try:
                 page[index].rescale()
