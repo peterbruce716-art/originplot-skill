@@ -3,7 +3,7 @@ name: originplot
 description: "AI workflow for auditable Origin/OriginPro scientific plotting. Inspect scientific tables, resolve semantic roles, create FigureSpec, compile OperationPlan, and execute verified editable Origin workflows when supported."
 ---
 
-# OriginPlot Skill v6.1
+# OriginPlot Skill v6.1.1
 
 ## Identity
 
@@ -38,6 +38,20 @@ The system separates:
 7. Verify the final editable result.
 
 Never skip earlier stages.
+
+## Production quality gates
+
+Before declaring a figure complete, check:
+
+```text
+semantic_valid
+ -> spec_valid
+ -> plan_valid
+ -> adapter_supported
+ -> live_verified
+```
+
+Failure at any stage must stop promotion instead of being hidden by a preview image or partial export.
 
 ## Hard rules
 
