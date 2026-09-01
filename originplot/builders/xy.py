@@ -19,6 +19,11 @@ class XYBuilder(FigureBuilder):
         for index, item in enumerate(series):
             if not isinstance(item, dict) or not item.get("x") or not item.get("y"):
                 raise OriginPlotError("E320_SERIES_MAPPING_REQUIRED", f"series {index} requires x and y columns")
+            if item.get("label"):
+                raise OriginPlotError(
+                    "E324_MAPPING_NOT_EXECUTABLE",
+                    f"series {index} label mapping is not executable in the v6 Origin adapter; remove it until native label rendering is implemented",
+                )
             if spec.plot_type == "errorbar" and not (item.get("x_error") or item.get("y_error")):
                 raise OriginPlotError("E321_ERROR_MAPPING_REQUIRED", f"errorbar series {index} requires x_error or y_error")
 
@@ -39,7 +44,7 @@ class XYBuilder(FigureBuilder):
                     "layer": layer,
                     "series_id": str(mapping.get("id") or f"series_{index + 1}"),
                     "kind": spec.plot_type,
-                    "mapping": {key: mapping.get(key) for key in ("x", "y", "x_error", "y_error", "label") if mapping.get(key)},
+                    "mapping": {key: mapping.get(key) for key in ("x", "y", "x_error", "y_error") if mapping.get(key)},
                     "style": dict((spec.style.get("series") or {}).get(str(mapping.get("id") or f"series_{index + 1}"), {})),
                 }
             )

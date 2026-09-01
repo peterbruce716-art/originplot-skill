@@ -19,6 +19,11 @@ class BarBuilder(FigureBuilder):
         for index, item in enumerate(series):
             if not isinstance(item, dict) or not item.get("category") or not item.get("y"):
                 raise OriginPlotError("E322_CATEGORY_MAPPING_REQUIRED", f"bar series {index} requires category and y columns")
+            if item.get("group") or item.get("label"):
+                raise OriginPlotError(
+                    "E324_MAPPING_NOT_EXECUTABLE",
+                    f"bar series {index} group/label mapping is not executable in the v6 Origin adapter; use explicit wide-form series instead",
+                )
 
     def compile(self, spec: FigureSpec, *, layer: int = 0) -> OperationPlan:
         self.validate(spec)
@@ -34,7 +39,7 @@ class BarBuilder(FigureBuilder):
                     "layer": layer,
                     "series_id": series_id,
                     "kind": spec.plot_type,
-                    "mapping": {key: mapping.get(key) for key in ("category", "y", "y_error", "group", "label") if mapping.get(key)},
+                    "mapping": {key: mapping.get(key) for key in ("category", "y", "y_error") if mapping.get(key)},
                     "style": dict((spec.style.get("series") or {}).get(series_id, {})),
                 }
             )

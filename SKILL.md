@@ -63,16 +63,18 @@ Automatic categorical planning is limited to transformations that do not change 
 
 - `category + one Y` may compile to `bar`;
 - `category + multiple Y columns` is wide form and may compile to `grouped_bar`, with one series per Y column;
-- `category + group + one Y` is long form. Do not infer a pivot, group split, aggregation, or stacked layout. Automatic `bar`/`grouped_bar`/`stacked_bar` planning must fail closed and require a manually confirmed FigureSpec with explicit series mappings or an explicitly transformed source.
+- `category + group + one Y` is long form. Do not infer a pivot, group split, aggregation, or stacked layout. Automatic `bar`/`grouped_bar`/`stacked_bar` planning must fail closed and require an explicitly transformed source or a FigureSpec whose series are already represented as executable wide-form mappings.
+
+A hand-written FigureSpec does not bypass execution reality. Ordinary XY builders currently execute only `x`, `y`, `x_error`, and `y_error`; a per-point `label` mapping must fail closed. Bar builders execute `category`, `y`, and optional `y_error`; `group` and `label` mappings must fail closed instead of being carried into an OperationPlan and ignored.
 
 ## FigureSpec v6 is the ordinary-workflow contract
 
 The formal schema is `originplot.figurespec.v6`. It contains:
 
 - `source`: file, sheet and SHA-256;
-- `data`: explicit series or matrix mappings;
+- `data`: explicit executable series or matrix mappings;
 - `figure`: primitive and axes;
-- `style`: theme, series and legend choices;
+- `style`: only visual fields that the v6 Origin adapter can execute;
 - `layout`: page/panel geometry;
 - `verification`: profile and required gates.
 
@@ -120,7 +122,32 @@ FigureSpec -> OperationPlan
 
 They do not import or call Origin. `originplot.operation_plan.v1` is declarative and can be tested offline.
 
-Only `originplot/adapters/originpro.py` translates an OperationPlan into native Worksheet-backed Origin objects. This keeps data semantics, plotting logic, and application automation independently testable.
+Only `originplot/adapters/originpro.py` translates an OperationPlan into native Worksheet-backed Origin objects. Unknown OperationPlan action names must fail with `E520_OPERATION_PLAN_INVALID` before Origin execution; never skip an unfamiliar action and continue.
+
+This keeps data semantics, plotting logic, and application automation independently testable.
+
+## Executable style boundary
+
+Do not accept a style field merely because it sounds reasonable. In v6.0 the ordinary adapter has an intentionally narrow executable style surface:
+
+```text
+series.<id>.color
+series.<id>.line_color
+series.<id>.line_width_pt
+series.<id>.symbol
+legend.visible
+legend.frame
+```
+
+`theme`, `legend.position`, symbol size, transparency, matrix colormap/levels/colorbar options and any other precise styling aliases are **not executable contracts yet**. `resolve_style` must put them in `style_audit.rejected`; they must not remain in `style` and must never be reported as applied.
+
+Style precedence remains:
+
+```text
+explicit user style > confirmed reference suggestion > preset > OriginPlot default
+```
+
+Precedence only applies among executable fields. A higher-priority unsupported field is still rejected.
 
 ## Live completion gates
 
@@ -138,6 +165,8 @@ A successful live Quick/Standard run requires the native lifecycle:
 10. reject blank export or Demo watermark.
 
 A Python/Matplotlib redraw, screenshot, raster background, dry run, or capability declaration is never a completed Origin deliverable.
+
+`live_origin_verified` may be true only when **every** required live gate passes. Merely entering Origin or successfully saving an intermediate project is not enough.
 
 Canonical ordinary outputs are:
 
@@ -181,19 +210,15 @@ The authoritative v6 capability profiles live inside `originplot/runtime/profile
 
 ## Reference figures
 
-A reference image may suggest panel structure, mark type, line/symbol use, page ratio, legend placement and allow-listed style values. It may not contribute scientific values, labels, fits, phase assignments, logos, watermarks, or bitmap content to the editable result.
+A reference image may suggest panel structure, mark type, line/symbol use, page ratio, legend placement and other visual grammar, but suggestions are not automatically executable. Only the allow-listed style fields above may enter v6.0 `style`; unsupported suggestions such as exact legend placement must be recorded in `style_audit.rejected` until a deterministic Origin adapter mapping exists.
 
-Priority is:
-
-```text
-explicit user style > confirmed reference suggestion > preset > OriginPlot default
-```
-
-Reference-derived choices must ultimately become normal FigureSpec `style`/`layout` fields. Do not create a parallel image-reproduction execution engine.
+A reference image may not contribute scientific values, labels, fits, phase assignments, logos, watermarks, or bitmap content to the editable result. Reference-derived executable choices must ultimately become normal FigureSpec `style`/`layout` fields. Do not create a parallel image-reproduction execution engine.
 
 ## Packaging boundary
 
 The installable `originplot` package owns all ordinary runtime assets required by the product path: administrator worker, PowerShell elevation launcher, template discovery/retrieval logic, and v6 capability profiles. Product code under `originplot/` must not import the repository-root `scripts` package.
+
+There is one canonical ordinary live worker: `originplot.runtime.worker`. Do not restore `scripts/origin_profile_worker.py` or another duplicate ordinary worker implementation.
 
 The default shareable Skill package intentionally excludes root `scripts/`, benchmark content, generated/private scientific files, and v5-named contracts. Repository-root scripts may remain only as development/benchmark compatibility tooling; ordinary installed execution must not depend on them.
 
@@ -208,6 +233,7 @@ Report exactly what ran:
 - semantic inspection is not scientific analysis;
 - dry run is planning only;
 - compile support is not live evidence;
+- entering Origin is not `live_origin_verified` unless every live gate passes;
 - editable completion is not release eligibility;
 - compatibility is not verification;
 - historical AA2195 evidence applies only to its recorded identities;
