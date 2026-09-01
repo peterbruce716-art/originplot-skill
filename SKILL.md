@@ -5,11 +5,11 @@ description: "AI workflow for auditable Origin/OriginPro scientific plotting. In
 
 # OriginPlot Skill v6.1.1
 
-## Identity
+## Purpose
 
-OriginPlot converts scientific tables into auditable editable Origin workflows.
+Convert scientific tables into auditable editable Origin workflows.
 
-Core pipeline:
+Pipeline:
 
 ```text
 Input data
@@ -17,79 +17,69 @@ Input data
  -> FigureSpec v6
  -> OperationPlan
  -> Origin adapter
- -> save/reopen/readback/export verification
+ -> verification
 ```
 
-The system separates:
+Keep these layers separate:
 
 - scientific meaning
-- plot compilation
-- Origin automation
-- verification
+- plotting specification
+- execution
+- evidence
 
-## Agent decision flow
+## Agent workflow
 
-1. Inspect the source table.
-2. Resolve column roles.
-3. Create or validate FigureSpec.
+Always follow:
+
+1. Inspect source data.
+2. Resolve column semantics.
+3. Create/validate FigureSpec.
 4. Compile OperationPlan.
 5. Check capability maturity.
-6. Execute Origin only when supported.
-7. Verify the final editable result.
+6. Execute only supported Origin actions.
+7. Verify the final artifact.
 
-Never skip earlier stages.
+Do not skip validation stages.
 
-## Production quality gates
+## Completion gates
 
-Before declaring a figure complete, check:
+A figure is complete only when applicable checks pass:
 
 ```text
 semantic_valid
  -> spec_valid
  -> plan_valid
  -> adapter_supported
- -> live_verified
+ -> verified_result
 ```
 
-Failure at any stage must stop promotion instead of being hidden by a preview image or partial export.
+Preview output, dry-run output, or screenshots are not proof of an editable Origin result.
 
-## Hard rules
+## Scientific safety rules
 
 Never:
 
 - guess ambiguous scientific meaning;
-- silently modify source data;
-- smooth, fit, normalize, remove outliers, or calculate scientific quantities;
-- claim dry-run output is an Origin result;
-- claim unsupported style fields were applied;
-- create duplicate plotting engines for scientific domains;
-- bypass administrator or verification requirements.
+- modify source data silently;
+- smooth, normalize, fit, remove outliers, or derive quantities without instruction;
+- claim unsupported Origin features executed;
+- weaken validation to obtain successful-looking output.
 
-`uncertain` means unresolved information, not another plotted series.
+`uncertain` means unresolved information.
 
 ## Semantic roles
 
 Supported roles:
 
 ```text
-x
-x_error
-y
-y_error
-z
-group
-category
-label
-support
-retain
-uncertain
+x x_error y y_error z group category label support retain uncertain
 ```
 
-Source data remains immutable.
+Source data is immutable.
 
-## Primitive strategy
+## Primitive policy
 
-Use existing primitives first:
+Prefer existing primitives:
 
 ```text
 line
@@ -104,13 +94,13 @@ contour
 multi_panel
 ```
 
-Add semantic/style presets before adding new primitives.
+Extend with semantic/style presets before creating new plotting engines.
 
-A new plotting engine requires proof that existing primitives cannot represent the scientific intent.
+A new primitive requires evidence that existing primitives cannot express the scientific intent.
 
 ## Capability boundary
 
-Separate:
+Keep separate:
 
 ```text
 planning support
@@ -120,46 +110,42 @@ native execution
 verified evidence
 ```
 
-A registered primitive does not automatically mean live Origin support.
+Registered capability does not imply live Origin support.
 
-Special cases:
+`heatmap` and `multi_panel` require proven native support before promotion.
 
-- heatmap requires proven native support;
-- multi_panel requires proven native support;
-- compile success is not live verification.
+## Builder and adapter rules
 
-## Builder / adapter boundary
-
-Builders:
+Builders create plans:
 
 ```text
 FigureSpec -> OperationPlan
 ```
 
-Builders must not call Origin.
+Builders must never call Origin directly.
 
-Only the Origin adapter translates OperationPlan into native Origin actions.
+Only adapters translate plans into native Origin actions.
 
-Unknown operations must fail closed.
+Unknown operations fail closed.
 
-## Style boundary
+## Style rules
 
-Only executable style fields may enter final style:
+Only executable style fields enter applied output:
 
 ```text
 series color
 series line_color
 series line_width_pt
 series symbol
-legend visible
+legend visibility
 legend frame
 ```
 
-Unsupported style belongs in audit output, not applied output.
+Unsupported styles belong in audit information.
 
-## Live verification
+## Verification
 
-A verified Origin result requires:
+A verified Origin deliverable requires:
 
 1. authorized Origin worker;
 2. native worksheet-backed graph;
@@ -170,23 +156,13 @@ A verified Origin result requires:
 7. Origin export;
 8. output validation.
 
-A screenshot, Python preview, dry-run, or intermediate save is not a verified deliverable.
-
 ## Profiles
 
-### Quick
+Quick: routine editable plotting.
 
-Routine editable plotting.
+Standard: scientific workflows with bounded assistance.
 
-### Standard
-
-SCI workflow with bounded assistance.
-
-### Release
-
-Strict fail-closed mode requiring evidence.
-
-Historical benchmark evidence must not be relabeled as new evidence.
+Release: strict evidence-required mode.
 
 ## Commands
 
@@ -198,7 +174,7 @@ originplot.cmd render figure.json
 originplot.cmd verify output
 ```
 
-## Failure handling
+## Failure classification
 
 Classify failures in order:
 
@@ -206,13 +182,11 @@ Classify failures in order:
 2. FigureSpec validation
 3. OperationPlan compilation
 4. Origin adapter execution
-5. verification gates
+5. verification
 
-Do not force successful-looking output by weakening validation.
+Never hide failures behind visual output.
 
-## References
-
-Detailed material:
+## Further documentation
 
 - `docs/AGENT_QUICKSTART.md`
 - `docs/CAPABILITY_MATRIX.md`
