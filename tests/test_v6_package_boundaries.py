@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 
@@ -39,3 +40,9 @@ def test_aa2195_duplicates_are_not_exposed_as_product_examples_or_references() -
         root / "examples" / "template_search" / "aa2195_official_template_search.json",
     ]
     assert [str(path.relative_to(root)) for path in forbidden if path.exists()] == []
+
+
+def test_template_search_module_imports_from_product_context() -> None:
+    module = importlib.import_module("scripts.search_official_templates")
+    assert callable(module.discover)
+    assert callable(module.build_gallery_url)
