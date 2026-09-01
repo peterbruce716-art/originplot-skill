@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from originplot.adapters.originpro import _all_exports_nonblank, _template_for
+from originplot.adapters.originpro import _add_xy, _all_exports_nonblank, _template_for
 from originplot.operation_plan import OperationPlan
 from originplot.runtime.protocol import WORKER_TASK_SCHEMA, build_worker_task
 from scripts.origin_profile_worker import run
@@ -78,3 +78,53 @@ def test_export_gate_requires_png_pdf_and_tif(tmp_path: Path) -> None:
     (tmp_path / "figure.tif").write_bytes(b"nonempty")
     # Raster files must be real images, so arbitrary bytes are correctly rejected.
     assert _all_exports_nonblank(tmp_path) is False
+
+
+def test_errorbar_uses_native_origin_error_arguments() -> None:
+    class Plot:
+        color = None
+
+        def set_float(self, *_args):
+            return None
+
+        def set_int(self, *_args):
+            return None
+
+    class Layer:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def add_plot(self, sheet, **kwargs):
+            self.calls.append((sheet, kwargs))
+            return Plot()
+
+    class Writer:
+        sheet = object()
+
+        def __init__(self) -> None:
+            self.calls = []
+            self.mapping = {"X": 0, "Y": 1, "XErr": 2, "YErr": 3}
+
+        def column(self, name, axis):
+            self.calls.append((name, axis))
+            return self.mapping[name]
+
+    layer = Layer()
+    writer = Writer()
+    count = _add_xy(
+        layer,
+        writer,
+        [{"X": 1, "Y": 2, "XErr": 0.1, "YErr": 0.2}],
+        {
+            "op": "add_xy_plot",
+            "kind": "errorbar",
+            "series_id": "s1",
+            "mapping": {"x": "X", "y": "Y", "x_error": "XErr", "y_error": "YErr"},
+            "style": {},
+        },
+    )
+    assert count == 1
+    assert writer.calls == [("X", "X"), ("Y", "Y"), ("XErr", "M"), ("YErr", "E")]
+    assert layer.calls[0][1]["colxerr"] == 2
+    assert layer.calls[0][1]["colyerr"] == 3
+    assert layer.calls[0][1]["type"] == "y"
