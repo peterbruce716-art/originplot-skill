@@ -20,6 +20,16 @@ def test_origin_capabilities_are_version_gated() -> None:
     assert resolve_origin_capabilities("2030")["plot_primitives"] == []
 
 
+def test_capabilities_separate_compile_support_from_live_evidence() -> None:
+    capabilities = resolve_origin_capabilities("2022")
+    assert "heatmap" in capabilities["compile_primitives"]
+    assert "line" in capabilities["compile_primitives"]
+    assert capabilities["live_evidence_primitives"] == []
+    assert capabilities["primitive_maturity"]["heatmap"]["live_status"] == "blocked"
+    assert capabilities["primitive_maturity"]["heatmap"]["reason"] == "regular_grid_adapter_not_live_verified"
+    assert capabilities["primitive_maturity"]["line"]["live_status"] == "requires_same_run_verification"
+
+
 def test_doctor_never_relaxes_admin_requirement() -> None:
     result = doctor("2022")
     assert result["administrator"]["origin_worker_required"] is True
