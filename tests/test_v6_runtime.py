@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from originplot.core.profiles import resolve_profile
 from originplot.runtime.capabilities import resolve_origin_capabilities
 from originplot.runtime.doctor import doctor
@@ -28,6 +30,12 @@ def test_capabilities_separate_compile_support_from_live_evidence() -> None:
     assert capabilities["primitive_maturity"]["heatmap"]["live_status"] == "blocked"
     assert capabilities["primitive_maturity"]["heatmap"]["reason"] == "regular_grid_adapter_not_live_verified"
     assert capabilities["primitive_maturity"]["line"]["live_status"] == "requires_same_run_verification"
+
+
+def test_v6_runtime_prefers_v6_capability_profile() -> None:
+    capabilities = resolve_origin_capabilities("2022")
+    assert Path(capabilities["profile_path"]).name == "origin-2022-v6.json"
+    assert capabilities["profile_schema"] == "originplot.capabilities.v6"
 
 
 def test_doctor_never_relaxes_admin_requirement() -> None:
