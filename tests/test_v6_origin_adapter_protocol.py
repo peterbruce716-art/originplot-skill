@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from originplot.adapters.originpro import _add_xy, _all_exports_nonblank, _template_for
+import pytest
+
+from originplot.adapters.originpro import _add_matrix, _add_xy, _all_exports_nonblank, _template_for
 from originplot.operation_plan import OperationPlan
 from originplot.runtime.protocol import WORKER_TASK_SCHEMA, build_worker_task
 from scripts.origin_profile_worker import run
@@ -128,3 +130,33 @@ def test_errorbar_uses_native_origin_error_arguments() -> None:
     assert layer.calls[0][1]["colxerr"] == 2
     assert layer.calls[0][1]["colyerr"] == 3
     assert layer.calls[0][1]["type"] == "y"
+
+
+def test_heatmap_live_adapter_fails_closed_before_origin_plot_call() -> None:
+    class Layer:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def add_plot(self, *_args, **_kwargs):
+            self.calls += 1
+            raise AssertionError("heatmap must be blocked before Origin add_plot is called")
+
+    class Writer:
+        sheet = object()
+
+        def column(self, name, _axis):
+            return {"X": 0, "Y": 1, "Z": 2}[name]
+
+    layer = Layer()
+    with pytest.raises(RuntimeError, match="E524_HEATMAP_LIVE_UNVERIFIED"):
+        _add_matrix(
+            layer,
+            Writer(),
+            {
+                "op": "add_matrix_plot",
+                "kind": "heatmap",
+                "mapping": {"x": "X", "y": "Y", "z": "Z"},
+                "style": {},
+            },
+        )
+    assert layer.calls == 0
