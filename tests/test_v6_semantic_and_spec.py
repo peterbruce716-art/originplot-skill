@@ -9,7 +9,7 @@ from originplot.core.errors import OriginPlotError
 from originplot.semantic import inspect_table
 from originplot.semantic.plan import build_figurespec
 from originplot.semantic.recommend import recommend_plots
-from originplot.spec import FIGURE_SPEC_SCHEMA, load_figure_spec
+from originplot.spec import FIGURE_SPEC_SCHEMA, load_figure_spec, normalize_figure_spec
 
 
 def test_semantic_inspection_is_conservative(tmp_path: Path) -> None:
@@ -134,3 +134,126 @@ def test_explicit_long_form_grouped_bar_requires_manual_series_mapping(tmp_path:
     source.write_text("Category,Condition,Signal\nA,control,1\nA,treated,2\nB,control,3\nB,treated,4\n", encoding="utf-8")
     with pytest.raises(OriginPlotError, match="long-form grouped/stacked bar"):
         build_figurespec(source, plot_type="grouped_bar")
+
+
+def _manual_payload(source: Path) -> dict:
+    return {
+        "schema": FIGURE_SPEC_SCHEMA,
+        "source": {"file": str(source)},
+        "data": {"series": [{"id": "s1", "x": "Time", "y": "Intensity"}]},
+        "figure": {"id": "demo", "type": "line"},
+    }
+
+
+def test_axis_contract_rejects_fields_the_adapter_does_not_execute(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = _manual_payload(source)
+    payload["figure"]["x_axis"] = {"title": "Time", "unit": "s", "scale": "log"}
+    with pytest.raises(OriginPlotError, match="E342_AXIS_CONTRACT_INVALID.*x_axis.scale"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_axis_unit_without_title_is_rejected_instead_of_ignored(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = _manual_payload(source)
+    payload["figure"]["x_axis"] = {"unit": "s"}
+    with pytest.raises(OriginPlotError, match="E342_AXIS_CONTRACT_INVALID.*unit requires title"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_page_geometry_requires_width_and_height_together(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = _manual_payload(source)
+    payload["layout"] = {"page": {"width_cm": 18.0}}
+    with pytest.raises(OriginPlotError, match="E343_LAYOUT_CONTRACT_INVALID.*width_cm and height_cm"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_verification_hard_gates_cannot_be_disabled(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = _manual_payload(source)
+    payload["verification"] = {"profile": "standard", "require_reopen": False}
+    with pytest.raises(OriginPlotError, match="E344_VERIFICATION_CONTRACT_INVALID.*require_reopen"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_unknown_verification_fields_are_rejected(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = _manual_payload(source)
+    payload["verification"] = {"profile": "standard", "skip_binding": True}
+    with pytest.raises(OriginPlotError, match="E344_VERIFICATION_CONTRACT_INVALID.*skip_binding"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_verification_contract_is_canonicalized_to_non_weakenable_gates(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    spec = normalize_figure_spec(_manual_payload(source), tmp_path)
+    assert spec.verification == {
+        "profile": "standard",
+        "require_reopen": True,
+        "require_binding_readback": True,
+        "require_origin_export": True,
+    }
+    assert spec.to_dict()["verification"] == spec.verification
+
+
+def test_multi_panel_child_style_and_axis_use_the_same_contracts(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = {
+        "schema": FIGURE_SPEC_SCHEMA,
+        "source": {"file": str(source)},
+        "data": {},
+        "figure": {
+            "id": "multi",
+            "type": "multi_panel",
+            "panels": [
+                {
+                    "id": "a",
+                    "data": {"series": [{"id": "s1", "x": "Time", "y": "Intensity"}]},
+                    "figure": {"type": "line", "x_axis": {"title": "Time", "scale": "log"}},
+                    "style": {"series": {"s1": {"symbol_size_pt": 8}}},
+                },
+                {
+                    "id": "b",
+                    "data": {"series": [{"id": "s2", "x": "Time", "y": "Intensity"}]},
+                    "figure": {"type": "scatter"},
+                },
+            ],
+        },
+    }
+    with pytest.raises(OriginPlotError, match="E342_AXIS_CONTRACT_INVALID.*panels.0.*x_axis.scale"):
+        normalize_figure_spec(payload, tmp_path)
+
+
+def test_multi_panel_child_layout_is_rejected_while_it_is_not_compiled(tmp_path: Path) -> None:
+    source = tmp_path / "data.csv"
+    source.write_text("Time,Intensity\n0,1\n1,2\n", encoding="utf-8")
+    payload = {
+        "schema": FIGURE_SPEC_SCHEMA,
+        "source": {"file": str(source)},
+        "data": {},
+        "figure": {
+            "id": "multi",
+            "type": "multi_panel",
+            "panels": [
+                {
+                    "data": {"series": [{"x": "Time", "y": "Intensity"}]},
+                    "figure": {"type": "line"},
+                    "layout": {"page": {"width_cm": 9.0, "height_cm": 6.0}},
+                },
+                {
+                    "data": {"series": [{"x": "Time", "y": "Intensity"}]},
+                    "figure": {"type": "scatter"},
+                },
+            ],
+        },
+    }
+    with pytest.raises(OriginPlotError, match="E343_LAYOUT_CONTRACT_INVALID.*panel-specific layout"):
+        normalize_figure_spec(payload, tmp_path)
