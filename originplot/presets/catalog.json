@@ -1,0 +1,22 @@
+{
+  "stress_strain": {
+    "match_all": [["strain"], ["stress"]],
+    "preferred_primitives": ["line_scatter", "errorbar"],
+    "notes": "Do not infer engineering/true conversion or modulus."
+  },
+  "xrd": {
+    "match_all": [["2theta", "theta"], ["intensity", "counts"]],
+    "preferred_primitives": ["line"],
+    "notes": "Do not identify phases or peaks automatically."
+  },
+  "rietveld": {
+    "match_all": [["observed"], ["calculated"]],
+    "preferred_primitives": ["multi_panel", "line_scatter"],
+    "notes": "Only render supplied calculated/difference/phase data; do not run refinement."
+  },
+  "cyclic_voltammetry": {
+    "match_all": [["potential", "voltage"], ["current"]],
+    "preferred_primitives": ["line"],
+    "notes": "Do not infer scan rate or electrochemical parameters."
+  }
+}
