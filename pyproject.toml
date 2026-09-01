@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "originplot-skill"
+version = "6.0.0"
+description = "Auditable editable scientific plotting workflow for Origin/OriginPro"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+  "Pillow>=9.5,<12",
+  "openpyxl>=3.1,<4",
+  "xlrd>=2.0,<3",
+]
+
+[project.scripts]
+originplot = "originplot.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["originplot*"]
