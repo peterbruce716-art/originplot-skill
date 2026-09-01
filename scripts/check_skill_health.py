@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-import tomllib
+
+from check_version_consistency import read_pyproject_version
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,12 +19,7 @@ def main() -> None:
     if missing:
         raise SystemExit(f"Missing required skill files: {missing}")
 
-    with (ROOT / "pyproject.toml").open("rb") as handle:
-        project = tomllib.load(handle).get("project", {})
-
-    version = project.get("version")
-    if not version:
-        raise SystemExit("Missing project version")
+    version = read_pyproject_version()
 
     checks = {
         "required_files": True,

@@ -3,7 +3,7 @@ name: originplot
 description: "AI workflow for auditable Origin/OriginPro scientific plotting. Inspect scientific tables, resolve semantic roles, create FigureSpec, compile OperationPlan, and execute verified editable Origin workflows when supported."
 ---
 
-# OriginPlot Skill v6.1.1
+# OriginPlot Skill v6.1.2
 
 ## Purpose
 
