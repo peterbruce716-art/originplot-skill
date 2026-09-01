@@ -2,7 +2,7 @@ line-length = 88
 
 [lint]
 select = ["E", "F", "I"]
-ignore = ["E501", "I001"]
+ignore = ["E501", "I001", "E402"]
 
 [format]
 quote-style = "double"
