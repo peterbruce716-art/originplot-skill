@@ -1,0 +1,5 @@
+Strain\tStress\tStress SD
+0.0\t0\t1
+0.2\t110\t4
+0.4\t185\t5
+0.6\t240\t6

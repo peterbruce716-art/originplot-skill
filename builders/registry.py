@@ -36,24 +36,20 @@ def list_builders() -> tuple[str, ...]:
     return tuple(sorted(_BUILDERS))
 
 
-def resolve_builder(
-    *,
-    builder_id: str | None = None,
-    figure: str | None = None,
-) -> BuilderDefinition:
+def resolve_builder(*, builder_id: str | None = None, figure: str | None = None) -> BuilderDefinition:
     requested = builder_id or figure
     if not requested:
         raise UnknownBuilderError("a builder or legacy figure id is required")
     definition = get_builder(requested)
     if figure and definition.figure_ids and figure not in definition.figure_ids:
-        raise ValueError(
-            f"figure {figure!r} is not accepted by builder {definition.builder_id!r}"
-        )
+        raise ValueError(f"figure {figure!r} is not accepted by builder {definition.builder_id!r}")
     return definition
 
 
 def _aa2195_live(figure: str, candidate: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    from builders import aa2195
+    # v6 keeps this compatibility bridge only for the retained strict benchmark.
+    # Product core (`originplot/`) never imports the benchmark package.
+    from benchmarks.aa2195 import builders as aa2195
 
     return aa2195.build_origin_figure(
         figure_id=figure,
@@ -69,7 +65,7 @@ def _register_builtins() -> None:
             figure,
             BuilderDefinition(
                 builder_id=figure,
-                description=f"AA2195 specialized {figure} Origin builder",
+                description=f"AA2195 benchmark-only {figure} Origin builder",
                 figure_ids=(figure,),
                 supports_live=True,
                 live_builder=_aa2195_live,
@@ -82,7 +78,7 @@ def _register_builtins() -> None:
         "generic_line",
         BuilderDefinition(
             builder_id="generic_line",
-            description="Synthetic/public single-panel line planning example",
+            description="Legacy v5 generic-line compatibility builder",
             supports_live=False,
             plan_validator=validate_plan,
         ),

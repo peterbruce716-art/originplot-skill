@@ -1,5 +1,7 @@
 {
-  "release_version": "5.9.1",
-  "contract_version": "5.8.9-p18",
-  "evidence_version": "5.8.9-p18"
+  "version": "6.0.0",
+  "schema_version": "6",
+  "benchmark_evidence": {
+    "aa2195": "5.8.9-p18"
+  }
 }

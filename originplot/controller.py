@@ -6,25 +6,18 @@ import re
 import shutil
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from .core.errors import OriginPlotError
-from .core.figure_spec import load_figure_spec
-from .core.profiles import ProfileConfig, resolve_profile
-from .core.result import normalize_live_result, planned_result
-from .runtime.protocol import build_worker_task
-from .runtime.origin_session import is_administrator
-from .template.policy import TemplateDecision, apply_template_policy
-
-
-def _read_object(path: Path | None) -> dict[str, Any] | None:
-    if path is None:
-        return None
-    payload = json.loads(path.read_text(encoding="utf-8-sig"))
-    if not isinstance(payload, dict):
-        raise OriginPlotError("E100_SCHEMA_INVALID", f"JSON object required: {path}")
-    return payload
+from originplot.builders import compile_figure
+from originplot.core.errors import OriginPlotError
+from originplot.core.profiles import ProfileConfig
+from originplot.operation_plan import OperationPlan
+from originplot.runtime.origin_session import is_administrator
+from originplot.runtime.protocol import build_worker_task
+from originplot.spec import load_figure_spec
+from originplot.template.policy import TemplateDecision, apply_template_policy
 
 
 def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
@@ -39,10 +32,8 @@ def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
         if not folder.is_dir():
             continue
         for path in sorted(folder.rglob("*")):
-            if path.is_file() and path.suffix.lower() in {".otpu", ".otp", ".opju"}:
-                semantic_match = any(token in path.stem.lower() for token in tokens)
-                if semantic_match:
-                    candidates.append({"id": path.stem, "source": "local", "path": str(path), "reusable": True})
+            if path.is_file() and path.suffix.lower() in {".otpu", ".otp", ".opju"} and any(token in path.stem.lower() for token in tokens):
+                candidates.append({"id": path.stem, "source": "local", "path": str(path), "reusable": True})
                 if len(candidates) >= limit:
                     return candidates
     return candidates
@@ -51,33 +42,21 @@ def _local_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
 def _gallery_candidates(limit: int, search_terms: str) -> list[dict[str, Any]]:
     from scripts.search_official_templates import build_gallery_url, discover
 
-    result = discover(
-        build_gallery_url(search_terms or "line", ""),
-        max_items=max(1, limit),
-        attempts=1,
-        timeout=8.0,
-        backoff=0.0,
-    )
-    candidates = []
-    for item in result.get("candidates", []):
-        if isinstance(item, dict) and item.get("status") == "discovered":
-            candidates.append({"id": item.get("gid"), "title": item.get("title"), "source": "originlab_gallery", "detail_url": item.get("detail_url"), "reusable": False})
-    return candidates[:limit]
+    result = discover(build_gallery_url(search_terms or "line", ""), max_items=max(1, limit), attempts=1, timeout=8.0, backoff=0.0)
+    return [
+        {"id": item.get("gid"), "title": item.get("title"), "source": "originlab_gallery", "detail_url": item.get("detail_url"), "reusable": False}
+        for item in result.get("candidates", [])
+        if isinstance(item, dict) and item.get("status") == "discovered"
+    ][:limit]
 
 
-def choose_templates(
-    profile: ProfileConfig,
-    *,
-    strict_record: dict[str, Any] | None = None,
-    search_terms: str = "",
-    allow_network: bool = False,
-) -> TemplateDecision:
+def choose_templates(profile: ProfileConfig, *, search_terms: str, allow_network: bool = False) -> TemplateDecision:
     return apply_template_policy(
         profile.template_policy,
         max_candidates=profile.max_template_candidates,
         local_search=lambda limit: _local_candidates(limit, search_terms),
         gallery_search=(lambda limit: _gallery_candidates(limit, search_terms)) if allow_network else None,
-        strict_record=strict_record,
+        strict_record=None,
     )
 
 
@@ -102,10 +81,7 @@ def _resolve_powershell_executable() -> Path:
     fallback = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
     if fallback.is_file():
         return fallback
-    raise OriginPlotError(
-        "E120_ENVIRONMENT_MISMATCH",
-        "PowerShell is required for elevated Origin execution; install PowerShell 7 or make powershell.exe available on PATH",
-    )
+    raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", "PowerShell is required for elevated Origin execution")
 
 
 def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedProcess[str]:
@@ -116,235 +92,127 @@ def _run_profile_worker(worker: Path, task_path: Path) -> subprocess.CompletedPr
         launcher = worker.parent / "run_origin_profile_worker_elevated.ps1"
         pwsh = _resolve_powershell_executable()
         command = [
-            str(pwsh),
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(launcher),
-            "-PythonExe",
-            sys.executable,
-            "-WorkerScript",
-            str(worker),
-            "-TaskPath",
-            str(task_path),
-            "-WorkingDirectory",
-            str(cwd),
+            str(pwsh), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(launcher),
+            "-PythonExe", sys.executable,
+            "-WorkerScript", str(worker),
+            "-TaskPath", str(task_path),
+            "-WorkingDirectory", str(cwd),
         ]
-    try:
-        return subprocess.run(
-            command,
-            cwd=str(cwd),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=False,
-        )
-    except OSError as exc:
-        raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", f"failed to start Origin worker: {exc}") from exc
+    return subprocess.run(command, cwd=str(cwd), text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
 
 
-def _legacy_worker(
-    *,
-    profile: ProfileConfig,
-    figure: str | None,
-    builder: str | None,
-    figure_spec: Path | None,
-    candidate: Path,
-    output_dir: Path,
-    live: bool,
-    require_live_success: bool,
-) -> dict[str, Any]:
-    worker = Path(__file__).resolve().parents[1] / "scripts" / "origin_candidate_worker.py"
-    command = [sys.executable, str(worker)]
-    if figure:
-        command += ["--figure", figure]
-    if builder:
-        command += ["--builder", builder]
-    if figure_spec:
-        command += ["--figure-spec", str(figure_spec)]
-    command += ["--candidate", str(candidate), "--output-dir", str(output_dir)]
-    command.append("--live" if live else "--dry-run")
-    if require_live_success:
-        command.append("--require-live-success")
-    completed = subprocess.run(
-        command,
-        cwd=str(worker.parents[1]),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    manifest_path = output_dir / "candidate_manifest.json"
-    if manifest_path.is_file():
-        result = _read_object(manifest_path) or {}
-    else:
-        result = {
-            "status": "failed",
-            "error_code": "E525_CANDIDATE_WORKER_FAILED",
-            "message": completed.stderr.strip() or completed.stdout.strip(),
-        }
-    result.setdefault("controller_exit_code", completed.returncode)
-    if completed.returncode and result.get("status") != "failed":
-        result["status"] = "failed"
-    return result
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def execute(
     *,
     profile: ProfileConfig,
-    figure: str | None,
-    builder: str | None,
-    figure_spec_path: Path | None,
-    candidate_path: Path | None,
+    figure_spec_path: Path,
     output_dir: Path,
     live: bool,
     require_live_success: bool = False,
-    source_policy: str | None = None,
+    source_policy: str = "supplied",
 ) -> dict[str, Any]:
+    output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    candidate_payload = _read_object(candidate_path) if candidate_path is not None else None
+    spec = load_figure_spec(figure_spec_path)
+    plan = compile_figure(spec)
+    templates = choose_templates(profile, search_terms=spec.plot_type, allow_network=live)
+    plan = replace(
+        plan,
+        profile=profile.name,
+        metadata={**plan.metadata, "template_decision": templates.to_dict()},
+    )
+
+    normalized_spec = spec.to_dict()
+    _write_json(output_dir / "figure_spec.json", normalized_spec)
+    _write_json(output_dir / "operation_plan.json", plan.to_dict())
+
     if profile.name == "release":
         if live and profile.require_admin_controller and not is_administrator():
             raise OriginPlotError("E120_ENVIRONMENT_MISMATCH", "release controller must run as administrator")
-        if candidate_path is None:
-            raise OriginPlotError("E100_SCHEMA_INVALID", "release requires --candidate")
-        candidate_payload = candidate_payload or {}
-        candidate_policy = str(candidate_payload.get("source_data_policy") or candidate_payload.get("data_source_policy") or "supplied")
-        if source_policy is not None and source_policy != candidate_policy:
-            raise OriginPlotError(
-                "E204_SOURCE_POLICY_CONFLICT",
-                f"release source policy is fixed by candidate ({candidate_policy}); requested {source_policy}",
-            )
-        source_policy = candidate_policy
-        record_path = candidate_payload.get("template_search_record")
-        strict_record = None
-        if record_path:
-            resolved = Path(str(record_path))
-            if not resolved.is_absolute():
-                resolved = candidate_path.resolve().parent / resolved
-            strict_record = _read_object(resolved) if resolved.is_file() else None
-        templates = choose_templates(profile, strict_record=strict_record)
-        result = _legacy_worker(
-            profile=profile,
-            figure=figure,
-            builder=builder,
-            figure_spec=figure_spec_path,
-            candidate=candidate_path,
-            output_dir=output_dir,
-            live=live,
-            require_live_success=require_live_success,
-        )
-        result["profile"] = "release"
-        result["template_policy"] = "strict"
-        result["template_decision"] = _public_template_decision(templates)
+        result = {
+            "profile": "release",
+            "status": "failed" if live else "planned_not_executed",
+            "overall_status": "failed" if live else "planned_not_executed",
+            "command_success": False,
+            "pass_eligible": False,
+            "error_code": "E440_GENERAL_RELEASE_NOT_PROMOTED" if live else None,
+            "message": "v6 general Release remains fail-closed; AA2195 strict Release is retained under benchmarks/aa2195",
+            "template_decision": _public_template_decision(templates),
+        }
+        _write_json(output_dir / "verification.json", result)
         return result
-
-    data_payload = None
-    if builder != "generic_line":
-        raise OriginPlotError("E440_PLOT_FAMILY_NOT_IMPLEMENTED", "Quick/Standard require the supported builder generic_line")
-    if figure_spec_path is None:
-        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "generic_line requires --figure-spec")
-    data_payload = load_figure_spec(figure_spec_path)
-    templates = choose_templates(profile, search_terms=figure or builder or "line", allow_network=live)
 
     if not live:
-        result = planned_result(profile, mode="dry_run", warnings=list(templates.warnings))
-        result.update(
-            {
-                "figure": figure,
-                "builder": builder,
-                "figure_spec": str(figure_spec_path) if figure_spec_path else None,
-                "candidate": str(candidate_path) if candidate_path else None,
-                "template_decision": _public_template_decision(templates),
-                "data_validation": {"status": "pass", "rows": len(data_payload["x"])} if data_payload else {"status": "not_requested"},
-                "source_policy": source_policy or "supplied",
-                "message": "Controller planning completed; no Origin process was started.",
-            }
-        )
-        (output_dir / "candidate_summary.json").write_text(
-            json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+        result = {
+            "schema": "originplot.verification.v1",
+            "profile": profile.name,
+            "status": "planned_not_executed",
+            "overall_status": "planned_not_executed",
+            "command_success": True,
+            "live_origin_verified": False,
+            "pass_eligible": False,
+            "plot_type": spec.plot_type,
+            "builder": spec.plot_type,
+            "source_hash": spec.source_hash,
+            "template_decision": _public_template_decision(templates),
+            "message": "FigureSpec and OperationPlan compiled successfully; no Origin process was started.",
+        }
+        _write_json(output_dir / "verification.json", result)
         return result
 
-    if candidate_path is None and builder != "generic_line":
-        raise OriginPlotError("E100_SCHEMA_INVALID", "live execution requires --candidate unless builder is generic_line")
+    if spec.plot_type == "heatmap":
+        result = {
+            "schema": "originplot.verification.v1",
+            "profile": profile.name,
+            "status": "failed",
+            "overall_status": "failed",
+            "command_success": False,
+            "live_origin_verified": False,
+            "pass_eligible": False,
+            "plot_type": spec.plot_type,
+            "builder": spec.plot_type,
+            "source_hash": spec.source_hash,
+            "error_code": "E524_HEATMAP_LIVE_UNVERIFIED",
+            "message": "heatmap compiles offline but live execution is blocked until the regular-grid/matrix Origin adapter has promoted same-run evidence",
+            "template_decision": _public_template_decision(templates),
+        }
+        _write_json(output_dir / "verification.json", result)
+        return result
+
     task = build_worker_task(
         profile=profile.to_dict(),
-        figure_spec=str(figure_spec_path) if figure_spec_path else None,
-        candidate=str(candidate_path) if candidate_path is not None else None,
-        builder=builder,
-        figure=figure,
+        figure_spec=str((output_dir / "figure_spec.json").resolve()),
         output_dir=output_dir,
+        operation_plan=plan.to_dict(),
         template_decision=templates.to_dict(),
-        data_payload=data_payload,
-        source_policy=source_policy or "supplied",
+        source_policy=source_policy,
     )
-    task_path = output_dir / "origin_worker_task.json"
-    task_path.write_text(json.dumps(task, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    task_path = output_dir / ".origin_worker_task.json"
+    _write_json(task_path, task)
     worker = Path(__file__).resolve().parents[1] / "scripts" / "origin_profile_worker.py"
-    result_path = output_dir / "candidate_summary.json"
-    if result_path.is_file():
-        result_path.unlink()
     try:
         completed = _run_profile_worker(worker, task_path)
     finally:
-        # The task contains machine-local template paths needed only by the worker.
         task_path.unlink(missing_ok=True)
-    result = _read_object(result_path) if result_path.is_file() else None
-    if result is None:
+    verification_path = output_dir / "verification.json"
+    if verification_path.is_file():
+        result = json.loads(verification_path.read_text(encoding="utf-8-sig"))
+    else:
         result = {
             "profile": profile.name,
-            "status": "failed",
+            "command_success": False,
             "overall_status": "failed",
             "error_code": "E525_ORIGIN_WORKER_FAILED",
             "message": completed.stderr.strip() or completed.stdout.strip(),
         }
+        _write_json(verification_path, result)
     result["controller_exit_code"] = completed.returncode
-    if profile.name == "standard":
-        raw_reference = None
-        for key in ("reference_image", "source_reference", "source_crop"):
-            if candidate_payload and candidate_payload.get(key):
-                raw_reference = str(candidate_payload[key])
-                break
-        if raw_reference:
-            reference = Path(raw_reference)
-            if not reference.is_absolute() and candidate_path is not None:
-                reference = candidate_path.resolve().parent / reference
-            export = output_dir / "candidate_export.png"
-            if reference.is_file() and export.is_file():
-                from scripts.visual_qa import score_visual
-
-                metrics = score_visual(reference, export, comparison_dir=output_dir / "visual_comparison")
-                (output_dir / "candidate_visual_metrics.json").write_text(
-                    json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-                )
-                result["visual_pass"] = bool(metrics.get("pass_eligible"))
-                result.setdefault("gate_results", {})["visual_comparison"] = "pass" if result["visual_pass"] else "failed"
-            else:
-                result.setdefault("warnings", []).append("W311_REFERENCE_IMAGE_MISSING: basic visual QA was not run")
-                (output_dir / "candidate_visual_metrics.json").write_text(
-                    json.dumps({"status": "not_run", "reason": "reference_image_missing", "visual_pass": False}, indent=2) + "\n", encoding="utf-8"
-                )
-        else:
-            result.setdefault("warnings", []).append("W310_REFERENCE_IMAGE_NOT_PROVIDED: Standard reports structure only")
-            (output_dir / "candidate_visual_metrics.json").write_text(
-                json.dumps({"status": "not_run", "reason": "reference_image_not_provided", "visual_pass": False}, indent=2) + "\n", encoding="utf-8"
-            )
-    normalized = normalize_live_result(profile, result)
-    (output_dir / "candidate_summary.json").write_text(
-        json.dumps(normalized, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    if profile.evidence_level == "visual":
-        manifest = {
-            "schema": "originplot.profile_manifest.v1",
-            "profile": profile.name,
-            "overall_status": normalized.get("overall_status"),
-            "gates": normalized.get("gates"),
-            "gate_results": normalized.get("gate_results"),
-            "artifacts": [name for name in ("candidate.opju", "candidate_export.png", "candidate_readback.json", "candidate_visual_metrics.json", "candidate_summary.json") if (output_dir / name).is_file()],
-        }
-        (output_dir / "candidate_manifest.json").write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
-    return normalized
+    result["template_decision"] = _public_template_decision(templates)
+    _write_json(verification_path, result)
+    if require_live_success and not result.get("command_success"):
+        result.setdefault("error_code", "E526_LIVE_SUCCESS_REQUIRED")
+    return result
