@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.figurespec.v6",
+  "type": "object",
+  "required": ["schema", "source", "data", "figure"],
+  "properties": {
+    "schema": {"const": "originplot.figurespec.v6"},
+    "source": {
+      "type": "object",
+      "required": ["file"],
+      "properties": {
+        "file": {"type": "string", "minLength": 1},
+        "sheet": {"type": ["string", "null"]},
+        "hash": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "data": {"type": "object"},
+    "figure": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "id": {"type": "string"},
+        "type": {
+          "enum": ["line", "scatter", "line_scatter", "errorbar", "bar", "grouped_bar", "stacked_bar", "heatmap", "contour", "multi_panel"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "style": {"type": "object"},
+    "layout": {"type": "object"},
+    "verification": {"type": "object"},
+    "semantic_confirmation": {"type": "object"}
+  },
+  "additionalProperties": true
+}
