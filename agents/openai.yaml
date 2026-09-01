@@ -1,4 +1,4 @@
 interface:
   display_name: "originplot"
-  short_description: "Build editable Origin figures with scaled verification."
-  default_prompt: "Use $originplot to build an editable Origin OPJU with the appropriate quick, standard, or release profile, then reopen it and verify native Worksheet bindings."
+  short_description: "Understand scientific tables and build verified editable Origin figures."
+  default_prompt: "Use $originplot to inspect my scientific table, confirm only necessary column semantics, choose a supported v6 primitive, build the editable Origin project through the administrator-only worker, then reopen and verify native Worksheet bindings and Origin exports."
