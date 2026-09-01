@@ -1,124 +1,185 @@
 ---
 name: originplot
-description: "Plan, build, inspect, debug, or reproduce editable Origin/OriginPro OPJU figures with native Worksheet-bound plots, save/reopen verification, Origin exports, and profile-scaled evidence. Use for Excel/CSV scientific plots, publication figure reconstruction, Origin 2022 automation, official template matching, editable OPJU delivery, and AA2195 Fig3/Fig12/Fig14/Fig15/Fig16 release benchmarks."
+description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap, contour, multi-panel, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
 ---
 
-# OriginPlot Skill v5.9.1
+# OriginPlot Skill v6.0
 
-OriginPlot is a Verified Origin Runtime for an editable Origin project, organized into three profiles. Default to `standard`. Keep the `5.9.1` package identity while retaining the validated `5.8.9-p18` functional contract and evidence identity.
+OriginPlot turns a read-only scientific table into an auditable FigureSpec, a deterministic OperationPlan, and—when authorized—a native editable Origin project. The ordinary v6 core is general-purpose; AA2195 lives only under `benchmarks/aa2195/` as retained regression evidence.
 
-## Capability Boundary
+## Hard runtime invariant
 
-- Build Origin workbooks, native plots, layers, axes, legends, and editable annotations.
-- Preserve real Plot-to-Worksheet bindings and validate them after reopening the OPJU.
-- Support registered builders and explicit FigureSpecs; do not claim universal image-to-OPJU reproduction.
-- Do not use a reference image, raster background, or screenshot as the editable result.
-- Do not treat a Python, R, or Matplotlib redraw as a live Origin deliverable.
-- Route an open-code redraw to the optional `scientific-figure-reproduction` companion; do not imply it is bundled.
-- Do not read unrelated local documents or private data.
+**Administrator policy is unchanged from v5.**
 
-## Identify Inputs
+- Quick/Standard planning and controller work may run without administrator rights.
+- Every process that imports `originpro`/`OriginExt`, attaches to Origin, builds, saves, reopens, reads back, or exports remains administrator-only.
+- Release retains its continuous administrator envelope and cannot be weakened.
+- Keep the existing visible-Origin identity checks, fail on a new Embedding process, and always detach attached sessions in `finally`.
 
-Before execution, identify the requested figure class, input data or authorized reference, builder or FigureSpec, output directory, requested profile, and whether live Origin execution is authorized. For data files, record the exact sheet and X/Y/error columns. For image matching, record source provenance and the intended fidelity claim.
+Never work around these rules by changing DCOM, registry, firewall, user groups, Origin installation, or process identity.
 
-Use Python 3.10 with `originpro` for Origin 2022. Run controller-only work without administrator rights. Require an administrator process only for the worker that imports `originpro` or `OriginExt`, attaches to Origin, builds, saves, reopens, reads back, or exports.
+## Beginner path
 
-## Select A Profile
-
-- `quick`: routine supported plots and style iteration; the built-in generic worker currently covers one line plot; no formal visual claim.
-- `standard`: default for SCI figures and reference-guided reconstruction; bounded template discovery and basic visual QA.
-- `release`: AA2195 benchmarks, regression, package acceptance, or any claim of full live validation.
-
-Never weaken `release` with lighter overrides. A user request to reproduce again, re-digitize, or avoid old data requires the release `fresh_extract` route and a new or empty output root.
-
-## Permanent Hard Rules
-
-For every live profile:
-
-1. Use native Origin plots or verified editable Origin objects.
-2. Bind every data plot to a Worksheet.
-3. Save the OPJU, release the session, reopen the OPJU, and inspect the reopened project.
-4. Verify expected pages, layers, plots, Worksheets, and bindings.
-5. Export the final image from reopened Origin.
-6. Fail on blank export, Demo watermark, reopen failure, missing plot, or lost binding.
-7. Keep dry-run, live structure, visual, and release states distinct.
-8. Release attached sessions with `op.detach()` in `finally`; release worker-owned hidden diagnostics with `op.exit()`.
-9. Do not use historical artifacts as same-run live evidence.
-
-Read [references/origin-runtime.md](references/origin-runtime.md) before live work.
-
-For editable viewing, apply `win -z0` after build and reopen, record `editable_view_evidence`, and state that fitting the window does not change page geometry. Use bounded `--phase-timeout-seconds` controls where supported.
-
-## Release Invariants
-
-Keep administrator privilege for the entire live lifecycle in Release; every helper process that touches Origin must remain elevated. Do not run `origin_attach_smoke.py` as the default formal preflight. After each attach, fail with `E123_ORIGIN_SESSION_IDENTITY_DRIFT` if the administrator-started visible Origin PID changes or a new embedding process appears. Missing authorization fails with `E121_ATTACH_POLICY_VIOLATION`.
-
-Strict template discovery checks these official entrances plus local catalogs:
-
-- `https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest`
-- `https://docs.originlab.com/zh/`
-- `https://www.originlab.com/videos/index.aspx?CID=11`
-- `https://docs.originlab.com/quick-help/graphing/zh/`
-
-For column layers, declare `side_by_side`, `cumulative_stack`, or `nested_overlap` per layer. Nested columns share the zero baseline; cumulative stacks use successive baselines. For source-visible proportions, declare `morphology_ratio_contracts` with `reference_item` and `expected_ratios`, then audit the post-reopen final export. Missing declarations, missing measurements, and out-of-tolerance ratios fail the release visual-structure gate.
-
-## Quick Workflow
-
-Read [references/profiles/quick.md](references/profiles/quick.md) and the runtime rules. Use `template_policy=skip`, `evidence_level=basic`, `reopen_check=basic`, and `visual_qa=off` unless the user requests a stronger profile.
-
-Run:
+For a new table, prefer:
 
 ```powershell
-python scripts/originplot.py --figure-spec figure_spec.json --builder generic_line --profile quick --live --output-dir outputs\quick
+originplot.cmd doctor --origin-version 2022
+originplot.cmd inspect data.xlsx
+originplot.cmd draw data.xlsx --x Strain --y Stress --plot-type line_scatter
 ```
 
-Do not run official template discovery, full lineage, morphology contracts, AA2195 gates, five-figure audit, or release eligibility.
+If column meanings are sufficiently clear, `draw` can use the high-confidence semantic roles. If unresolved numeric columns remain, do not guess: ask only for the needed mapping and rerun with explicit `--x`, `--y`, `--x-error`, `--y-error`, `--category`, or `--z`.
 
-## Standard Workflow
-
-Read [references/profiles/standard.md](references/profiles/standard.md), [references/template-discovery.md](references/template-discovery.md), [references/visual-qa.md](references/visual-qa.md), and runtime rules.
-
-Use `template_policy=auto`, `evidence_level=visual`, `reopen_check=basic`, `visual_qa=basic`, at most three template candidates, and at most one rebuild by default. Template retrieval failure becomes a warning and native reconstruction fallback, not a blocker.
-
-Run:
+Advanced commands:
 
 ```powershell
-python scripts/originplot.py --figure-spec figure_spec.json --builder generic_line --profile standard --live --output-dir outputs\standard
+originplot.cmd plan data.xlsx --plot-type errorbar --x Time --y Signal --y-error SD --output figure.json
+originplot.cmd render figure.json --output-dir output
+originplot.cmd verify output
 ```
 
-## Release Workflow
+## Semantic boundary
 
-Read [references/profiles/release.md](references/profiles/release.md), [references/evidence-contract.md](references/evidence-contract.md), runtime, template, visual, and troubleshooting references. Read [references/aa2195-benchmark.md](references/aa2195-benchmark.md) only for AA2195 work.
+Classify every source column as exactly one of:
 
-Use `template_policy=strict`, `evidence_level=full`, `reopen_check=strict`, and `visual_qa=benchmark`. Keep the complete administrator privilege envelope, source lineage, hashes, pre-save and post-reopen exports, full readback, evidence directory, and fail-closed release gates.
+`x`, `y`, `x_error`, `y_error`, `z`, `group`, `category`, `label`, `support`, `retain`, `uncertain`.
 
-Run a single strict route:
+`uncertain` is a question, not another automatic curve. The source file is immutable. Do not silently:
 
-```powershell
-python scripts/originplot.py --profile release --figure fig15 --candidate candidate.json --live --require-live-success --output-dir outputs\release
+- fit or smooth;
+- normalize;
+- delete outliers;
+- create error bars from unstated assumptions;
+- identify peaks, phases, transitions, or materials;
+- calculate scientific quantities;
+- invent or fill measurements.
+
+An explicit user mapping resolves semantic uncertainty for the selected plot; unrelated unknown columns are retained, not rendered.
+
+## FigureSpec v6 is the ordinary-workflow contract
+
+The formal schema is `originplot.figurespec.v6`. It contains:
+
+- `source`: file, sheet and SHA-256;
+- `data`: explicit series or matrix mappings;
+- `figure`: primitive and axes;
+- `style`: theme, series and legend choices;
+- `layout`: page/panel geometry;
+- `verification`: profile and required gates.
+
+If the source hash changes, the prior confirmed spec is stale. Builders must never reinterpret source-column roles after FigureSpec is frozen.
+
+## Ten v6 primitives
+
+The public registry contains exactly:
+
+- `line`
+- `scatter`
+- `line_scatter`
+- `errorbar`
+- `bar`
+- `grouped_bar`
+- `stacked_bar`
+- `heatmap`
+- `contour`
+- `multi_panel`
+
+They are implemented through four compact compiler families: XY, categorical bars, matrix/XYZ, and composition. `multi_panel` composes child builders rather than duplicating plot logic.
+
+Domain workflows such as stress-strain, XRD, Rietveld, electrochemistry, or spectroscopy should be semantic/style presets that compile to these primitives. Do not create a new Origin API subsystem for each scientific field.
+
+## Builder and adapter boundary
+
+Builders only perform:
+
+```text
+FigureSpec -> OperationPlan
 ```
 
-Run the AA2195 five-figure batch only through `scripts/run_five_figure_live_batch.ps1`; it maps to `release` automatically.
+They do not import or call Origin. `originplot.operation_plan.v1` is declarative and can be tested offline.
 
-For AA2195 reruns that ask to reproduce again, re-digitize, or avoid old data, use `-SourceDataPolicy fresh_extract`, pass the authorized `-SourcePdf`, and write to a new or empty `-OutputRoot`. Resolve Python with `scripts/resolve_python310.ps1`, run `scripts/assert_admin_preflight.py` under the same elevated envelope, and keep exactly one visible administrator-started Origin instance. Candidate dry-runs are useful for source/template contract checks before live work, but they remain `planned_not_executed` and are never OPJU or release evidence.
+Only `originplot/adapters/originpro.py` translates an OperationPlan into native Worksheet-backed Origin objects. This keeps data semantics, plotting logic, and application automation independently testable.
 
-## Outputs And Status
+## Live completion gates
 
-- `basic`: `candidate.opju`, `candidate_export.png`, `candidate_summary.json`.
-- `visual`: basic outputs plus readback, visual metrics, and manifest.
-- `full`: visual outputs plus pre-save export, evidence directory, hashes, provenance, route/source identities, template evidence, and release status.
+A successful live Quick/Standard run requires the native lifecycle:
 
-Use `planned_not_executed`, `completed`, `live_structure_pass`, `live_visual_pass`, `incomplete`, or `failed` according to the profile contract. Quick completion never sets `pass_eligible=true`. A disabled gate is `not_required`, never `pass`.
+1. elevated worker authorization;
+2. attach to the authorized visible Origin process;
+3. native Worksheet and graph construction;
+4. direct Plot-to-Worksheet binding;
+5. save `figure.opju`;
+6. detach;
+7. reattach and reopen `figure.opju`;
+8. read back editable plots and bindings;
+9. export from the reopened Origin project;
+10. reject blank export or Demo watermark.
 
-## Failure Handling
+A Python/Matplotlib redraw, screenshot, raster background, or dry run is never a completed Origin deliverable.
 
-- Stop before Origin attach on invalid schema, unauthorized source, or strict release preflight failure.
-- Preserve stable error codes and report which gate failed.
-- In Quick/Standard, warn and fall back after bounded template search failure.
-- In Release, fail closed when strict template, lineage, hash, structure, visual, or evidence requirements are missing.
-- On Demo watermark, invalidate the run and restart the full release lifecycle only after fixing the license/environment.
-- Read [references/troubleshooting.md](references/troubleshooting.md) for attach, lock, serialization, and export failures.
+Canonical ordinary outputs are:
+
+```text
+figure.opju
+figure.png
+figure.pdf
+figure.tif
+figure_spec.json
+verification.json
+```
+
+`operation_plan.json` may also be retained for audit/debugging.
+
+## Profiles
+
+### Quick
+
+Use for routine supported plots and style iteration. It still requires native save/reopen/binding/export when live, but makes no formal benchmark visual claim.
+
+### Standard
+
+Default for SCI plotting. It may perform bounded template discovery/style assistance, but template failure must not silently change data semantics. Same live structure gates remain mandatory.
+
+### Release
+
+Release is fail-closed and cannot be weakened. During the v6 migration, the historical AA2195 strict release/evidence identity remains under `benchmarks/aa2195/`; do not relabel old 5.8.9-p18 evidence as v6 evidence. A general v6 Release route must remain blocked until it earns new same-run live evidence.
+
+## Origin versions and doctor
+
+Python 3.10 remains the validated baseline. `doctor` is read-only and does not launch Origin.
+
+Capability status is explicit:
+
+- Origin 2022: validated baseline;
+- Origin 2024: compatible-unverified until receiving-machine smoke/readback passes;
+- Origin 2026: experimental;
+- unknown versions: fail closed for live claims.
+
+Capability metadata never waives administrator or same-run verification requirements.
+
+## Reference figures
+
+A reference image may suggest panel structure, mark type, line/symbol use, page ratio, legend placement and allow-listed style values. It may not contribute scientific values, labels, fits, phase assignments, logos, watermarks, or bitmap content to the editable result.
+
+Priority is:
+
+```text
+explicit user style > confirmed reference suggestion > preset > OriginPlot default
+```
+
+Reference-derived choices must ultimately become normal FigureSpec `style`/`layout` fields. Do not create a parallel image-reproduction execution engine.
+
+## AA2195 benchmark
+
+`benchmarks/aa2195/` preserves Fig3/Fig12/Fig14/Fig15/Fig16 builders, configuration, candidates, historical protocols and evidence. Product core under `originplot/` must never import this benchmark package. Benchmark compatibility bridges may import the benchmark from legacy wrappers while migration support remains.
 
 ## Claims
 
-Report exactly what ran. Dry-run is planning only. Quick is editable completion, not release validation. Standard visual pass is not release eligibility. AA2195 evidence applies only to its named routes and recorded identities. Never claim raw-data recovery, cross-machine pixel identity, or automatic high-fidelity reproduction of arbitrary figures.
+Report exactly what ran:
+
+- semantic inspection is not scientific analysis;
+- dry run is planning only;
+- editable completion is not release eligibility;
+- compatibility is not verification;
+- historical AA2195 evidence applies only to its recorded identities;
+- never claim raw-data recovery, automatic arbitrary-image-to-OPJU reproduction, or cross-machine pixel identity.
