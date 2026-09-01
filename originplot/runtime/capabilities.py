@@ -5,8 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[2]
-CAPABILITY_DIR = ROOT / "capabilities"
+PACKAGE_PROFILE_DIR = Path(__file__).resolve().parent / "profiles"
+LEGACY_CAPABILITY_DIR = Path(__file__).resolve().parents[2] / "capabilities"
 
 _VERSION_STATUS = {
     "2022": "verified_baseline",
@@ -62,9 +62,9 @@ def live_execution_block(plot_type: str | None) -> dict[str, str] | None:
 
 def _profile_path(version: str) -> Path | None:
     preferred = [
-        CAPABILITY_DIR / f"origin-{version}-v6.json",
-        CAPABILITY_DIR / f"origin-{version}-v5.json",
-        CAPABILITY_DIR / f"origin-{version}.json",
+        PACKAGE_PROFILE_DIR / f"origin-{version}-v6.json",
+        LEGACY_CAPABILITY_DIR / f"origin-{version}-v5.json",
+        LEGACY_CAPABILITY_DIR / f"origin-{version}.json",
     ]
     return next((path for path in preferred if path.is_file()), None)
 
@@ -106,8 +106,6 @@ def resolve_origin_capabilities(version: str | None) -> dict[str, Any]:
         for primitive, state in maturity.items()
         if state["live_status"] == "requires_same_run_verification"
     ]
-    # v6 live evidence is deliberately empty until the new adapter is exercised in a
-    # licensed Origin run and the same-run reopen/readback/export gates are recorded.
     live_evidence_primitives: list[str] = []
 
     return {
@@ -120,8 +118,6 @@ def resolve_origin_capabilities(version: str | None) -> dict[str, Any]:
         "live_candidate_primitives": live_candidates,
         "live_evidence_primitives": live_evidence_primitives,
         "primitive_maturity": maturity,
-        # Backward-compatible field: this now means version-gated live candidates,
-        # not blanket proof that a primitive has live evidence.
         "plot_primitives": live_candidates if compatibility != "blocked_unverified" else [],
         "live_authorization": "administrator_required",
         "note": "offline compile support is separate from live Origin evidence; every live run remains fail-closed behind same-run verification",
