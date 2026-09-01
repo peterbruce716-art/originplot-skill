@@ -37,4 +37,5 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -d tests ]; then pytest -q; else echo 'No tests directory yet'; fi
+          test -d tests || (echo 'Missing tests directory' && exit 1)
+          pytest -q
