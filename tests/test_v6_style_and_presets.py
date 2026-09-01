@@ -11,7 +11,7 @@ def test_domain_presets_are_semantic_hints_only() -> None:
 
 def test_style_precedence_is_user_reference_preset_default() -> None:
     result = resolve_style(
-        defaults={"theme": "publication", "legend": {"visible": True, "frame": False}, "series": {"s1": {"color": "#111111"}}},
+        defaults={"legend": {"visible": True, "frame": False}, "series": {"s1": {"color": "#111111"}}},
         preset={"series": {"s1": {"color": "#222222", "line_width_pt": 1.0}}},
         reference={"legend": {"visible": False}, "series": {"s1": {"color": "#333333"}}},
         user={"series": {"s1": {"color": "#444444"}}},
@@ -48,6 +48,7 @@ def test_reference_style_cannot_inject_scientific_content() -> None:
 def test_unimplemented_precise_style_fields_are_rejected_instead_of_silently_accepted() -> None:
     result = resolve_style(
         user={
+            "theme": "publication",
             "series": {
                 "s1": {
                     "color": "red",
@@ -64,6 +65,7 @@ def test_unimplemented_precise_style_fields_are_rejected_instead_of_silently_acc
         "series": {"s1": {"color": "red", "line_width_pt": 1.5, "symbol": 3}},
     }
     assert {item["path"] for item in result["rejected"]} >= {
+        "theme",
         "series.s1.symbol_size_pt",
         "series.s1.fill_transparency_percent",
         "matrix",
