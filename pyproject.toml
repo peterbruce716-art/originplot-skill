@@ -21,3 +21,4 @@ include = ["originplot*", "contracts*"]
 
 [tool.setuptools.package-data]
 "originplot.runtime" = ["*.ps1", "profiles/*.json"]
+"originplot.benchmarks.aa2195" = ["*.json"]

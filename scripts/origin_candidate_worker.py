@@ -18,7 +18,7 @@ if str(_IMPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(_IMPORT_ROOT))
 
 from builders.registry import UnknownBuilderError, resolve_builder
-from builders.aa2195.fresh_source_data import fresh_lineage_fields
+from benchmarks.aa2195.builders.fresh_source_data import fresh_lineage_fields
 from originplot.benchmarks.aa2195.config import load_config as load_aa2195_config
 
 AUTHORIZED_SOURCE_PLACEHOLDER = "AUTHORIZED_LOCAL_SOURCE_REQUIRED"
@@ -40,7 +40,12 @@ except ImportError:
     from visual_qa import score_visual
     from assert_admin_preflight import demo_restart_directive
     from materialize_live_evidence import materialize_standard_evidence
-    from acceptance_hardening import derive_release_status, evaluate_target_visual_gate, normalize_fig12_parameters, render_parameter_fingerprint
+    from acceptance_hardening import (
+        derive_release_status,
+        evaluate_target_visual_gate,
+        normalize_fig12_parameters,
+        render_parameter_fingerprint,
+    )
     from fig12_roi import evaluate_fig12_rois
 
 
@@ -53,7 +58,7 @@ REQUIRED_LIVE_ARTIFACTS = [
 ]
 
 SKILL_ROOT = Path(__file__).resolve().parents[1]
-AA2195_BUILDER_PACKAGE = SKILL_ROOT / "builders" / "aa2195"
+AA2195_BUILDER_PACKAGE = SKILL_ROOT / "benchmarks" / "aa2195" / "builders"
 VERSIONS = load_versions(SKILL_ROOT)
 SKILL_VERSION = VERSIONS.contract_version
 RELEASE_VERSION = VERSIONS.release_version
@@ -66,9 +71,7 @@ VISUAL_THRESHOLDS = {
 FIG15_FROZEN_BASELINE_THRESHOLDS = dict(
     AA2195_CONFIG["thresholds"]["fig15_frozen_baseline"]
 )
-GEOMETRY_TABLE_VERSIONS = dict(
-    AA2195_CONFIG["routes"]["geometry_table_versions"]
-)
+GEOMETRY_TABLE_VERSIONS = dict(AA2195_CONFIG["routes"]["geometry_table_versions"])
 TEMPLATE_IDS = dict(AA2195_CONFIG["templates"])
 OFFICIAL_RESEARCH_URLS = {
     "https://www.originlab.com/www/products/GraphGallery.aspx?s=0&sort=Newest",
@@ -79,11 +82,15 @@ OFFICIAL_RESEARCH_URLS = {
 FIG15_FROZEN_EFFECTIVE_ROUTE = dict(
     AA2195_CONFIG["routes"]["fig15_frozen_effective_route"]
 )
-FIG15_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"]["fig15_source_crop_sha256"]
+FIG15_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"][
+    "fig15_source_crop_sha256"
+]
 FIG16_FROZEN_EFFECTIVE_ROUTE = dict(
     AA2195_CONFIG["routes"]["fig16_frozen_effective_route"]
 )
-FIG16_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"]["fig16_source_crop_sha256"]
+FIG16_SOURCE_CROP_SHA256 = AA2195_CONFIG["source_identities"][
+    "fig16_source_crop_sha256"
+]
 
 
 class TemplateSearchError(ValueError):
@@ -107,8 +114,14 @@ def read_candidate(path: Path) -> dict[str, Any]:
 
 
 def candidate_sha256(candidate: dict[str, Any]) -> str:
-    stable = {key: value for key, value in candidate.items() if key not in {"candidate_sha256", "sha256"}}
-    return hashlib.sha256(json.dumps(stable, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    stable = {
+        key: value
+        for key, value in candidate.items()
+        if key not in {"candidate_sha256", "sha256"}
+    }
+    return hashlib.sha256(
+        json.dumps(stable, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
 
 
 def stable_runtime_error_code(exc: BaseException) -> str:
@@ -137,15 +150,22 @@ def require_template_search_record(
     try:
         record = json.loads(raw_bytes.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TemplateSearchError("template_search_record is not valid UTF-8 JSON") from exc
-    if not isinstance(record, dict) or record.get("schema") != "originplot.template_search_record.v1":
+        raise TemplateSearchError(
+            "template_search_record is not valid UTF-8 JSON"
+        ) from exc
+    if (
+        not isinstance(record, dict)
+        or record.get("schema") != "originplot.template_search_record.v1"
+    ):
         raise TemplateSearchError("template_search_record has an unsupported schema")
     if record.get("status") != "ok":
         raise TemplateSearchError("template_search_record status must be ok")
 
     source_rows = record.get("official_sources")
     if not isinstance(source_rows, list):
-        raise TemplateSearchError("template_search_record official_sources must be a list")
+        raise TemplateSearchError(
+            "template_search_record official_sources must be a list"
+        )
     checked_urls = {
         str(item.get("url"))
         for item in source_rows
@@ -154,22 +174,30 @@ def require_template_search_record(
         and item.get("status_code") == 200
     }
     if not OFFICIAL_RESEARCH_URLS.issubset(checked_urls):
-        raise TemplateSearchError("template_search_record must verify all four official Origin entrances")
+        raise TemplateSearchError(
+            "template_search_record must verify all four official Origin entrances"
+        )
 
     local_search = record.get("local_search")
     if not isinstance(local_search, dict) or not all(
         local_search.get(key) is True
         for key in ("workspace_catalog_checked", "installed_templates_checked")
     ):
-        raise TemplateSearchError("template_search_record must include both local template searches")
+        raise TemplateSearchError(
+            "template_search_record must include both local template searches"
+        )
     inspection = record.get("inspection")
     if not isinstance(inspection, dict) or not all(
         inspection.get(key) is True
         for key in ("administrator_python", "visible_origin", "editable_open_verified")
     ):
-        raise TemplateSearchError("template_search_record lacks administrator editable-open inspection")
+        raise TemplateSearchError(
+            "template_search_record lacks administrator editable-open inspection"
+        )
     if inspection.get("release") != "op.detach()":
-        raise TemplateSearchError("template_search_record must record op.detach() release")
+        raise TemplateSearchError(
+            "template_search_record must record op.detach() release"
+        )
 
     templates = record.get("templates")
     if not isinstance(templates, dict):
@@ -178,7 +206,9 @@ def require_template_search_record(
     for template_id in TEMPLATE_IDS[figure]:
         item = templates.get(template_id)
         if not isinstance(item, dict):
-            raise TemplateSearchError(f"template_search_record is missing {template_id} for {figure}")
+            raise TemplateSearchError(
+                f"template_search_record is missing {template_id} for {figure}"
+            )
         required_truth = (
             item.get("compatible_open") is True
             and item.get("opened_editable") is True
@@ -188,7 +218,8 @@ def require_template_search_record(
             and bool(item.get("plot_types"))
             and isinstance(item.get("direct_bindings_count"), int)
             and item["direct_bindings_count"] > 0
-            and item.get("decision") in {"selected_reference", "rejected_after_inspection"}
+            and item.get("decision")
+            in {"selected_reference", "rejected_after_inspection"}
             and bool(str(item.get("selection_reason", "")).strip())
             and figure in item.get("figures", [])
         )
@@ -197,7 +228,9 @@ def require_template_search_record(
             for key in ("project_sha256", "archive_sha256")
         )
         if not required_truth or not hashes_valid:
-            raise TemplateSearchError(f"template_search_record has incomplete evidence for {template_id}")
+            raise TemplateSearchError(
+                f"template_search_record has incomplete evidence for {template_id}"
+            )
 
     return {
         "status": "pass",
@@ -218,14 +251,18 @@ def make_run_id(figure: str, candidate: dict[str, Any]) -> str:
 
 
 def export_path_by_phase(exports: list[dict[str, Any]], phase: str) -> Path:
-    matches = [Path(item.get("path", "")) for item in exports if item.get("phase") == phase]
+    matches = [
+        Path(item.get("path", "")) for item in exports if item.get("phase") == phase
+    ]
     return matches[0] if len(matches) == 1 else Path()
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # COM readback can expose callable proxy attributes; evidence must remain serializable.
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
+    )
 
 
 def build_manifest(
@@ -250,7 +287,8 @@ def build_manifest(
         "status": status,
         "candidate": candidate,
         "candidate_sha256": sha,
-        "candidate_sha256_matches_input": candidate.get("candidate_sha256") in {None, sha},
+        "candidate_sha256_matches_input": candidate.get("candidate_sha256")
+        in {None, sha},
         "output_dir": str(output_dir),
         "required_live_artifacts": REQUIRED_LIVE_ARTIFACTS,
         "python_is_admin": is_admin(),
@@ -259,7 +297,9 @@ def build_manifest(
         "structure_pass": False,
         "visual_pass": False,
         "live_origin_verified": False,
-        "overall_status": "planned_not_executed" if status == "planned_not_executed" else "incomplete",
+        "overall_status": "planned_not_executed"
+        if status == "planned_not_executed"
+        else "incomplete",
         "builder_id": builder_id or figure,
         "build_origin_figure_required": True,
         "same_run_candidate_promotion_policy": "hard_gates_before_visual_metrics",
@@ -292,8 +332,12 @@ def run_dry(
     definition = resolve_builder(builder_id=builder_id, figure=figure)
     figure_spec = _read_figure_spec(figure_spec_path)
     plan = definition.validate_plan(candidate, figure_spec)
-    effective_figure = figure or str(plan.get("figure") or candidate.get("figure") or definition.builder_id)
-    template_search_gate = require_template_search_record(effective_figure, candidate, candidate_path)
+    effective_figure = figure or str(
+        plan.get("figure") or candidate.get("figure") or definition.builder_id
+    )
+    template_search_gate = require_template_search_record(
+        effective_figure, candidate, candidate_path
+    )
     manifest = build_manifest(
         figure=effective_figure,
         candidate=candidate,
@@ -319,10 +363,12 @@ def run_dry(
 
 def _load_aa2195_builder() -> Any:
     if not (AA2195_BUILDER_PACKAGE / "__init__.py").exists():
-        raise RuntimeError(f"packaged AA2195 builder is missing: {AA2195_BUILDER_PACKAGE}")
+        raise RuntimeError(
+            f"packaged AA2195 builder is missing: {AA2195_BUILDER_PACKAGE}"
+        )
     if str(SKILL_ROOT) not in sys.path:
         sys.path.insert(0, str(SKILL_ROOT))
-    from builders import aa2195
+    from benchmarks.aa2195 import builders as aa2195
 
     return aa2195
 
@@ -381,7 +427,9 @@ def _resolve_candidate_file(
 
 
 def _stable_digest(value: Any) -> str:
-    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -398,7 +446,9 @@ def _validate_source_data_gate(
         raise ValueError(
             "source_data_policy must be fresh_extract, validated_reuse, or validated_crop_reextract"
         )
-    manifest_path = _resolve_candidate_file(candidate, "source_data_manifest", candidate_path)
+    manifest_path = _resolve_candidate_file(
+        candidate, "source_data_manifest", candidate_path
+    )
     if manifest_path is None:
         raise ValueError("source_data_manifest is mandatory")
     if source_crop is None or not source_crop.is_file() or not manifest_path.is_file():
@@ -438,7 +488,9 @@ def _validate_source_data_gate(
         gate["reuse_validation"] = "not_required"
         return gate
 
-    reuse_path = _resolve_candidate_file(candidate, "source_reuse_record", candidate_path)
+    reuse_path = _resolve_candidate_file(
+        candidate, "source_reuse_record", candidate_path
+    )
     if reuse_path is None or not reuse_path.is_file():
         raise ValueError("validated_reuse requires source_reuse_record")
     reuse_payload = json.loads(reuse_path.read_text(encoding="utf-8"))
@@ -448,9 +500,15 @@ def _validate_source_data_gate(
     ):
         raise ValueError("source reuse record is invalid")
     if policy == "validated_reuse":
-        if str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower() != gate["manifest_sha256"]:
+        if (
+            str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower()
+            != gate["manifest_sha256"]
+        ):
             raise ValueError("reused source manifest hash mismatch")
-        if str(reuse_payload.get("source_bundle_data_sha256", "")).lower() != gate["bundle_data_sha256"].lower():
+        if (
+            str(reuse_payload.get("source_bundle_data_sha256", "")).lower()
+            != gate["bundle_data_sha256"].lower()
+        ):
             raise ValueError("reused source bundle data hash mismatch")
     else:
         reextracted = payload.get("reextracted_figures")
@@ -460,11 +518,19 @@ def _validate_source_data_gate(
             or reextracted != ["fig14"]
         ):
             raise ValueError("validated crop re-extraction manifest is invalid")
-        if str(payload.get("parent_source_bundle_manifest_sha256", "")).lower() != str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower():
+        if (
+            str(payload.get("parent_source_bundle_manifest_sha256", "")).lower()
+            != str(reuse_payload.get("source_bundle_manifest_sha256", "")).lower()
+        ):
             raise ValueError("re-extraction parent manifest hash mismatch")
-        if str(payload.get("parent_source_bundle_data_sha256", "")).lower() != str(reuse_payload.get("source_bundle_data_sha256", "")).lower():
+        if (
+            str(payload.get("parent_source_bundle_data_sha256", "")).lower()
+            != str(reuse_payload.get("source_bundle_data_sha256", "")).lower()
+        ):
             raise ValueError("re-extraction parent bundle hash mismatch")
-        if str(payload.get("source_reuse_record_sha256", "")).lower() != _source_sha256(reuse_path):
+        if str(payload.get("source_reuse_record_sha256", "")).lower() != _source_sha256(
+            reuse_path
+        ):
             raise ValueError("re-extraction reuse record hash mismatch")
     reuse_figure = reuse_payload.get("figures", {}).get(figure)
     if not isinstance(reuse_figure, dict):
@@ -488,20 +554,33 @@ def _validate_source_data_gate(
         if parent_data_sha256 != str(reuse_figure.get("data_sha256", "")).lower():
             raise ValueError(f"re-extraction parent data hash mismatch for {figure}")
         if figure == "fig14":
-            expected_method = "fresh_source_crop_color_marker_and_component_errorbar_digitization"
-            if record.get("data_policy") != "validated_crop_reextract" or record["data"].get("method") != expected_method:
+            expected_method = (
+                "fresh_source_crop_color_marker_and_component_errorbar_digitization"
+            )
+            if (
+                record.get("data_policy") != "validated_crop_reextract"
+                or record["data"].get("method") != expected_method
+            ):
                 raise ValueError("Fig14 corrected re-extraction method is invalid")
             if data_sha256 == parent_data_sha256:
-                raise ValueError("Fig14 corrected re-extraction did not change the parent data")
-        elif record.get("data_policy") != "validated_reuse" or data_sha256 != parent_data_sha256:
-            raise ValueError(f"validated crop re-extraction changed unrelated data for {figure}")
+                raise ValueError(
+                    "Fig14 corrected re-extraction did not change the parent data"
+                )
+        elif (
+            record.get("data_policy") != "validated_reuse"
+            or data_sha256 != parent_data_sha256
+        ):
+            raise ValueError(
+                f"validated crop re-extraction changed unrelated data for {figure}"
+            )
     gate.update(
         {
             "reuse_validation": "pass",
             "reuse_record_path": str(reuse_path),
             "reuse_record_sha256": _source_sha256(reuse_path),
             "validated_run_id": str(reuse_figure.get("run_id", "")),
-            "reextracted_from_validated_crop": policy == "validated_crop_reextract" and figure == "fig14",
+            "reextracted_from_validated_crop": policy == "validated_crop_reextract"
+            and figure == "fig14",
         }
     )
     return gate
@@ -568,14 +647,24 @@ def _effective_builder_route(fig_result: dict[str, Any]) -> dict[str, Any]:
         "candidate_params",
     ]
     effective = {key: route[key] for key in keys if key in route}
-    label_sizes = route.get("fig12_label_sizes") if isinstance(route.get("fig12_label_sizes"), dict) else {}
+    label_sizes = (
+        route.get("fig12_label_sizes")
+        if isinstance(route.get("fig12_label_sizes"), dict)
+        else {}
+    )
     if label_sizes:
-        effective["fig12_contour_label_size_offset"] = round(float(label_sizes.get("contour", 8.4)) - 8.4, 6)
-        effective["fig12_mechanism_label_size_offset"] = round(float(label_sizes.get("mechanism", 11.2)) - 11.2, 6)
+        effective["fig12_contour_label_size_offset"] = round(
+            float(label_sizes.get("contour", 8.4)) - 8.4, 6
+        )
+        effective["fig12_mechanism_label_size_offset"] = round(
+            float(label_sizes.get("mechanism", 11.2)) - 11.2, 6
+        )
     return effective
 
 
-def _prepare_candidate_for_build(figure: str, candidate: dict[str, Any]) -> dict[str, Any]:
+def _prepare_candidate_for_build(
+    figure: str, candidate: dict[str, Any]
+) -> dict[str, Any]:
     if figure != "fig12":
         return {"candidate": dict(candidate), "parameter_normalization": None}
     strict = bool(candidate.get("strict_parameter_validation", True))
@@ -583,9 +672,14 @@ def _prepare_candidate_for_build(figure: str, candidate: dict[str, Any]) -> dict
     effective = normalization["effective_parameters"]
     prepared = dict(candidate)
     for name in (
-        "fig12_matrix_resolution_scale", "fig12_matrix_smoothing_sigma", "fig12_matrix_mode",
-        "fig12_y_minor_ticks", "fig12_panel_layout_offsets", "fig12_matrix_biases",
-        "fig12_matrix_contrasts", "fig12_matrix_region_values",
+        "fig12_matrix_resolution_scale",
+        "fig12_matrix_smoothing_sigma",
+        "fig12_matrix_mode",
+        "fig12_y_minor_ticks",
+        "fig12_panel_layout_offsets",
+        "fig12_matrix_biases",
+        "fig12_matrix_contrasts",
+        "fig12_matrix_region_values",
         "fig12_path_overlays",
         "fig12_path_overlay_stroke_width",
         "fig12_path_overlay_color",
@@ -606,7 +700,9 @@ def _render_identity_payload(
     source_crop_sha256: str,
     fresh_data_sha256: str = "",
 ) -> dict[str, Any]:
-    effective = {key: value for key, value in route.items() if key != "candidate_params"}
+    effective = {
+        key: value for key, value in route.items() if key != "candidate_params"
+    }
     return {
         "effective_parameters": effective,
         "effective_builder_route": effective,
@@ -614,7 +710,10 @@ def _render_identity_payload(
         "geometry_table_version": GEOMETRY_TABLE_VERSIONS[figure],
         "source_crop_sha256": source_crop_sha256.lower(),
         "origin_version": "Origin 2022",
-        "export_profile": {"canvas_size": effective.get("canvas_size"), "page_size_inches": effective.get("page_size_inches")},
+        "export_profile": {
+            "canvas_size": effective.get("canvas_size"),
+            "page_size_inches": effective.get("page_size_inches"),
+        },
         "template_ids": TEMPLATE_IDS[figure],
         "font_profile": "origin_2022_default_serif",
         "feature_flags": {"speed_mode": False, "editable_reopen": True},
@@ -628,12 +727,16 @@ def _source_sha256(path: Path | None) -> str:
 
 
 def _fig15_frozen_fingerprint() -> str:
-    payload = _render_identity_payload("fig15", FIG15_FROZEN_EFFECTIVE_ROUTE, FIG15_SOURCE_CROP_SHA256)
+    payload = _render_identity_payload(
+        "fig15", FIG15_FROZEN_EFFECTIVE_ROUTE, FIG15_SOURCE_CROP_SHA256
+    )
     return render_parameter_fingerprint(payload)["fingerprint"]
 
 
 def _fig16_frozen_fingerprint() -> str:
-    payload = _render_identity_payload("fig16", FIG16_FROZEN_EFFECTIVE_ROUTE, FIG16_SOURCE_CROP_SHA256)
+    payload = _render_identity_payload(
+        "fig16", FIG16_FROZEN_EFFECTIVE_ROUTE, FIG16_SOURCE_CROP_SHA256
+    )
     return render_parameter_fingerprint(payload)["fingerprint"]
 
 
@@ -698,8 +801,12 @@ def run_live(
     definition = resolve_builder(builder_id=builder_id, figure=figure)
     figure_spec = _read_figure_spec(figure_spec_path)
     plan = definition.validate_plan(candidate, figure_spec)
-    effective_figure = figure or str(plan.get("figure") or candidate.get("figure") or definition.builder_id)
-    template_search_gate = require_template_search_record(effective_figure, candidate, candidate_path)
+    effective_figure = figure or str(
+        plan.get("figure") or candidate.get("figure") or definition.builder_id
+    )
+    template_search_gate = require_template_search_record(
+        effective_figure, candidate, candidate_path
+    )
     if not definition.supports_live:
         manifest = build_manifest(
             figure=effective_figure,
@@ -729,7 +836,9 @@ def run_live(
             ),
             builder_id=definition.builder_id,
         )
-        manifest.update({"origin_attach_not_attempted": True, "overall_status": "failed"})
+        manifest.update(
+            {"origin_attach_not_attempted": True, "overall_status": "failed"}
+        )
         write_json(output_dir / "candidate_manifest.json", manifest)
         return manifest
     try:
@@ -755,7 +864,9 @@ def run_live(
             message=f"Source data gate failed: {exc}",
             builder_id=definition.builder_id,
         )
-        manifest.update({"origin_attach_not_attempted": True, "overall_status": "failed"})
+        manifest.update(
+            {"origin_attach_not_attempted": True, "overall_status": "failed"}
+        )
         write_json(output_dir / "candidate_manifest.json", manifest)
         return manifest
     if not is_admin():
@@ -808,7 +919,9 @@ def run_live(
                 attach_existing_authorized=True,
             )
         else:
-            build_result = definition.build_live(effective_figure, build_candidate, output_dir)
+            build_result = definition.build_live(
+                effective_figure, build_candidate, output_dir
+            )
         if not isinstance(build_result, dict) or build_result.get("status") == "failed":
             failure = build_result if isinstance(build_result, dict) else {}
             failure_code = failure.get("error_code", "E525_CANDIDATE_WORKER_FAILED")
@@ -816,10 +929,17 @@ def run_live(
                 {
                     "status": "failed",
                     "error_code": failure_code,
-                    "message": failure.get("message", "The packaged Origin builder failed before producing a candidate."),
+                    "message": failure.get(
+                        "message",
+                        "The packaged Origin builder failed before producing a candidate.",
+                    ),
                     "builder_result_status": failure.get("status", "invalid_result"),
-                    "origin_attach_not_attempted": bool(failure.get("origin_attach_not_attempted", False)),
-                    "opju_generation_allowed": bool(failure.get("opju_generation_allowed", False)),
+                    "origin_attach_not_attempted": bool(
+                        failure.get("origin_attach_not_attempted", False)
+                    ),
+                    "opju_generation_allowed": bool(
+                        failure.get("opju_generation_allowed", False)
+                    ),
                     "command_success": False,
                     "structure_pass": False,
                     "visual_pass": False,
@@ -857,15 +977,27 @@ def run_live(
                 },
             )
             return manifest
-        fig_result = build_result.get("per_figure", {}).get(effective_figure, {}) if isinstance(build_result, dict) else {}
+        fig_result = (
+            build_result.get("per_figure", {}).get(effective_figure, {})
+            if isinstance(build_result, dict)
+            else {}
+        )
         opju = output_dir / "candidate.opju"
         png = output_dir / "candidate_export.png"
         readback_path = output_dir / "candidate_readback.json"
         metrics_path = output_dir / "candidate_visual_metrics.json"
-        source_opju = Path(fig_result.get("opju_path", "")) if fig_result.get("opju_path") else Path()
+        source_opju = (
+            Path(fig_result.get("opju_path", ""))
+            if fig_result.get("opju_path")
+            else Path()
+        )
         if source_opju and not source_opju.is_absolute():
             source_opju = SKILL_ROOT / source_opju
-        exports = fig_result.get("origin_rendered_exports", []) if isinstance(fig_result, dict) else []
+        exports = (
+            fig_result.get("origin_rendered_exports", [])
+            if isinstance(fig_result, dict)
+            else []
+        )
         source_pre_png = export_path_by_phase(exports, "pre_save")
         source_png = export_path_by_phase(exports, "post_reopen")
         if source_pre_png and not source_pre_png.is_absolute():
@@ -881,12 +1013,16 @@ def run_live(
             "schema": "originplot.clean_candidate_readback.v588",
             "figure": effective_figure,
             "candidate_sha256": candidate_sha256(candidate),
-            "builder_status": build_result.get("status") if isinstance(build_result, dict) else "missing",
+            "builder_status": build_result.get("status")
+            if isinstance(build_result, dict)
+            else "missing",
             "figure_status": fig_result.get("status"),
             "effective_builder_route": _effective_builder_route(fig_result),
             "editable_view_evidence": fig_result.get("editable_view_evidence", {}),
             "origin_object_readback": fig_result.get("origin_object_readback", {}),
-            "origin_object_readback_validation": fig_result.get("origin_object_readback_validation", {}),
+            "origin_object_readback_validation": fig_result.get(
+                "origin_object_readback_validation", {}
+            ),
             "copy_records": copy_records,
             "source_data_gate": source_data_gate,
             "fresh_source_gate": (
@@ -938,10 +1074,11 @@ def run_live(
                 source_data_gate["data_sha256"],
             )
         )
-        frozen_recognized = effective_figure == "fig15" and source_data_gate["status"] == "pass"
+        frozen_recognized = (
+            effective_figure == "fig15" and source_data_gate["status"] == "pass"
+        )
         fig16_frozen_recognized = (
-            effective_figure == "fig16"
-            and source_data_gate["status"] == "pass"
+            effective_figure == "fig16" and source_data_gate["status"] == "pass"
         )
         target_visual_gate = evaluate_target_visual_gate(
             effective_figure,
@@ -949,8 +1086,14 @@ def run_live(
             frozen_identity_recognized=frozen_recognized,
             fig16_frozen_identity_recognized=fig16_frozen_recognized,
         )
-        structure_pass = fig_result.get("origin_candidate_hard_gate", {}).get("status") == "pass"
-        runtime_ready = bool(opju.exists() and png.exists() and fig_result.get("status") == "post_reopen_built")
+        structure_pass = (
+            fig_result.get("origin_candidate_hard_gate", {}).get("status") == "pass"
+        )
+        runtime_ready = bool(
+            opju.exists()
+            and png.exists()
+            and fig_result.get("status") == "post_reopen_built"
+        )
         release_status = derive_release_status(
             runtime_ready,
             structure_pass,
@@ -959,17 +1102,33 @@ def run_live(
         metrics["render_identity"] = render_identity
         metrics["target_visual_gate"] = target_visual_gate
         metrics["release_status"] = release_status
-        metrics["fig15_frozen_identity_recognized"] = frozen_recognized if effective_figure == "fig15" else None
-        metrics["fig16_frozen_identity_recognized"] = fig16_frozen_recognized if effective_figure == "fig16" else None
+        metrics["fig15_frozen_identity_recognized"] = (
+            frozen_recognized if effective_figure == "fig15" else None
+        )
+        metrics["fig16_frozen_identity_recognized"] = (
+            fig16_frozen_recognized if effective_figure == "fig16" else None
+        )
         if effective_figure == "fig15":
-            metrics["fig15_status"] = "frozen_regression_baseline" if frozen_recognized and target_visual_gate["visual_baseline_promoted"] else "frozen_regression_baseline_failed"
+            metrics["fig15_status"] = (
+                "frozen_regression_baseline"
+                if frozen_recognized and target_visual_gate["visual_baseline_promoted"]
+                else "frozen_regression_baseline_failed"
+            )
         if effective_figure == "fig12":
             metrics["fig12_roi_metrics"] = evaluate_fig12_rois(
-                source_crop, png, output_dir / "visual_evidence" / "fig12_roi_overlay_debug.png"
+                source_crop,
+                png,
+                output_dir / "visual_evidence" / "fig12_roi_overlay_debug.png",
             )
         metrics["pass_eligible"] = release_status["pass_eligible"]
         if not release_status["pass_eligible"]:
-            metrics["blocking_reasons"] = list(dict.fromkeys(list(metrics.get("blocking_reasons", [])) + target_visual_gate["failures"] + ["p18_overall_release_pass_false"]))
+            metrics["blocking_reasons"] = list(
+                dict.fromkeys(
+                    list(metrics.get("blocking_reasons", []))
+                    + target_visual_gate["failures"]
+                    + ["p18_overall_release_pass_false"]
+                )
+            )
         readback["parameter_normalization"] = prepared.get("parameter_normalization")
         readback["render_identity"] = render_identity
         readback["target_visual_gate"] = target_visual_gate
@@ -999,15 +1158,19 @@ def run_live(
                 "candidate_export": str(png),
                 "candidate_opju": str(opju),
                 "candidate_readback": str(output_dir / "candidate_readback.json"),
-                "candidate_visual_metrics": str(output_dir / "candidate_visual_metrics.json"),
+                "candidate_visual_metrics": str(
+                    output_dir / "candidate_visual_metrics.json"
+                ),
                 "pass_eligible": bool(metrics.get("pass_eligible")),
                 "command_success": True,
                 "structure_pass": bool(structure_pass),
                 "visual_pass": bool(target_visual_gate.get("visual_baseline_promoted")),
                 "live_origin_verified": bool(runtime_ready),
                 "overall_status": (
-                    "live_visual_pass" if metrics.get("pass_eligible")
-                    else "live_structure_pass" if runtime_ready and structure_pass
+                    "live_visual_pass"
+                    if metrics.get("pass_eligible")
+                    else "live_structure_pass"
+                    if runtime_ready and structure_pass
                     else "incomplete"
                 ),
                 "release_status": metrics.get("release_status"),
@@ -1019,7 +1182,9 @@ def run_live(
                 "effective_builder_route": readback.get("effective_builder_route"),
                 "standard_evidence_dir": "evidence",
                 "standard_evidence": standard_evidence,
-                "builder_result_status": build_result.get("status") if isinstance(build_result, dict) else "missing",
+                "builder_result_status": build_result.get("status")
+                if isinstance(build_result, dict)
+                else "missing",
                 "figure_result_status": fig_result.get("status"),
                 "reason": (
                     "Candidate passed reopen, structure, canvas, watermark, and visual thresholds."
@@ -1051,7 +1216,9 @@ def run_live(
             manifest["admin_restart_directive"] = restart
             manifest["evidence_provenance"] = "invalid_demo_watermark"
     finally:
-        manifest["release"] = manifest.get("release") or "builder_owned_session_released"
+        manifest["release"] = (
+            manifest.get("release") or "builder_owned_session_released"
+        )
         write_json(output_dir / "candidate_manifest.json", manifest)
     return manifest
 
@@ -1060,14 +1227,27 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=f"OriginPlot {RELEASE_VERSION} candidate worker for contract {SKILL_VERSION}."
     )
-    parser.add_argument("--figure", help="Legacy-compatible figure id, including fig3, fig12, fig14, fig15, or fig16.")
+    parser.add_argument(
+        "--figure",
+        help="Legacy-compatible figure id, including fig3, fig12, fig14, fig15, or fig16.",
+    )
     parser.add_argument("--builder", help="Registered builder id.")
-    parser.add_argument("--figure-spec", type=Path, help="FigureSpec JSON used by registry-based builders.")
+    parser.add_argument(
+        "--figure-spec",
+        type=Path,
+        help="FigureSpec JSON used by registry-based builders.",
+    )
     parser.add_argument("--candidate", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--dry-run", action="store_true", help="Validate and plan without launching Origin.")
-    mode.add_argument("--live", action="store_true", help="Run the registered live Origin builder.")
+    mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and plan without launching Origin.",
+    )
+    mode.add_argument(
+        "--live", action="store_true", help="Run the registered live Origin builder."
+    )
     parser.add_argument(
         "--require-live-success",
         action="store_true",
@@ -1125,11 +1305,21 @@ def main() -> int:
         write_json(args.output_dir / "candidate_manifest.json", manifest)
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
     if args.require_live_success:
-        return 0 if manifest.get("pass_eligible") and manifest.get("live_origin_verified") else 1
-    return 0 if manifest.get("command_success") or manifest.get("status") in {
-        "built_real_candidate_not_promoted",
-        "built_real_candidate_pass_eligible",
-    } else 1
+        return (
+            0
+            if manifest.get("pass_eligible") and manifest.get("live_origin_verified")
+            else 1
+        )
+    return (
+        0
+        if manifest.get("command_success")
+        or manifest.get("status")
+        in {
+            "built_real_candidate_not_promoted",
+            "built_real_candidate_pass_eligible",
+        }
+        else 1
+    )
 
 
 if __name__ == "__main__":

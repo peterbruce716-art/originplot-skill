@@ -25,10 +25,17 @@ RUNTIME_FILES = {
 }
 
 PRODUCT_PREFIXES = ("originplot/",)
+CACHE_DIRECTORIES = {"__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache"}
+CACHE_SUFFIXES = {".pyc", ".pyo"}
 
 
 def should_include(path: Path, root: Path) -> bool:
     relative = path.relative_to(root).as_posix()
+    if (
+        set(relative.split("/")) & CACHE_DIRECTORIES
+        or path.suffix.lower() in CACHE_SUFFIXES
+    ):
+        return False
     if relative in ROOT_FILES or relative in RUNTIME_FILES:
         return True
     return any(relative.startswith(prefix) for prefix in PRODUCT_PREFIXES)
@@ -40,12 +47,18 @@ def build(skill_dir: Path, zip_out: Path) -> None:
     zip_out.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(zip_out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(skill_dir.rglob("*")):
-            if path.is_file() and path.resolve() != zip_out and should_include(path, skill_dir):
+            if (
+                path.is_file()
+                and path.resolve() != zip_out
+                and should_include(path, skill_dir)
+            ):
                 archive.write(path, path.relative_to(skill_dir).as_posix())
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build the compact OriginPlot v6 runtime package.")
+    parser = argparse.ArgumentParser(
+        description="Build the compact OriginPlot v6 runtime package."
+    )
     parser.add_argument("--skill-dir", type=Path, required=True)
     parser.add_argument("--zip-out", type=Path, required=True)
     args = parser.parse_args()

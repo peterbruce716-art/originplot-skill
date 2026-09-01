@@ -23,13 +23,13 @@ if ($LASTEXITCODE -ne 0 -or -not $pythonVersion.StartsWith("3.10.")) {
     throw "E120_ENVIRONMENT_MISMATCH: five-figure live batch requires Python 3.10."
 }
 $figures = @("fig3", "fig12", "fig14", "fig15", "fig16")
-$worker = Join-Path $SkillRoot "scripts\originplot.py"
+$worker = Join-Path $SkillRoot "scripts\origin_candidate_worker.py"
 $audit = Join-Path $SkillRoot "scripts\audit_five_figure_batch.py"
 $preflight = Join-Path $SkillRoot "scripts\assert_admin_preflight.py"
 $extractor = Join-Path $SkillRoot "scripts\extract_aa2195_fresh_source_bundle.py"
 $reuseBuilder = Join-Path $SkillRoot "scripts\build_validated_data_reuse_record.py"
 $reextractor = Join-Path $SkillRoot "scripts\reextract_validated_source_bundle.py"
-$candidateRoot = Join-Path $SkillRoot "examples\candidates"
+$candidateRoot = Join-Path $SkillRoot "benchmarks\aa2195\examples\candidates"
 $originProcessNames = @("Origin64", "Origin_64", "Origin_32", "Origin")
 
 function Test-IsAdministrator {
@@ -169,7 +169,7 @@ foreach ($figure in $figures) {
     $stderr = Join-Path $OutputRoot "$figure.stderr.txt"
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
     $process = Start-Process -FilePath $PythonExe `
-        -ArgumentList @($worker, "--profile", "release", "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live") `
+        -ArgumentList @($worker, "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live", "--require-live-success") `
         -WorkingDirectory $SkillRoot `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr `

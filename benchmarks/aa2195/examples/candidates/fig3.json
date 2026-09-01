@@ -5,7 +5,7 @@
   "reproduction_mode": "source_calibrated_reconstructed_approximate",
   "source_strategy": "fresh_pdf_vector_path_centerline",
   "curve_sampling_points": 181,
-  "template_search_record": "../template_search/aa2195_official_template_search.json",
+  "template_search_record": "../template_search.json",
   "source_crop": "AUTHORIZED_LOCAL_SOURCE_REQUIRED",
   "source_crop_policy": "supply_an_authorized_local_path_before_live_execution"
 }

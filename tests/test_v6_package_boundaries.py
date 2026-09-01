@@ -3,6 +3,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+from scripts.build_shareable_package_v6 import should_include
+
 
 def test_product_core_does_not_import_aa2195_benchmark() -> None:
     root = Path(__file__).resolve().parents[1] / "originplot"
@@ -69,7 +71,9 @@ def test_installable_runtime_assets_live_inside_originplot_package() -> None:
         root / "originplot" / "template" / "gallery.py",
         root / "originplot" / "template" / "retrieve.py",
     ]
-    assert [str(path.relative_to(root)) for path in required if not path.is_file()] == []
+    assert [
+        str(path.relative_to(root)) for path in required if not path.is_file()
+    ] == []
 
 
 def test_v6_has_single_ordinary_origin_worker_implementation() -> None:
@@ -80,7 +84,10 @@ def test_v6_has_single_ordinary_origin_worker_implementation() -> None:
 
 def test_v6_capability_profiles_have_one_canonical_location() -> None:
     root = Path(__file__).resolve().parents[1]
-    duplicates = [root / "capabilities" / f"origin-{version}-v6.json" for version in ("2022", "2024", "2026")]
+    duplicates = [
+        root / "capabilities" / f"origin-{version}-v6.json"
+        for version in ("2022", "2024", "2026")
+    ]
     assert [str(path.relative_to(root)) for path in duplicates if path.exists()] == []
 
 
@@ -89,3 +96,15 @@ def test_wheel_configuration_includes_runtime_package_data() -> None:
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
     assert "[tool.setuptools.package-data]" in pyproject
     assert '"originplot.runtime" = ["*.ps1", "profiles/*.json"]' in pyproject
+
+
+def test_v6_shareable_builder_excludes_cache_artifacts(tmp_path: Path) -> None:
+    cache_file = tmp_path / "originplot" / "__pycache__" / "module.pyc"
+    source_file = tmp_path / "originplot" / "runtime" / "worker.py"
+    cache_file.parent.mkdir(parents=True)
+    source_file.parent.mkdir(parents=True)
+    cache_file.write_bytes(b"cache")
+    source_file.write_text("# source", encoding="utf-8")
+
+    assert not should_include(cache_file, tmp_path)
+    assert should_include(source_file, tmp_path)

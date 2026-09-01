@@ -30,21 +30,36 @@ def _edge_mask(array: np.ndarray) -> np.ndarray:
     return np.clip(gx + gy, 0.0, 1.0)
 
 
-def _layout_score(source_bbox: list[int] | None, actual_bbox: list[int] | None, width: int, height: int) -> float:
+def _layout_score(
+    source_bbox: list[int] | None,
+    actual_bbox: list[int] | None,
+    width: int,
+    height: int,
+) -> float:
     if source_bbox is None and actual_bbox is None:
         return 1.0
     if source_bbox is None or actual_bbox is None:
         return 0.0
     scale = np.array([width, height, width, height], dtype=np.float64)
-    error = float(np.mean(np.abs(np.asarray(source_bbox) - np.asarray(actual_bbox)) / scale))
+    error = float(
+        np.mean(np.abs(np.asarray(source_bbox) - np.asarray(actual_bbox)) / scale)
+    )
     return max(0.0, 1.0 - 4.0 * error)
 
 
-def _registration_shift(source_bbox: list[int] | None, actual_bbox: list[int] | None) -> dict[str, float]:
+def _registration_shift(
+    source_bbox: list[int] | None, actual_bbox: list[int] | None
+) -> dict[str, float]:
     if source_bbox is None or actual_bbox is None:
         return {"dx_px": 0.0, "dy_px": 0.0}
-    source_center = ((source_bbox[0] + source_bbox[2]) / 2.0, (source_bbox[1] + source_bbox[3]) / 2.0)
-    actual_center = ((actual_bbox[0] + actual_bbox[2]) / 2.0, (actual_bbox[1] + actual_bbox[3]) / 2.0)
+    source_center = (
+        (source_bbox[0] + source_bbox[2]) / 2.0,
+        (source_bbox[1] + source_bbox[3]) / 2.0,
+    )
+    actual_center = (
+        (actual_bbox[0] + actual_bbox[2]) / 2.0,
+        (actual_bbox[1] + actual_bbox[3]) / 2.0,
+    )
     return {
         "dx_px": float(actual_center[0] - source_center[0]),
         "dy_px": float(actual_center[1] - source_center[1]),
@@ -59,7 +74,9 @@ def _translate_white(array: np.ndarray, dx: int, dy: int) -> np.ndarray:
     target_x0, target_x1 = max(0, dx), min(width, width + dx)
     target_y0, target_y1 = max(0, dy), min(height, height + dy)
     if source_x1 > source_x0 and source_y1 > source_y0:
-        result[target_y0:target_y1, target_x0:target_x1] = array[source_y0:source_y1, source_x0:source_x1]
+        result[target_y0:target_y1, target_x0:target_x1] = array[
+            source_y0:source_y1, source_x0:source_x1
+        ]
     return result
 
 
@@ -74,15 +91,25 @@ def _dilate(mask: np.ndarray, tolerance_px: int) -> np.ndarray:
     return np.asarray(image.filter(ImageFilter.MaxFilter(tolerance_px * 2 + 1))) > 0
 
 
-def _tolerant_f1(source_mask: np.ndarray, actual_mask: np.ndarray, tolerance_px: int = 2) -> dict[str, float]:
+def _tolerant_f1(
+    source_mask: np.ndarray, actual_mask: np.ndarray, tolerance_px: int = 2
+) -> dict[str, float]:
     source_count = int(source_mask.sum())
     actual_count = int(actual_mask.sum())
     if source_count == 0 and actual_count == 0:
         return {"precision": 1.0, "recall": 1.0, "f1": 1.0}
     source_dilated = _dilate(source_mask, tolerance_px)
     actual_dilated = _dilate(actual_mask, tolerance_px)
-    precision = float(np.logical_and(actual_mask, source_dilated).sum() / actual_count) if actual_count else 0.0
-    recall = float(np.logical_and(source_mask, actual_dilated).sum() / source_count) if source_count else 0.0
+    precision = (
+        float(np.logical_and(actual_mask, source_dilated).sum() / actual_count)
+        if actual_count
+        else 0.0
+    )
+    recall = (
+        float(np.logical_and(source_mask, actual_dilated).sum() / source_count)
+        if source_count
+        else 0.0
+    )
     f1 = 2.0 * precision * recall / (precision + recall) if precision + recall else 0.0
     return {"precision": precision, "recall": recall, "f1": f1}
 
@@ -107,7 +134,9 @@ def _fig16_bar_bboxes(array: np.ndarray, family: str) -> list[list[int]]:
     return sorted(boxes, key=lambda box: (box[0], box[1]))
 
 
-def _fig16_bar_boundary_metrics(source: np.ndarray, actual: np.ndarray) -> dict[str, Any]:
+def _fig16_bar_boundary_metrics(
+    source: np.ndarray, actual: np.ndarray
+) -> dict[str, Any]:
     families: dict[str, Any] = {}
     boundary_errors: list[float] = []
     source_count = 0
@@ -118,15 +147,19 @@ def _fig16_bar_boundary_metrics(source: np.ndarray, actual: np.ndarray) -> dict[
         source_count += len(source_boxes)
         actual_count += len(actual_boxes)
         records = []
-        for index, (source_box, actual_box) in enumerate(zip(source_boxes, actual_boxes), start=1):
+        for index, (source_box, actual_box) in enumerate(
+            zip(source_boxes, actual_boxes), start=1
+        ):
             delta = [int(actual_box[side] - source_box[side]) for side in range(4)]
             boundary_errors.extend(abs(float(value)) for value in delta)
-            records.append({
-                "stage_index": index,
-                "source_bbox": source_box,
-                "actual_bbox": actual_box,
-                "boundary_delta_px": delta,
-            })
+            records.append(
+                {
+                    "stage_index": index,
+                    "source_bbox": source_box,
+                    "actual_bbox": actual_box,
+                    "boundary_delta_px": delta,
+                }
+            )
         families[family] = {
             "source_count": len(source_boxes),
             "actual_count": len(actual_boxes),
@@ -140,12 +173,16 @@ def _fig16_bar_boundary_metrics(source: np.ndarray, actual: np.ndarray) -> dict[
         "actual_segment_count": actual_count,
         "missing_segments": missing,
         "max_abs_boundary_error_px": max(boundary_errors, default=999.0),
-        "mean_abs_boundary_error_px": float(np.mean(boundary_errors)) if boundary_errors else 999.0,
+        "mean_abs_boundary_error_px": float(np.mean(boundary_errors))
+        if boundary_errors
+        else 999.0,
         "families": families,
     }
 
 
-def _save_comparisons(source: np.ndarray, actual: np.ndarray, comparison_dir: Path) -> dict[str, str]:
+def _save_comparisons(
+    source: np.ndarray, actual: np.ndarray, comparison_dir: Path
+) -> dict[str, str]:
     comparison_dir.mkdir(parents=True, exist_ok=True)
     src = source.astype(np.float32) / 255.0
     act = actual.astype(np.float32) / 255.0
@@ -162,8 +199,12 @@ def _save_comparisons(source: np.ndarray, actual: np.ndarray, comparison_dir: Pa
     Image.fromarray(source).save(outputs["source_common"])
     Image.fromarray(actual).save(outputs["render_common"])
     Image.fromarray(np.uint8(np.clip(diff * 255.0, 0, 255))).save(outputs["difference"])
-    Image.fromarray(np.uint8(np.clip(overlay * 255.0, 0, 255))).save(outputs["overlay_50"])
-    Image.fromarray(np.uint8(np.clip(edge_diff * 255.0, 0, 255))).save(outputs["edge_difference"])
+    Image.fromarray(np.uint8(np.clip(overlay * 255.0, 0, 255))).save(
+        outputs["overlay_50"]
+    )
+    Image.fromarray(np.uint8(np.clip(edge_diff * 255.0, 0, 255))).save(
+        outputs["edge_difference"]
+    )
     return {key: str(path) for key, path in outputs.items()}
 
 
@@ -175,6 +216,7 @@ def score_visual(
     thresholds: dict[str, float] | None = None,
     figure: str | None = None,
 ) -> dict[str, Any]:
+    configured = thresholds or {}
     source_image = Image.open(source_path).convert("RGB")
     actual_image = Image.open(actual_path).convert("RGB")
     source_array = np.asarray(source_image, dtype=np.uint8)
@@ -205,23 +247,31 @@ def score_visual(
         np.any(registered_actual < 245, axis=2),
         tolerance_px=2,
     )
+    edge_threshold = float(configured.get("edge_threshold", 24.0))
     edge_overlap = _tolerant_f1(
-        source_edge >= (24.0 / 255.0),
-        _edge_mask(registered_actual) >= (24.0 / 255.0),
+        source_edge >= (edge_threshold / 255.0),
+        _edge_mask(registered_actual) >= (edge_threshold / 255.0),
         tolerance_px=2,
     )
     cyan_mask = (
         (actual_array[:, :, 0] < 100)
         & (actual_array[:, :, 1] > 180)
         & (actual_array[:, :, 2] > 200)
-        & (np.abs(actual_array[:, :, 1].astype(np.int16) - actual_array[:, :, 2].astype(np.int16)) < 70)
+        & (
+            np.abs(
+                actual_array[:, :, 1].astype(np.int16)
+                - actual_array[:, :, 2].astype(np.int16)
+            )
+            < 70
+        )
     )
     demo_cyan_ratio = float(np.mean(cyan_mask))
     canvas_match = source_image.size == actual_image.size
     layout = _layout_score(source_bbox, actual_bbox, width, height)
-    color_delta = float(np.mean(np.abs(np.mean(src, axis=(0, 1)) - np.mean(act, axis=(0, 1)))))
+    color_delta = float(
+        np.mean(np.abs(np.mean(src, axis=(0, 1)) - np.mean(act, axis=(0, 1))))
+    )
     ssim = float(structural_similarity(src, act, channel_axis=2, data_range=1.0))
-    configured = thresholds or {}
     blocking_reasons: list[str] = []
     error_codes: list[str] = []
     if not canvas_match:
@@ -275,7 +325,11 @@ def score_visual(
     if figure == "fig16":
         boundary = _fig16_bar_boundary_metrics(source, actual)
         result["fig16_bar_boundary_metrics"] = boundary
-        result["fig16_bar_boundary_max_error_px"] = boundary["max_abs_boundary_error_px"]
-        result["fig16_bar_boundary_mean_error_px"] = boundary["mean_abs_boundary_error_px"]
+        result["fig16_bar_boundary_max_error_px"] = boundary[
+            "max_abs_boundary_error_px"
+        ]
+        result["fig16_bar_boundary_mean_error_px"] = boundary[
+            "mean_abs_boundary_error_px"
+        ]
         result["fig16_bar_boundary_missing_segments"] = boundary["missing_segments"]
     return result
