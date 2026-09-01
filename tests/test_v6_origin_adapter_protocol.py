@@ -9,6 +9,7 @@ from originplot.adapters.originpro import (
     _add_matrix,
     _add_xy,
     _all_exports_nonblank,
+    _live_origin_verified,
     _set_legend,
     _template_for,
     _validate_operation_names,
@@ -79,6 +80,14 @@ def test_adapter_rejects_unknown_operation_before_origin_execution() -> None:
         _validate_operation_names(plan)
 
 
+def test_live_origin_verified_requires_every_gate() -> None:
+    passing = {"save": "pass", "reopen": "pass", "binding": "pass", "export": "pass"}
+    assert _live_origin_verified(passing) is True
+    failing = dict(passing)
+    failing["binding"] = "failed"
+    assert _live_origin_verified(failing) is False
+
+
 def test_adapter_uses_reusable_selected_template_path() -> None:
     plan = OperationPlan(
         figure_id="demo",
@@ -106,7 +115,6 @@ def test_export_gate_requires_png_pdf_and_tif(tmp_path: Path) -> None:
         (tmp_path / name).write_bytes(b"nonempty")
     assert _all_exports_nonblank(tmp_path) is False
     (tmp_path / "figure.tif").write_bytes(b"nonempty")
-    # Raster files must be real images, so arbitrary bytes are correctly rejected.
     assert _all_exports_nonblank(tmp_path) is False
 
 
