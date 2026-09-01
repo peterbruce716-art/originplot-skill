@@ -72,6 +72,12 @@ def test_installable_runtime_assets_live_inside_originplot_package() -> None:
     assert [str(path.relative_to(root)) for path in required if not path.is_file()] == []
 
 
+def test_v6_has_single_ordinary_origin_worker_implementation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    assert not (root / "scripts" / "origin_profile_worker.py").exists()
+    assert (root / "originplot" / "runtime" / "worker.py").is_file()
+
+
 def test_v6_capability_profiles_have_one_canonical_location() -> None:
     root = Path(__file__).resolve().parents[1]
     duplicates = [root / "capabilities" / f"origin-{version}-v6.json" for version in ("2022", "2024", "2026")]
