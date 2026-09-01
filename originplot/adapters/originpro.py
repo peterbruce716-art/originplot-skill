@@ -30,9 +30,7 @@ def _validate_operation_names(plan: OperationPlan) -> None:
         }
     )
     if unknown:
-        raise RuntimeError(
-            "E520_OPERATION_PLAN_INVALID: unsupported operation(s): " + ", ".join(unknown)
-        )
+        raise RuntimeError("E520_OPERATION_PLAN_INVALID: unsupported operation(s): " + ", ".join(unknown))
 
 
 def _template_for(plan: OperationPlan) -> str:
@@ -133,17 +131,9 @@ def _add_xy(layer: Any, writer: _SheetWriter, rows: list[dict[str, Any]], operat
     if kind == "errorbar":
         xerr_col = writer.column(str(mapping["x_error"]), "M") if mapping.get("x_error") else -1
         yerr_col = writer.column(str(mapping["y_error"]), "E") if mapping.get("y_error") else -1
-        plot = layer.add_plot(
-            writer.sheet,
-            colx=x_col,
-            coly=y_col,
-            colxerr=xerr_col,
-            colyerr=yerr_col,
-            type="y",
-        )
+        plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, colxerr=xerr_col, colyerr=yerr_col, type="y")
         _style_plot(plot, style)
         return 1
-
     if kind == "scatter":
         plot = layer.add_plot(writer.sheet, colx=x_col, coly=y_col, type="s")
         _style_plot(plot, style)
@@ -239,6 +229,10 @@ def _export_page(page: Any, output_dir: Path) -> dict[str, str]:
 
 def _all_exports_nonblank(output_dir: Path) -> bool:
     return all(artifact_is_nonblank(output_dir / f"figure.{suffix}") for suffix in ("png", "pdf", "tif"))
+
+
+def _live_origin_verified(gates: dict[str, str]) -> bool:
+    return bool(gates) and all(value == "pass" for value in gates.values())
 
 
 def execute_operation_plan(
@@ -342,14 +336,14 @@ def execute_operation_plan(
         "origin_exports_complete": "pass" if _all_exports_nonblank(output_dir) else "failed",
         "demo_watermark_absent": "pass" if no_demo_watermark(png) else "failed",
     }
-    command_success = all(value == "pass" for value in gates.values())
+    command_success = _live_origin_verified(gates)
     return {
         "schema": "originplot.origin_worker_result.v2",
         "profile": plan.profile,
         "mode": "live",
         "command_success": command_success,
         "structure_pass": all(gates[key] == "pass" for key in ("opju_saved", "opju_reopened", "editable_plot_present", "worksheet_binding")),
-        "live_origin_verified": True,
+        "live_origin_verified": command_success,
         "overall_status": "completed" if command_success else "failed",
         "build_success": True,
         "reopen_success": True,
