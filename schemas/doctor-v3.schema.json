@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.doctor.v3",
+  "type": "object",
+  "required": [
+    "schema",
+    "platform",
+    "python",
+    "administrator",
+    "origin",
+    "ready_for_offline_planning",
+    "ready_for_live_worker",
+    "note"
+  ],
+  "properties": {
+    "schema": {"const": "originplot.doctor.v3"},
+    "platform": {
+      "type": "object",
+      "required": ["system", "release", "machine", "windows"],
+      "properties": {
+        "system": {"type": "string"},
+        "release": {"type": "string"},
+        "machine": {"type": "string"},
+        "windows": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "python": {
+      "type": "object",
+      "required": ["version", "validated_baseline", "baseline_match", "executable"],
+      "properties": {
+        "version": {"type": "string"},
+        "validated_baseline": {"const": "3.10"},
+        "baseline_match": {"type": "boolean"},
+        "executable": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "administrator": {
+      "type": "object",
+      "required": ["current_process", "origin_worker_required", "release_controller_required", "policy_changed_in_v6"],
+      "properties": {
+        "current_process": {"type": "boolean"},
+        "origin_worker_required": {"const": true},
+        "release_controller_required": {"const": true},
+        "policy_changed_in_v6": {"const": false}
+      },
+      "additionalProperties": true
+    },
+    "origin": {
+      "type": "object",
+      "required": ["registered", "originpro_available", "originext_available", "capabilities"],
+      "properties": {
+        "registered": {"type": "boolean"},
+        "originpro_available": {"type": "boolean"},
+        "originext_available": {"type": "boolean"},
+        "requested_version": {"type": ["string", "null"]},
+        "capabilities": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "ready_for_offline_planning": {"type": "boolean"},
+    "ready_for_live_worker": {"type": "boolean"},
+    "note": {"type": "string"}
+  },
+  "additionalProperties": true
+}
