@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.1.1
+
+### Added
+- Production quality gate documentation from semantic validation through live verification.
+- Clearer AI agent stop conditions to prevent promotion of partial or preview-only results.
+- Stronger separation between planning support, native execution, and verified evidence.
+
+### Changed
+- Updated Skill guidance to emphasize fail-closed scientific plotting workflows.
+- Improved completion criteria for editable Origin deliverables.
+
 ## 6.1.0rc1
 
 ### Added
