@@ -39,10 +39,10 @@ def _apply_page_size(page: Any, page_spec: dict[str, Any]) -> None:
 
 
 def _style_plot(plot: Any, style: dict[str, Any]) -> None:
-    color = style.get("color") or style.get("line_color")
-    if color:
+    color = style.get("color") if style.get("color") is not None else style.get("line_color")
+    if color is not None:
         try:
-            plot.color = str(color)
+            plot.color = color
         except Exception:
             pass
     width = style.get("line_width_pt")
@@ -174,6 +174,35 @@ def _set_axes(layer: Any, axes: dict[str, Any]) -> None:
                 pass
 
 
+def _set_legend(layer: Any, legend_spec: dict[str, Any]) -> None:
+    """Apply the narrow legend style surface supported by the v6 adapter.
+
+    Origin exposes the data legend as the graph-layer label named ``Legend``.
+    v6 deliberately supports only visibility and frame at this stage; exact
+    positioning remains rejected by StyleSpec until it has a verified mapping.
+    """
+
+    if not legend_spec:
+        return
+    try:
+        legend = layer.label("Legend")
+    except Exception as exc:
+        raise RuntimeError(f"E528_LEGEND_STYLE_FAILED: cannot access Origin Legend label: {exc}") from exc
+    if legend is None:
+        raise RuntimeError("E528_LEGEND_STYLE_FAILED: Origin graph has no Legend label")
+    if legend_spec.get("visible") is False:
+        try:
+            legend.remove()
+        except Exception as exc:
+            raise RuntimeError(f"E528_LEGEND_STYLE_FAILED: cannot hide Origin legend: {exc}") from exc
+        return
+    if "frame" in legend_spec:
+        try:
+            legend.set_int("showframe", 1 if legend_spec["frame"] else 0)
+        except Exception as exc:
+            raise RuntimeError(f"E528_LEGEND_STYLE_FAILED: cannot set Origin legend frame: {exc}") from exc
+
+
 def _export_page(page: Any, output_dir: Path) -> dict[str, str]:
     outputs: dict[str, str] = {}
     for suffix, kind in (("png", "png"), ("pdf", "pdf"), ("tif", "tif")):
@@ -246,6 +275,8 @@ def execute_operation_plan(
                 build_plot_count += _add_matrix(layer, writer, operation)
             elif name == "set_axes":
                 _set_axes(layer, dict(operation.get("axes") or {}))
+            elif name == "set_legend":
+                _set_legend(layer, dict(operation.get("legend") or {}))
             elif name == "set_page":
                 _apply_page_size(page, dict(operation.get("page") or {}))
         for layer_index in sorted(bar_layers):
