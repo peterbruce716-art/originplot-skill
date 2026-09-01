@@ -4,20 +4,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from originplot.presets import match_presets
 from originplot.spec.io import file_sha256, read_table
 
 COLUMN_ROLES = (
-    "x",
-    "y",
-    "x_error",
-    "y_error",
-    "z",
-    "group",
-    "category",
-    "label",
-    "support",
-    "retain",
-    "uncertain",
+    "x", "y", "x_error", "y_error", "z", "group", "category", "label", "support", "retain", "uncertain"
 )
 
 _ERROR_RE = re.compile(r"(^|[^a-z])(sd|std|stderr|se|sigma|err|error|uncertainty)([^a-z]|$)", re.I)
@@ -47,18 +38,15 @@ def _numeric_ratio(values: list[Any]) -> float:
 
 def _unit(name: str) -> str | None:
     match = _UNIT_RE.search(name)
-    if not match:
-        return None
-    return (match.group(1) or match.group(2) or "").strip() or None
+    return ((match.group(1) or match.group(2) or "").strip() or None) if match else None
 
 
-def _classify(name: str, values: list[Any], *, x_already: bool) -> tuple[str, float, str]:
+def _classify(name: str, values: list[Any]) -> tuple[str, float, str]:
     normalized = re.sub(r"[_\-]+", " ", name).strip()
     numeric = _numeric_ratio(values)
     lower = normalized.lower()
-
     if _ERROR_RE.search(normalized):
-        role = "x_error" if " x" in f" {lower}" or lower.startswith("x") else "y_error"
+        role = "x_error" if re.search(r"(^|\s)x\s*(sd|std|err|error|sigma)", lower) else "y_error"
         return role, 0.95, "column name indicates an uncertainty/error quantity"
     if _GROUP_RE.search(normalized):
         return "group", 0.9, "column name indicates grouping/experimental condition"
@@ -88,12 +76,9 @@ def inspect_table(path: Path, sheet: str | None = None) -> dict[str, Any]:
     rows = read_table(path, sheet)
     headers = list(rows[0]) if rows else []
     columns: list[dict[str, Any]] = []
-    x_already = False
     for name in headers:
         values = [row.get(name) for row in rows[:200]]
-        role, confidence, reason = _classify(name, values, x_already=x_already)
-        if role == "x":
-            x_already = True
+        role, confidence, reason = _classify(name, values)
         columns.append(
             {
                 "name": name,
@@ -115,6 +100,7 @@ def inspect_table(path: Path, sheet: str | None = None) -> dict[str, Any]:
         },
         "columns": columns,
         "uncertain": [item["name"] for item in columns if item["role"] == "uncertain"],
+        "matched_presets": match_presets(headers),
     }
     from .recommend import recommend_plots
 
