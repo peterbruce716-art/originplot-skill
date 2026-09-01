@@ -1,240 +1,205 @@
 ---
 name: originplot
-description: "Inspect CSV/TXT/XLS/XLSX scientific data, confirm column roles, plan one of ten general publication plot primitives, and build verified editable Origin/OriginPro projects through an administrator-only native Origin lifecycle. Use for line, scatter, line+scatter, error-bar, bar, grouped/stacked bar, heatmap planning, contour, multi-panel planning, reference-guided style planning, OPJU delivery, and AA2195 regression benchmarking."
+description: "AI workflow for auditable Origin/OriginPro scientific plotting. Inspect scientific tables, resolve semantic roles, create FigureSpec, compile OperationPlan, and execute verified editable Origin workflows when supported."
 ---
 
-# OriginPlot Skill v6.0
+# OriginPlot Skill v6.1
 
-OriginPlot turns a read-only scientific table into an auditable FigureSpec, a deterministic OperationPlan, and—when authorized and live-mature—native editable Origin objects. The ordinary v6 core is general-purpose; AA2195 lives only under `benchmarks/aa2195/` as retained regression evidence.
+## Identity
 
-## Hard runtime invariant
+OriginPlot converts scientific tables into auditable editable Origin workflows.
 
-**Administrator policy is unchanged from v5.**
+Core pipeline:
 
-- Quick/Standard planning and controller work may run without administrator rights.
-- Every process that imports `originpro`/`OriginExt`, attaches to Origin, builds, saves, reopens, reads back, or exports remains administrator-only.
-- Release retains its continuous administrator envelope and cannot be weakened.
-- Keep the existing visible-Origin identity checks, fail on a new Embedding process, and always detach attached sessions in `finally`.
-
-Never work around these rules by changing DCOM, registry, firewall, user groups, Origin installation, or process identity.
-
-## Beginner path
-
-For a new table, prefer:
-
-```powershell
-originplot.cmd doctor --origin-version 2022
-originplot.cmd inspect data.xlsx
-originplot.cmd draw data.xlsx --x Strain --y Stress --plot-type line_scatter
+```text
+Input data
+ -> semantic inspection
+ -> FigureSpec v6
+ -> OperationPlan
+ -> Origin adapter
+ -> save/reopen/readback/export verification
 ```
 
-If column meanings are sufficiently clear, `draw` can use the high-confidence semantic roles. If unresolved numeric columns remain, do not guess: ask only for the needed mapping and rerun with explicit `--x`, `--y`, `--x-error`, `--y-error`, `--category`, or `--z`.
+The system separates:
 
-Advanced commands:
+- scientific meaning
+- plot compilation
+- Origin automation
+- verification
 
-```powershell
-originplot.cmd plan data.xlsx --plot-type errorbar --x Time --y Signal --y-error SD --output figure.json
-originplot.cmd render figure.json --output-dir output
-originplot.cmd verify output
+## Agent decision flow
+
+1. Inspect the source table.
+2. Resolve column roles.
+3. Create or validate FigureSpec.
+4. Compile OperationPlan.
+5. Check capability maturity.
+6. Execute Origin only when supported.
+7. Verify the final editable result.
+
+Never skip earlier stages.
+
+## Hard rules
+
+Never:
+
+- guess ambiguous scientific meaning;
+- silently modify source data;
+- smooth, fit, normalize, remove outliers, or calculate scientific quantities;
+- claim dry-run output is an Origin result;
+- claim unsupported style fields were applied;
+- create duplicate plotting engines for scientific domains;
+- bypass administrator or verification requirements.
+
+`uncertain` means unresolved information, not another plotted series.
+
+## Semantic roles
+
+Supported roles:
+
+```text
+x
+x_error
+y
+y_error
+z
+group
+category
+label
+support
+retain
+uncertain
 ```
 
-## Semantic boundary
+Source data remains immutable.
 
-Classify every source column as exactly one of:
+## Primitive strategy
 
-`x`, `y`, `x_error`, `y_error`, `z`, `group`, `category`, `label`, `support`, `retain`, `uncertain`.
+Use existing primitives first:
 
-`uncertain` is a question, not another automatic curve. The source file is immutable. Do not silently:
+```text
+line
+scatter
+line_scatter
+errorbar
+bar
+grouped_bar
+stacked_bar
+heatmap
+contour
+multi_panel
+```
 
-- fit or smooth;
-- normalize;
-- delete outliers;
-- create error bars from unstated assumptions;
-- identify peaks, phases, transitions, or materials;
-- calculate scientific quantities;
-- invent or fill measurements;
-- pivot, split, aggregate, or reshape long-form groups.
+Add semantic/style presets before adding new primitives.
 
-An explicit user mapping resolves semantic uncertainty for the selected plot; unrelated unknown columns are retained, not rendered.
+A new plotting engine requires proof that existing primitives cannot represent the scientific intent.
 
-### Categorical tables
+## Capability boundary
 
-Automatic categorical planning is limited to transformations that do not change the source-table meaning:
+Separate:
 
-- `category + one Y` may compile to `bar`;
-- `category + multiple Y columns` is wide form and may compile to `grouped_bar`, with one series per Y column;
-- `category + group + one Y` is long form. Do not infer a pivot, group split, aggregation, or stacked layout. Automatic `bar`/`grouped_bar`/`stacked_bar` planning must fail closed and require an explicitly transformed source or a FigureSpec whose series are already represented as executable wide-form mappings.
+```text
+planning support
+!=
+native execution
+!=
+verified evidence
+```
 
-A hand-written FigureSpec does not bypass execution reality. Ordinary XY builders currently execute only `x`, `y`, `x_error`, and `y_error`; a per-point `label` mapping must fail closed. Bar builders execute `category`, `y`, and optional `y_error`; `group` and `label` mappings must fail closed instead of being carried into an OperationPlan and ignored.
+A registered primitive does not automatically mean live Origin support.
 
-## FigureSpec v6 is the ordinary-workflow contract
+Special cases:
 
-The formal schema is `originplot.figurespec.v6`. It contains:
+- heatmap requires proven native support;
+- multi_panel requires proven native support;
+- compile success is not live verification.
 
-- `source`: file, sheet and SHA-256;
-- `data`: explicit executable series or matrix mappings;
-- `figure`: primitive and axes;
-- `style`: only visual fields that the v6 Origin adapter can execute;
-- `layout`: page/panel geometry;
-- `verification`: profile and required gates.
+## Builder / adapter boundary
 
-If the source hash changes, the prior confirmed spec is stale. Builders must never reinterpret source-column roles after FigureSpec is frozen.
-
-## Ten v6 primitives
-
-The public planning/compile registry contains exactly:
-
-- `line`
-- `scatter`
-- `line_scatter`
-- `errorbar`
-- `bar`
-- `grouped_bar`
-- `stacked_bar`
-- `heatmap`
-- `contour`
-- `multi_panel`
-
-They are implemented through four compact compiler families: XY, categorical bars, matrix/XYZ, and composition. `multi_panel` composes child builders rather than duplicating plot logic.
-
-Domain workflows such as stress-strain, XRD, Rietveld, electrochemistry, or spectroscopy should be semantic/style presets that compile to these primitives. Do not create a new Origin API subsystem for each scientific field.
-
-### Capability maturity is separate from compile support
-
-Never equate a registered builder with promoted live Origin evidence. `doctor` exposes:
-
-- `compile_primitives`: FigureSpec/OperationPlan support;
-- `live_candidate_primitives`: primitives that may enter the live worker but still require same-run verification;
-- `live_evidence_primitives`: primitives with explicitly promoted v6 evidence;
-- `primitive_maturity`: per-primitive compile/live status and reason.
-
-At v6.0, repository-wide `live_evidence_primitives` remains empty until new licensed-Origin evidence is deliberately promoted. A successful individual live run proves that run only.
-
-`heatmap` and `multi_panel` are compile-only in v6.0 and must fail **before launching the elevated Origin worker** when live execution is requested. `heatmap` uses `E524_HEATMAP_LIVE_UNVERIFIED`; `multi_panel` uses `E527_LIVE_PRIMITIVE_BLOCKED`. Do not silently grid/bin XYZ data, synthesize a matrix, or pretend panel composition was executed. Promotion requires the missing native adapter behavior plus fresh same-run licensed-Origin evidence.
-
-## Builder and adapter boundary
-
-Builders only perform:
+Builders:
 
 ```text
 FigureSpec -> OperationPlan
 ```
 
-They do not import or call Origin. `originplot.operation_plan.v1` is declarative and can be tested offline.
+Builders must not call Origin.
 
-Only `originplot/adapters/originpro.py` translates an OperationPlan into native Worksheet-backed Origin objects. Unknown OperationPlan action names must fail with `E520_OPERATION_PLAN_INVALID` before Origin execution; never skip an unfamiliar action and continue.
+Only the Origin adapter translates OperationPlan into native Origin actions.
 
-This keeps data semantics, plotting logic, and application automation independently testable.
+Unknown operations must fail closed.
 
-## Executable style boundary
+## Style boundary
 
-Do not accept a style field merely because it sounds reasonable. In v6.0 the ordinary adapter has an intentionally narrow executable style surface:
-
-```text
-series.<id>.color
-series.<id>.line_color
-series.<id>.line_width_pt
-series.<id>.symbol
-legend.visible
-legend.frame
-```
-
-`theme`, `legend.position`, symbol size, transparency, matrix colormap/levels/colorbar options and any other precise styling aliases are **not executable contracts yet**. `resolve_style` must put them in `style_audit.rejected`; they must not remain in `style` and must never be reported as applied.
-
-Style precedence remains:
+Only executable style fields may enter final style:
 
 ```text
-explicit user style > confirmed reference suggestion > preset > OriginPlot default
+series color
+series line_color
+series line_width_pt
+series symbol
+legend visible
+legend frame
 ```
 
-Precedence only applies among executable fields. A higher-priority unsupported field is still rejected.
+Unsupported style belongs in audit output, not applied output.
 
-## Live completion gates
+## Live verification
 
-A successful live Quick/Standard run requires the native lifecycle:
+A verified Origin result requires:
 
-1. elevated worker authorization;
-2. attach to the authorized visible Origin process;
-3. native Worksheet and graph construction;
-4. direct Plot-to-Worksheet binding;
-5. save `figure.opju`;
-6. detach;
-7. reattach and reopen `figure.opju`;
-8. read back editable plots and bindings;
-9. export from the reopened Origin project;
-10. reject blank export or Demo watermark.
+1. authorized Origin worker;
+2. native worksheet-backed graph;
+3. save OPJU;
+4. detach;
+5. reopen;
+6. binding readback;
+7. Origin export;
+8. output validation.
 
-A Python/Matplotlib redraw, screenshot, raster background, dry run, or capability declaration is never a completed Origin deliverable.
-
-`live_origin_verified` may be true only when **every** required live gate passes. Merely entering Origin or successfully saving an intermediate project is not enough.
-
-Canonical ordinary outputs are:
-
-```text
-figure.opju
-figure.png
-figure.pdf
-figure.tif
-figure_spec.json
-verification.json
-```
-
-`operation_plan.json` may also be retained for audit/debugging.
+A screenshot, Python preview, dry-run, or intermediate save is not a verified deliverable.
 
 ## Profiles
 
 ### Quick
 
-Use for routine supported plots and style iteration. It still requires native save/reopen/binding/export when live, but makes no formal benchmark visual claim.
+Routine editable plotting.
 
 ### Standard
 
-Default for SCI plotting. It may perform bounded template discovery/style assistance, but template failure must not silently change data semantics. Same live structure gates remain mandatory.
+SCI workflow with bounded assistance.
 
 ### Release
 
-Release is fail-closed and cannot be weakened. During the v6 migration, the historical AA2195 strict release/evidence identity remains under `benchmarks/aa2195/`; do not relabel old 5.8.9-p18 evidence as v6 evidence. A general v6 Release route must remain blocked until it earns new same-run live evidence.
+Strict fail-closed mode requiring evidence.
 
-## Origin versions and doctor
+Historical benchmark evidence must not be relabeled as new evidence.
 
-Python 3.10 remains the validated baseline. `doctor` is read-only and does not launch Origin.
+## Commands
 
-Capability status is explicit:
+```powershell
+originplot.cmd doctor --origin-version 2022
+originplot.cmd inspect data.xlsx
+originplot.cmd plan data.xlsx --plot-type line --x X --y Y
+originplot.cmd render figure.json
+originplot.cmd verify output
+```
 
-- Origin 2022: validated environment baseline;
-- Origin 2024: compatible-unverified until receiving-machine smoke/readback passes;
-- Origin 2026: experimental;
-- unknown versions: fail closed for live claims.
+## Failure handling
 
-The authoritative v6 capability profiles live inside `originplot/runtime/profiles/` and are packaged with the installable runtime. Source checkout, installed wheel, and compact Skill package must therefore resolve the same v6 profiles. `ready_for_live_worker` means only that the environment can attempt an authorized worker. It does not promote a primitive to live evidence. Capability metadata never waives administrator or same-run verification requirements.
+Classify failures in order:
 
-## Reference figures
+1. semantic mapping
+2. FigureSpec validation
+3. OperationPlan compilation
+4. Origin adapter execution
+5. verification gates
 
-A reference image may suggest panel structure, mark type, line/symbol use, page ratio, legend placement and other visual grammar, but suggestions are not automatically executable. Only the allow-listed style fields above may enter v6.0 `style`; unsupported suggestions such as exact legend placement must be recorded in `style_audit.rejected` until a deterministic Origin adapter mapping exists.
+Do not force successful-looking output by weakening validation.
 
-A reference image may not contribute scientific values, labels, fits, phase assignments, logos, watermarks, or bitmap content to the editable result. Reference-derived executable choices must ultimately become normal FigureSpec `style`/`layout` fields. Do not create a parallel image-reproduction execution engine.
+## References
 
-## Packaging boundary
+Detailed material:
 
-The installable `originplot` package owns all ordinary runtime assets required by the product path: administrator worker, PowerShell elevation launcher, template discovery/retrieval logic, and v6 capability profiles. Product code under `originplot/` must not import the repository-root `scripts` package.
-
-There is one canonical ordinary live worker: `originplot.runtime.worker`. Do not restore `scripts/origin_profile_worker.py` or another duplicate ordinary worker implementation.
-
-The default shareable Skill package intentionally excludes root `scripts/`, benchmark content, generated/private scientific files, and v5-named contracts. Repository-root scripts may remain only as development/benchmark compatibility tooling; ordinary installed execution must not depend on them.
-
-## AA2195 benchmark
-
-`benchmarks/aa2195/` preserves Fig3/Fig12/Fig14/Fig15/Fig16 builders, configuration, candidates, historical protocols and evidence. Product core under `originplot/` must never import this benchmark package. Benchmark compatibility bridges may import the benchmark from legacy wrappers while migration support remains.
-
-## Claims
-
-Report exactly what ran:
-
-- semantic inspection is not scientific analysis;
-- dry run is planning only;
-- compile support is not live evidence;
-- entering Origin is not `live_origin_verified` unless every live gate passes;
-- editable completion is not release eligibility;
-- compatibility is not verification;
-- historical AA2195 evidence applies only to its recorded identities;
-- never claim raw-data recovery, automatic arbitrary-image-to-OPJU reproduction, or cross-machine pixel identity.
+- `docs/AGENT_QUICKSTART.md`
+- `docs/CAPABILITY_MATRIX.md`
+- `docs/DEVELOPMENT_GUIDE_v6.1.md`
