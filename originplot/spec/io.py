@@ -10,6 +10,7 @@ from typing import Any
 from originplot.core.errors import OriginPlotError
 
 from .models import FIGURE_SPEC_SCHEMA, FigureSpec
+from .style import resolve_style
 
 SUPPORTED_TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".xls", ".xlsx"}
 
@@ -156,7 +157,16 @@ def normalize_figure_spec(payload: dict[str, Any], base_dir: Path | None = None)
 
     data = _ensure_object(payload.get("data"), "data")
     figure = _ensure_object(payload.get("figure"), "figure")
-    style = _ensure_object(payload.get("style"), "style")
+    raw_style = _ensure_object(payload.get("style"), "style")
+    style_result = resolve_style(user=raw_style)
+    rejected_style = style_result["rejected"]
+    if rejected_style:
+        paths = ", ".join(sorted(str(item.get("path") or "style") for item in rejected_style))
+        raise OriginPlotError(
+            "E341_STYLE_FIELD_NOT_EXECUTABLE",
+            f"style field is not executable by the v6 Origin adapter: {paths}",
+        )
+    style = dict(style_result["style"])
     layout = _ensure_object(payload.get("layout"), "layout")
     verification = _ensure_object(payload.get("verification"), "verification")
     plot_type = str(figure.get("type") or "").strip().lower()
@@ -179,6 +189,10 @@ def normalize_figure_spec(payload: dict[str, Any], base_dir: Path | None = None)
             if value is not None and (not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) <= 0):
                 raise OriginPlotError("E300_FIGURE_SPEC_INVALID", f"layout.page.{field} must be a positive number")
 
+    raw = dict(payload)
+    if "style" in payload or style:
+        raw["style"] = style
+
     return FigureSpec(
         source_path=source_path,
         source_hash=actual_hash,
@@ -188,7 +202,7 @@ def normalize_figure_spec(payload: dict[str, Any], base_dir: Path | None = None)
         style=style,
         layout=layout,
         verification=verification,
-        raw=dict(payload),
+        raw=raw,
     )
 
 
