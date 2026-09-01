@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "originplot.capabilities.v6",
+  "type": "object",
+  "required": [
+    "schema",
+    "origin_version",
+    "compatibility",
+    "authorization",
+    "compile_primitives",
+    "live_evidence_primitives"
+  ],
+  "properties": {
+    "schema": {"const": "originplot.capabilities.v6"},
+    "origin_version": {"type": "string", "minLength": 1},
+    "compatibility": {
+      "enum": ["verified_baseline", "compatible_unverified", "experimental", "unknown"]
+    },
+    "authorization": {
+      "type": "object",
+      "required": ["origin_worker", "release_controller", "policy_changed_in_v6"],
+      "properties": {
+        "origin_worker": {"const": "administrator_required"},
+        "release_controller": {"const": "administrator_required"},
+        "policy_changed_in_v6": {"const": false}
+      },
+      "additionalProperties": true
+    },
+    "compile_primitives": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "line",
+          "scatter",
+          "line_scatter",
+          "errorbar",
+          "bar",
+          "grouped_bar",
+          "stacked_bar",
+          "heatmap",
+          "contour",
+          "multi_panel"
+        ]
+      }
+    },
+    "live_evidence_primitives": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "live_blocked": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "same_run_save_reopen_readback_export_required": {"type": "boolean"},
+        "general_release_fail_closed_without_promoted_live_evidence": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "note": {"type": "string"}
+  },
+  "additionalProperties": true
+}
