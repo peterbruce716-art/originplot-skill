@@ -25,10 +25,13 @@ def test_origin_capabilities_are_version_gated() -> None:
 def test_capabilities_separate_compile_support_from_live_evidence() -> None:
     capabilities = resolve_origin_capabilities("2022")
     assert "heatmap" in capabilities["compile_primitives"]
+    assert "multi_panel" in capabilities["compile_primitives"]
     assert "line" in capabilities["compile_primitives"]
     assert capabilities["live_evidence_primitives"] == []
     assert capabilities["primitive_maturity"]["heatmap"]["live_status"] == "blocked"
     assert capabilities["primitive_maturity"]["heatmap"]["reason"] == "regular_grid_adapter_not_live_verified"
+    assert capabilities["primitive_maturity"]["multi_panel"]["live_status"] == "blocked"
+    assert capabilities["primitive_maturity"]["multi_panel"]["reason"] == "panel_layout_adapter_not_live_verified"
     assert capabilities["primitive_maturity"]["line"]["live_status"] == "requires_same_run_verification"
 
 
