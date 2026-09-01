@@ -8,11 +8,25 @@ from pathlib import Path
 from typing import Any
 
 from originplot.core.errors import OriginPlotError
+from originplot.core.profiles import PROFILE_NAMES
 
 from .models import FIGURE_SPEC_SCHEMA, FigureSpec
 from .style import resolve_style
 
 SUPPORTED_TABLE_SUFFIXES = {".csv", ".tsv", ".txt", ".xls", ".xlsx"}
+_AXIS_FIELDS = {"title", "unit"}
+_PAGE_FIELDS = {"width_cm", "height_cm"}
+_VERIFICATION_FIELDS = {
+    "profile",
+    "require_reopen",
+    "require_binding_readback",
+    "require_origin_export",
+}
+_HARD_VERIFICATION_GATES = (
+    "require_reopen",
+    "require_binding_readback",
+    "require_origin_export",
+)
 
 
 def file_sha256(path: Path) -> str:
@@ -110,13 +124,188 @@ def _ensure_object(value: Any, name: str) -> dict[str, Any]:
     return dict(value)
 
 
+def _normalize_style(value: Any, path: str = "style") -> dict[str, Any]:
+    raw_style = _ensure_object(value, path)
+    result = resolve_style(user=raw_style)
+    rejected = result["rejected"]
+    if rejected:
+        paths = ", ".join(sorted(f"{path}.{item.get('path') or 'style'}" for item in rejected))
+        raise OriginPlotError(
+            "E341_STYLE_FIELD_NOT_EXECUTABLE",
+            f"style field is not executable by the v6 Origin adapter: {paths}",
+        )
+    return dict(result["style"])
+
+
+def _normalize_axis(value: Any, path: str) -> dict[str, Any]:
+    axis = _ensure_object(value, path)
+    unknown = sorted(set(axis) - _AXIS_FIELDS)
+    if unknown:
+        raise OriginPlotError(
+            "E342_AXIS_CONTRACT_INVALID",
+            f"{path}.{unknown[0]} is not executable by the v6 Origin adapter",
+        )
+
+    clean: dict[str, Any] = {}
+    for field in ("title", "unit"):
+        if field not in axis:
+            continue
+        item = axis[field]
+        if not isinstance(item, str):
+            raise OriginPlotError("E342_AXIS_CONTRACT_INVALID", f"{path}.{field} must be a string")
+        text = item.strip()
+        if text:
+            clean[field] = text
+    if "unit" in clean and "title" not in clean:
+        raise OriginPlotError("E342_AXIS_CONTRACT_INVALID", f"{path}.unit requires title")
+    return clean
+
+
+def _normalize_panel(panel: Any, index: int) -> dict[str, Any]:
+    path = f"figure.panels.{index}"
+    item = _ensure_object(panel, path)
+    child_figure = _ensure_object(item.get("figure"), f"{path}.figure")
+    child_type = str(child_figure.get("type") or "").strip().lower()
+    if not child_type:
+        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", f"{path}.figure.type is required")
+    if child_type == "multi_panel":
+        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", f"{path} cannot contain nested multi_panel")
+
+    if "x_axis" in child_figure:
+        child_figure["x_axis"] = _normalize_axis(child_figure.get("x_axis"), f"{path}.figure.x_axis")
+    if "y_axis" in child_figure:
+        child_figure["y_axis"] = _normalize_axis(child_figure.get("y_axis"), f"{path}.figure.y_axis")
+
+    clean = dict(item)
+    clean["figure"] = child_figure
+    clean["data"] = _ensure_object(item.get("data"), f"{path}.data")
+    if "style" in item:
+        clean["style"] = _normalize_style(item.get("style"), f"{path}.style")
+    if item.get("layout"):
+        raise OriginPlotError(
+            "E343_LAYOUT_CONTRACT_INVALID",
+            f"{path}: panel-specific layout is not compiled by v6 multi_panel",
+        )
+    clean.pop("layout", None)
+    return clean
+
+
+def _normalize_figure(value: Any) -> dict[str, Any]:
+    figure = _ensure_object(value, "figure")
+    plot_type = str(figure.get("type") or "").strip().lower()
+    if not plot_type:
+        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "figure.type is required")
+    figure["type"] = plot_type
+
+    if plot_type == "multi_panel":
+        if figure.get("x_axis") or figure.get("y_axis"):
+            raise OriginPlotError(
+                "E342_AXIS_CONTRACT_INVALID",
+                "figure.x_axis/y_axis are not executable on the multi_panel container; put axes on each panel",
+            )
+        panels = figure.get("panels")
+        if not isinstance(panels, list):
+            raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "figure.panels must be a list")
+        figure["panels"] = [_normalize_panel(panel, index) for index, panel in enumerate(panels)]
+        return figure
+
+    if "x_axis" in figure:
+        figure["x_axis"] = _normalize_axis(figure.get("x_axis"), "figure.x_axis")
+    if "y_axis" in figure:
+        figure["y_axis"] = _normalize_axis(figure.get("y_axis"), "figure.y_axis")
+    return figure
+
+
+def _positive_number(value: Any, path: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(float(value)) or float(value) <= 0:
+        raise OriginPlotError("E343_LAYOUT_CONTRACT_INVALID", f"{path} must be a positive number")
+    return float(value)
+
+
+def _normalize_layout(value: Any, plot_type: str) -> dict[str, Any]:
+    layout = _ensure_object(value, "layout")
+    unknown = sorted(set(layout) - {"page", "panels"})
+    if unknown:
+        raise OriginPlotError(
+            "E343_LAYOUT_CONTRACT_INVALID",
+            f"layout.{unknown[0]} is not executable by the v6 compiler",
+        )
+
+    clean: dict[str, Any] = {}
+    if "page" in layout:
+        page = _ensure_object(layout.get("page"), "layout.page")
+        page_unknown = sorted(set(page) - _PAGE_FIELDS)
+        if page_unknown:
+            raise OriginPlotError(
+                "E343_LAYOUT_CONTRACT_INVALID",
+                f"layout.page.{page_unknown[0]} is not executable by the v6 Origin adapter",
+            )
+        has_width = "width_cm" in page and page.get("width_cm") is not None
+        has_height = "height_cm" in page and page.get("height_cm") is not None
+        if has_width != has_height:
+            raise OriginPlotError(
+                "E343_LAYOUT_CONTRACT_INVALID",
+                "layout.page.width_cm and height_cm must be provided together",
+            )
+        if has_width and has_height:
+            clean["page"] = {
+                "width_cm": _positive_number(page["width_cm"], "layout.page.width_cm"),
+                "height_cm": _positive_number(page["height_cm"], "layout.page.height_cm"),
+            }
+        elif page:
+            clean["page"] = {}
+
+    if "panels" in layout:
+        if plot_type != "multi_panel":
+            raise OriginPlotError(
+                "E343_LAYOUT_CONTRACT_INVALID",
+                "layout.panels is only valid for the compile-only multi_panel primitive",
+            )
+        clean["panels"] = _ensure_object(layout.get("panels"), "layout.panels")
+    return clean
+
+
+def _normalize_verification(value: Any) -> dict[str, Any]:
+    verification = _ensure_object(value, "verification")
+    unknown = sorted(set(verification) - _VERIFICATION_FIELDS)
+    if unknown:
+        raise OriginPlotError(
+            "E344_VERIFICATION_CONTRACT_INVALID",
+            f"verification.{unknown[0]} is not a supported v6 verification field",
+        )
+
+    profile = str(verification.get("profile") or "standard").strip().lower()
+    if profile not in PROFILE_NAMES:
+        raise OriginPlotError(
+            "E344_VERIFICATION_CONTRACT_INVALID",
+            f"verification.profile must be one of {', '.join(PROFILE_NAMES)}",
+        )
+    for field in _HARD_VERIFICATION_GATES:
+        if field in verification and verification[field] is not True:
+            raise OriginPlotError(
+                "E344_VERIFICATION_CONTRACT_INVALID",
+                f"verification.{field} is a mandatory v6 gate and cannot be disabled",
+            )
+    return {
+        "profile": profile,
+        "require_reopen": True,
+        "require_binding_readback": True,
+        "require_origin_export": True,
+    }
+
+
 def _mapped_columns(data: dict[str, Any], figure: dict[str, Any]) -> set[str]:
     columns: set[str] = set()
     plot_type = str(figure.get("type") or "").lower()
     if plot_type == "multi_panel":
         for panel in figure.get("panels") or []:
             if isinstance(panel, dict):
-                columns.update(_mapped_columns(_ensure_object(panel.get("data"), "panel.data"), _ensure_object(panel.get("figure"), "panel.figure")))
+                columns.update(
+                    _mapped_columns(
+                        _ensure_object(panel.get("data"), "panel.data"),
+                        _ensure_object(panel.get("figure"), "panel.figure"),
+                    )
+                )
         return columns
     for item in data.get("series") or []:
         if isinstance(item, dict):
@@ -156,22 +345,11 @@ def normalize_figure_spec(payload: dict[str, Any], base_dir: Path | None = None)
         raise OriginPlotError("E311_SOURCE_HASH_MISMATCH", "FigureSpec source hash does not match the current data file")
 
     data = _ensure_object(payload.get("data"), "data")
-    figure = _ensure_object(payload.get("figure"), "figure")
-    raw_style = _ensure_object(payload.get("style"), "style")
-    style_result = resolve_style(user=raw_style)
-    rejected_style = style_result["rejected"]
-    if rejected_style:
-        paths = ", ".join(sorted(str(item.get("path") or "style") for item in rejected_style))
-        raise OriginPlotError(
-            "E341_STYLE_FIELD_NOT_EXECUTABLE",
-            f"style field is not executable by the v6 Origin adapter: {paths}",
-        )
-    style = dict(style_result["style"])
-    layout = _ensure_object(payload.get("layout"), "layout")
-    verification = _ensure_object(payload.get("verification"), "verification")
-    plot_type = str(figure.get("type") or "").strip().lower()
-    if not plot_type:
-        raise OriginPlotError("E300_FIGURE_SPEC_INVALID", "figure.type is required")
+    figure = _normalize_figure(payload.get("figure"))
+    style = _normalize_style(payload.get("style"), "style")
+    plot_type = str(figure["type"])
+    layout = _normalize_layout(payload.get("layout"), plot_type)
+    verification = _normalize_verification(payload.get("verification"))
 
     sheet = str(source.get("sheet") or "").strip() or None
     rows = read_table(source_path, sheet)
@@ -182,14 +360,10 @@ def normalize_figure_spec(payload: dict[str, Any], base_dir: Path | None = None)
     if missing:
         raise OriginPlotError("E307_DATA_COLUMNS_MISSING", "required columns not found: " + ", ".join(missing))
 
-    page = layout.get("page")
-    if isinstance(page, dict):
-        for field in ("width_cm", "height_cm"):
-            value = page.get(field)
-            if value is not None and (not isinstance(value, (int, float)) or not math.isfinite(float(value)) or float(value) <= 0):
-                raise OriginPlotError("E300_FIGURE_SPEC_INVALID", f"layout.page.{field} must be a positive number")
-
     raw = dict(payload)
+    raw["figure"] = figure
+    raw["layout"] = layout
+    raw["verification"] = verification
     if "style" in payload or style:
         raw["style"] = style
 
