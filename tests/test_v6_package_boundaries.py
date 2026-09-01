@@ -67,3 +67,10 @@ def test_installable_runtime_assets_live_inside_originplot_package() -> None:
         root / "originplot" / "template" / "retrieve.py",
     ]
     assert [str(path.relative_to(root)) for path in required if not path.is_file()] == []
+
+
+def test_wheel_configuration_includes_elevated_launcher_package_data() -> None:
+    root = Path(__file__).resolve().parents[1]
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[tool.setuptools.package-data]" in pyproject
+    assert '"originplot.runtime" = ["*.ps1"]' in pyproject
