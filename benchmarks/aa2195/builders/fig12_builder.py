@@ -845,17 +845,41 @@ def _add_colorbar_overlay(
         records.append({"name": name, "bbox": (x0, top, x1, bottom), "color": color})
 
     title_name = f"fig12_cb_{panel_key}_ttl"
+    title_anchor = {
+        "name": title_name,
+        "text": "lnZ",
+        "source_x": x0 + 5.0,
+        "source_y": y0 - 27.0,
+    }
     _add_page_label(
-        layer, title_name, "lnZ", x0 + 5.0, y0 - 18.0, label_sizes["colorbar_title"]
+        layer,
+        title_name,
+        "lnZ",
+        title_anchor["source_x"],
+        title_anchor["source_y"],
+        label_sizes["colorbar_title"],
     )
     required_graphobject_contracts[title_name] = {"attach": 2, "text_contains": "lnZ"}
     expected_names.append(title_name)
 
+    tick_anchors: list[dict[str, Any]] = []
     for index, value in enumerate(reversed(levels)):
         y = y0 + index * segment_height
         label_name = f"fig12_cb_{panel_key}_k{index + 1}"
+        tick_anchor = {
+            "name": label_name,
+            "text": value,
+            "source_x": x1 + 10.0,
+            "source_y": y - 8.0,
+        }
+        tick_anchors.append(tick_anchor)
         _add_page_label(
-            layer, label_name, value, x1 + 10.0, y + 4.0, label_sizes["colorbar_tick"]
+            layer,
+            label_name,
+            value,
+            tick_anchor["source_x"],
+            tick_anchor["source_y"],
+            label_sizes["colorbar_tick"],
         )
         required_graphobject_contracts[label_name] = {
             "attach": 2,
@@ -870,6 +894,8 @@ def _add_colorbar_overlay(
         "box_records": records,
         "title_object_name": title_name,
         "tick_values": list(reversed(levels)),
+        "title_text_anchor": title_anchor,
+        "tick_text_anchors": tick_anchors,
     }
 
 

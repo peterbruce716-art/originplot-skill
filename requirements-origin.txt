@@ -1,2 +1,2 @@
-# Live Windows Origin execution. OriginExt is supplied by Origin, not PyPI.
-originpro>=3,<4; platform_system == "Windows"
+# Live Windows Origin execution; originpro declares its OriginExt dependency.
+originpro>=1.1.15,<2; platform_system == "Windows"

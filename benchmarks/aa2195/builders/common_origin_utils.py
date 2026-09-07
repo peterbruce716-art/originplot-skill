@@ -57,6 +57,9 @@ def export_page_png(
     crisp raster against a smooth one.
 
     ``supersample=1`` takes exactly the original code path.
+    Supersampled native width must match exactly. A specified height allows
+    half a target pixel of canvas rounding, not arbitrary aspect correction.
+    Audit ``rendered_size`` records native pixels before resampling.
     """
     width = int(canvas_size[0])
     height = int(canvas_size[1]) if len(canvas_size) > 1 else 0
@@ -70,6 +73,18 @@ def export_page_png(
     page.save_fig(str(path), type="png", replace=True, width=width * factor)
     with Image.open(path) as rendered:
         rendered.load()
+        rendered_size = rendered.size
+        if rendered.width != width * factor:
+            raise ValueError(
+                f"Origin native raster width={rendered.width} does not match "
+                f"requested export width={width * factor}"
+            )
+        if height > 0 and abs(rendered.height - height * factor) * 2 > factor:
+            raise ValueError(
+                f"Origin native raster height={rendered.height} does not match "
+                f"expected canvas height={height * factor} within half a target "
+                f"pixel of rounding at supersample={factor}"
+            )
         if height > 0:
             target = (width, height)
         else:
@@ -79,6 +94,7 @@ def export_page_png(
     return {
         "supersample": factor,
         "export_width": width * factor,
+        "rendered_size": list(rendered_size),
         "resampled": True,
         "resampled_to": list(target),
     }

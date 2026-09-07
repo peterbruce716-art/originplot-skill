@@ -176,6 +176,32 @@ A successful rerun must report `same_run_fresh_source_verified=true`, `source_da
 
 ## Official-template evidence
 
+The candidate worker validates the completeness of the historical template record only. Its gate reports `evidence_scope=historical_reference_metadata`, the reference audit date, and false current-asset/current-Origin-inspection flags. A passing metadata gate must not be described as a current template download, current network check, or new editable-open inspection.
+
 Record candidate project/template hashes, reopen results, Worksheet rows, plot types, direct bindings, and selection reason. Official assets are not bundled and remain subject to OriginLab terms.
+
+## Local benchmark options and integrity
+
+### Optional Origin 2022 quality profile
+
+`benchmarks/aa2195/examples/origin2022_quality_export.json` records the locally evaluated per-figure factors. In PowerShell Core, load it with `Get-Content -Raw -Encoding UTF8 <profile-path> | ConvertFrom-Json -AsHashtable`, then pass the result to `-ExportSupersampleByFigure`. For fresh PDF extraction, also use `-Fig3CanvasMode full`. Reused source bundles inherit their recorded canvas; do not add that fresh-only switch to a reuse run.
+
+The profile uses 3x for Fig3/15/16 and 1x for Fig12/14. An all-3x comparison improved Fig16 strongly but worsened Fig14 SSIM/MAE and reduced Fig12 edge F1. It was rejected as a universal setting. The profile is optional, not a default override or a claim about every Origin version or figure type.
+
+Fig12 colorbar titles and tick text now use source-calibrated vertical anchors 9 and 12 pixels higher, respectively. Colorbar boxes, levels, scientific matrices, fonts, and horizontal positions are unchanged. Text anchors are retained in `colorbar_inventory`, so this layout correction changes render identity.
+
+For factors above one, export checks the native raster before downsampling. Width must equal the requested width times the factor, and a specified canvas height allows at most half a target pixel of rounding. Larger mismatches fail without rescaling the bad image. The 1x path is unchanged. `origin_export_evidence` in candidate readback records pre-save and post-reopen export details, including native `rendered_size` for supersampled renders. This is export evidence, not an independent aspect-ratio acceptance gate for 1x.
+
+Install the optional full-repository benchmark dependencies with `py -3.10 -m pip install -r requirements-benchmark.txt`. The compact v6 runtime intentionally excludes the benchmark scripts and paper assets.
+
+`run_five_figure_live_batch.ps1 -ExportSupersampleByFigure @{fig3=3}` applies an explicit export factor only to the named figure. An omitted map preserves existing candidates. Names must be one of the five benchmark figures and values must be integers 1 through 4; validation runs before source extraction or Origin launch. The batch records the map, candidates retain the value, and the existing builder route includes it in render identity. Factors above one are Origin-rendered, Lanczos-downsampled PNGs, not untouched native 1:1 exports. They never change worksheet scientific values or acceptance thresholds. Evaluate each figure separately before promotion.
+
+Window recovery no longer replaces the original sampled state. Both the observed hidden/minimized state and the restoration result are retained, so a successful recovery cannot turn a continuity failure into a passing visibility gate. Focus alone is not visibility.
+
+The final batch auditor recomputes source data/crop digests, checks batch and per-figure source-policy agreement, verifies required freshness/provenance flags, and hashes every required evidence artifact. Published `candidate.opju` and `candidate_export.png` must match audited `evidence/result.opju` and `evidence/post_reopen.png`. Missing or changed files fail. The recorded PDF hash is compared across source gates; the auditor does not reopen the original PDF or independently authenticate historical metadata.
+
+Candidate readback identity must agree with its candidate manifest. Raw Origin objects and validation records must agree with the hashed same-run `evidence/inspection.json` after the existing evidence serializer's portable-path normalization. A stale or altered readback cannot pass by retaining old validation flags. This binds recorded evidence; it does not reopen Origin or cryptographically authenticate a maliciously rewritten complete bundle.
+
+`-Fig3CanvasMode full` with `fresh_extract` extends the Fig3 source crop and native page from 1245x900 to 1245x950. It includes both bottom horizontal-axis titles and excludes the caption. Panel positions and dimensions are preserved in physical units, and scientific curve data is unchanged. The source manifest, candidate, and builder route identify the full canvas explicitly; mismatched modes fail. Omission keeps the historical benchmark unchanged. Do not describe scores across these different source canvases as a controlled same-canvas improvement. The historical 900-pixel benchmark clips bottom axis labels and is not a complete publication-ready figure.
 
 The shareable package also excludes paper-source rasters. Its candidate JSON files use an authorized-local-source placeholder; `aa2195-release-evidence.json` is a maintainer-attested index of reference-run hashes and scalar metrics, not a substitute for the retained live evidence artifacts. `validate_public_evidence_index.py` checks index consistency only and always reports `live_origin_verified=false` and `pass_eligible=false` for index-only validation.

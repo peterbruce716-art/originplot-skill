@@ -239,9 +239,16 @@ def require_template_search_record(
         "record_path": raw_path.replace("\\", "/"),
         "figures": sorted(str(key) for key in record.get("figures", {})),
         "template_ids": TEMPLATE_IDS[figure],
-        "official_sources_verified": len(OFFICIAL_RESEARCH_URLS),
-        "local_search_verified": True,
-        "administrator_editable_open_verified": True,
+        "evidence_scope": "historical_reference_metadata",
+        "reference_audit_date": record.get("audit_date"),
+        "current_assets_verified": False,
+        "current_origin_inspection_verified": False,
+        "recorded_official_sources": len(OFFICIAL_RESEARCH_URLS),
+        "recorded_local_search": True,
+        "recorded_administrator_editable_open": True,
+        "official_sources_verified": 0,
+        "local_search_verified": False,
+        "administrator_editable_open_verified": False,
     }
 
 
@@ -1024,6 +1031,7 @@ def run_live(
             "figure_status": fig_result.get("status"),
             "effective_builder_route": _effective_builder_route(fig_result),
             "editable_view_evidence": fig_result.get("editable_view_evidence", {}),
+            "origin_export_evidence": fig_result.get("origin_export_evidence", {}),
             "origin_object_readback": fig_result.get("origin_object_readback", {}),
             "origin_object_readback_validation": fig_result.get(
                 "origin_object_readback_validation", {}

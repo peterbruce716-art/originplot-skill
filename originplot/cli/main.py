@@ -75,6 +75,13 @@ def _add_style_flags(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_planning_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("data", type=Path)
+    parser.add_argument("--sheet")
+    parser.add_argument("--plot-type")
+    parser.add_argument("--profile", choices=PROFILE_NAMES, default="standard")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="originplot",
@@ -96,10 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser = sub.add_parser(
         "plan", help="freeze semantic choices into FigureSpec v6"
     )
-    plan_parser.add_argument("data", type=Path)
-    plan_parser.add_argument("--sheet")
-    plan_parser.add_argument("--plot-type")
-    plan_parser.add_argument("--profile", choices=PROFILE_NAMES, default="standard")
+    _add_planning_args(plan_parser)
     plan_parser.add_argument("--output", type=Path)
     _add_mapping_flags(plan_parser)
     _add_style_flags(plan_parser)
@@ -114,10 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser.add_argument("--require-live-success", action="store_true")
 
     draw_parser = sub.add_parser("draw", help="inspect, plan and render a table")
-    draw_parser.add_argument("data", type=Path)
-    draw_parser.add_argument("--sheet")
-    draw_parser.add_argument("--plot-type")
-    draw_parser.add_argument("--profile", choices=PROFILE_NAMES, default="standard")
+    _add_planning_args(draw_parser)
     draw_parser.add_argument("--output-dir", type=Path)
     draw_parser.add_argument("--dry-run", action="store_true")
     _add_mapping_flags(draw_parser)
@@ -146,6 +147,26 @@ def _planned_style_args(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _build_figurespec_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    return build_figurespec(
+        args.data,
+        plot_type=args.plot_type,
+        sheet=args.sheet,
+        mapping=_mapping(args),
+        profile=args.profile,
+        **_planned_style_args(args),
+    )
+
+
+def _execution_exit_code(result: dict[str, Any]) -> int:
+    return (
+        0
+        if result.get("command_success")
+        or result.get("status") == "planned_not_executed"
+        else 1
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -158,14 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             _print(result)
             return 0
         if args.command == "plan":
-            result = build_figurespec(
-                args.data,
-                plot_type=args.plot_type,
-                sheet=args.sheet,
-                mapping=_mapping(args),
-                profile=args.profile,
-                **_planned_style_args(args),
-            )
+            result = _build_figurespec_from_args(args)
             output = (args.output or args.data.with_suffix(".figure.json")).resolve()
             _write(output, result)
             _print(
@@ -191,23 +205,11 @@ def main(argv: list[str] | None = None) -> int:
                 require_live_success=args.require_live_success,
             )
             _print(result)
-            return (
-                0
-                if result.get("command_success")
-                or result.get("status") == "planned_not_executed"
-                else 1
-            )
+            return _execution_exit_code(result)
         if args.command == "draw":
             output = (args.output_dir or _default_output(args.data)).resolve()
             output.mkdir(parents=True, exist_ok=True)
-            figure_spec = build_figurespec(
-                args.data,
-                plot_type=args.plot_type,
-                sheet=args.sheet,
-                mapping=_mapping(args),
-                profile=args.profile,
-                **_planned_style_args(args),
-            )
+            figure_spec = _build_figurespec_from_args(args)
             spec_path = output / "figure_spec.json"
             _write(spec_path, figure_spec)
             result = execute(
@@ -218,12 +220,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_live_success=not args.dry_run,
             )
             _print(result)
-            return (
-                0
-                if result.get("command_success")
-                or result.get("status") == "planned_not_executed"
-                else 1
-            )
+            return _execution_exit_code(result)
         if args.command == "verify":
             result = _verify_output(args.output_dir)
             _print(result)

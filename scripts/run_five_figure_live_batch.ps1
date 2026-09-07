@@ -9,10 +9,34 @@ param(
     [string]$PythonExe = $null,
     [string]$LaunchOriginExe = $null,
     [ValidateRange(1, 60)]
-    [int]$FigureDisplaySeconds = 3
+    [int]$FigureDisplaySeconds = 3,
+    [hashtable]$ExportSupersampleByFigure = @{},
+    [ValidateSet("legacy", "full")]
+    [string]$Fig3CanvasMode = "legacy"
 )
 
 $ErrorActionPreference = "Stop"
+function Resolve-FigureExportFactors {
+    param([hashtable]$Requested)
+
+    $validated = @{}
+    foreach ($entry in $Requested.GetEnumerator()) {
+        $figure = $entry.Key
+        $factor = $entry.Value
+        if ($figure -cnotin @("fig3", "fig12", "fig14", "fig15", "fig16") -or
+            ($factor -isnot [int] -and $factor -isnot [long]) -or
+            $factor -lt 1 -or $factor -gt 4) {
+            throw "E134_EXPORT_SUPERSAMPLE_INVALID: use named benchmark figures and integer factors from 1 to 4."
+        }
+        $validated[$figure] = [int]$factor
+    }
+    return $validated
+}
+
+$ExportSupersampleByFigure = Resolve-FigureExportFactors -Requested $ExportSupersampleByFigure
+if ($Fig3CanvasMode -eq "full" -and $SourceDataPolicy -ne "fresh_extract") {
+    throw "E127_FRESH_SOURCE_REQUIRED: requesting a full Fig3 canvas requires fresh_extract from the source PDF."
+}
 if (-not $SkillRoot) { $SkillRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath) }
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $pythonResolver = Join-Path $SkillRoot "scripts\resolve_python310.ps1"
@@ -203,7 +227,7 @@ if ($SourceDataPolicy -eq "fresh_extract") {
     if (-not $SourcePdf -or -not (Test-Path -LiteralPath $SourcePdf -PathType Leaf)) {
         throw "E127_FRESH_SOURCE_REQUIRED: fresh_extract requires SourcePdf."
     }
-    & $PythonExe $extractor --source-pdf $SourcePdf --output-dir $sourceBundleDir --json-out $sourceManifest
+    & $PythonExe $extractor --source-pdf $SourcePdf --output-dir $sourceBundleDir --json-out $sourceManifest --fig3-canvas-mode $Fig3CanvasMode
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $sourceManifest -PathType Leaf)) {
         throw "E127_FRESH_SOURCE_REQUIRED: same-run PDF source extraction failed."
     }
@@ -247,6 +271,9 @@ New-Item -ItemType Directory -Path $runCandidateRoot | Out-Null
 foreach ($figure in $figures) {
     $baseCandidatePath = Join-Path $candidateRoot "$figure.json"
     $baseCandidate = Get-Content -Encoding UTF8 -LiteralPath $baseCandidatePath | ConvertFrom-Json
+    if ($ExportSupersampleByFigure.ContainsKey($figure)) {
+        $baseCandidate | Add-Member -NotePropertyName export_supersample -NotePropertyValue $ExportSupersampleByFigure[$figure] -Force
+    }
     $templateSearchRaw = [string]$baseCandidate.template_search_record
     if ($templateSearchRaw) {
         $templateSearchPath = [IO.Path]::GetFullPath((Join-Path (Split-Path -Parent $baseCandidatePath) $templateSearchRaw))
@@ -256,6 +283,9 @@ foreach ($figure in $figures) {
         $baseCandidate.template_search_record = $templateSearchPath
     }
     $sourceRecord = $sourceBundle.figures.$figure
+    if ($figure -eq "fig3" -and $sourceRecord.extraction.fig3_canvas_mode) {
+        $baseCandidate | Add-Member -NotePropertyName fig3_canvas_mode -NotePropertyValue $sourceRecord.extraction.fig3_canvas_mode -Force
+    }
     $baseCandidate.source_crop = Join-Path $sourceBundleDir $sourceRecord.source_crop
     $baseCandidate | Add-Member -NotePropertyName source_data_manifest -NotePropertyValue $sourceManifest -Force
     $baseCandidate | Add-Member -NotePropertyName source_data_policy -NotePropertyValue $SourceDataPolicy -Force
@@ -329,23 +359,24 @@ foreach ($figure in $figures) {
     # Sampling ends with this worker. There is no global or background monitor.
     while (-not $process.HasExited) {
         $sampleBeforeRestore = Get-OriginWindowState -ProcessId $originPid
-        $windowSample = $sampleBeforeRestore
+        $windowSamples += $sampleBeforeRestore
         if (-not $sampleBeforeRestore.restored) {
             $windowRestorationCount++
             $windowSample = Show-OriginWindow -ProcessId $originPid
+            $windowSamples += $windowSample
         }
-        $windowSamples += $windowSample
         Start-Sleep -Milliseconds 500
         $process.Refresh()
     }
     $process.WaitForExit()
     $figureClock.Stop()
     $postWorkerWindow = Get-OriginWindowState -ProcessId $originPid
+    $windowSamples += $postWorkerWindow
     if (-not $postWorkerWindow.restored) {
         $windowRestorationCount++
         $postWorkerWindow = Show-OriginWindow -ProcessId $originPid
+        $windowSamples += $postWorkerWindow
     }
-    $windowSamples += $postWorkerWindow
     $samplePath = Join-Path $outputDir "origin_window_samples.json"
     ConvertTo-Json -InputObject @($windowSamples) -Depth 4 | Set-Content -LiteralPath $samplePath -Encoding UTF8
     $failedSamples = @($windowSamples | Where-Object { -not $_.is_visible -or $_.is_iconic -or $_.main_window_handle -eq 0 })
@@ -409,6 +440,8 @@ $batch = [ordered]@{
     admin_preflight = $adminPreflight
     origin_embedding_cleanup = $originEmbeddingCleanup
     source_data_policy = $SourceDataPolicy
+    export_supersample_by_figure = $ExportSupersampleByFigure
+    fig3_canvas_mode = if ($sourceBundle.figures.fig3.extraction.fig3_canvas_mode) { $sourceBundle.figures.fig3.extraction.fig3_canvas_mode } else { "legacy" }
     source_pdf = if ($SourcePdf) { (Resolve-Path -LiteralPath $SourcePdf).Path } else { $null }
     source_bundle_manifest = $sourceManifest
     source_bundle_data_sha256 = $sourceBundle.bundle_data_sha256
