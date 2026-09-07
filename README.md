@@ -101,6 +101,8 @@ x / y / x_error / y_error / z / group / category / label / support / retain / un
 
 A numeric column with unclear meaning remains `uncertain`. OriginPlot will not quietly turn it into another curve.
 
+XY auto-planning includes all recognized Y columns, in source order, with one series per column. Use `--y` to deliberately select a single curve. Multiple curves with error columns require a hand-written FigureSpec with confirmed per-series mappings, or a single-curve selection. Ambiguous multiple error columns also require explicit mapping. The planner validates column names and FigureSpec before writing its output, so a failed plan does not overwrite an existing plan.
+
 Categorical auto-planning is intentionally conservative:
 
 - `category + one Y` may become `bar`;
@@ -208,6 +210,10 @@ verification.json
 ```
 
 `operation_plan.json` is also retained for audit/debugging.
+
+The live worker records SHA-256 hashes for the final project, exports and FigureSpec. `verify` checks those hashes, strict boolean success flags, all required recorded lifecycle gates, decodable nonuniform PNG/TIF images, PDF parsing and nonempty page streams and the archived FigureSpec structure. It returns a nonzero exit code with `failures` when any check fails, including malformed records or missing hashes.
+
+This is an **offline integrity check of recorded live evidence**. It does not reopen Origin, render PDF, or independently establish OPJU editability; OPJU validity still depends on the recorded native save/reopen gates. Hashes are not digital signatures. The source table need not remain available to verify an archived output bundle. Old outputs without hashes require a fresh live run; do not backfill hashes to claim new verification.
 
 ## Origin versions
 

@@ -10,11 +10,14 @@ from originplot.adapters import execute_operation_plan
 from originplot.operation_plan import OperationPlan
 from originplot.runtime.origin_session import attached_origin, is_administrator
 from originplot.runtime.protocol import WORKER_TASK_SCHEMA
+from originplot.verification.output import artifact_hashes
 
 
 def _write(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def run(
@@ -64,6 +67,8 @@ def run(
             destination = output_dir / "figure_spec.json"
             if spec_path.is_file() and spec_path.resolve() != destination.resolve():
                 shutil.copyfile(spec_path, destination)
+            if result.get("command_success") is True:
+                result["artifact_sha256"] = artifact_hashes(output_dir)
         except Exception as exc:
             result = {
                 "schema": "originplot.origin_worker_result.v2",
@@ -78,7 +83,9 @@ def run(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Administrator-only OriginPlot v6 worker protocol endpoint.")
+    parser = argparse.ArgumentParser(
+        description="Administrator-only OriginPlot v6 worker protocol endpoint."
+    )
     parser.add_argument("--task", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
