@@ -55,9 +55,21 @@ FIG15_NORMALIZED_PROBE_CANDIDATES = [
 
 FIG12_CONTOUR_PALETTE_PROBE_CANDIDATES = [
     {"candidate_id": "custom_pal", "route": "custom .pal", "matrix_values": [0, 1, 2]},
-    {"candidate_id": "categorical_contour", "route": "categorical contour", "matrix_values": [0, 1, 2]},
-    {"candidate_id": "level_fill_color", "route": "level fill color", "matrix_values": [0, 1, 2]},
-    {"candidate_id": "controlled_color_scale", "route": "controlled color scale", "matrix_values": [0, 1, 2]},
+    {
+        "candidate_id": "categorical_contour",
+        "route": "categorical contour",
+        "matrix_values": [0, 1, 2],
+    },
+    {
+        "candidate_id": "level_fill_color",
+        "route": "level fill color",
+        "matrix_values": [0, 1, 2],
+    },
+    {
+        "candidate_id": "controlled_color_scale",
+        "route": "controlled color scale",
+        "matrix_values": [0, 1, 2],
+    },
 ]
 
 
@@ -119,7 +131,12 @@ def planned_probe_manifest() -> dict[str, Any]:
                     "contour_matrix": 1,
                     "column": 1,
                 },
-                "required_output_keys": ["plot_count", "plot_type", "data_binding", "style_properties"],
+                "required_output_keys": [
+                    "plot_count",
+                    "plot_type",
+                    "data_binding",
+                    "style_properties",
+                ],
             },
             "graphobject_readback": {
                 "purpose": "Verify drawing object enumeration and properties after OPJU save/reopen.",
@@ -130,12 +147,27 @@ def planned_probe_manifest() -> dict[str, Any]:
                     "probe_text_01",
                     "probe_circle_01",
                 ],
-                "required_output_keys": ["object_count", "attach", "x1", "y1", "x2", "y2", "color", "fill", "text"],
+                "required_output_keys": [
+                    "object_count",
+                    "attach",
+                    "x1",
+                    "y1",
+                    "x2",
+                    "y2",
+                    "color",
+                    "fill",
+                    "text",
+                ],
             },
             "contour_palette": {
                 "purpose": "Prove a deterministic three-color categorical contour/palette route for Fig12.",
                 "matrix_values": [0, 1, 2],
-                "routes": ["custom_pal", "categorical_contour", "level_fill_color", "controlled_color_scale"],
+                "routes": [
+                    "custom_pal",
+                    "categorical_contour",
+                    "level_fill_color",
+                    "controlled_color_scale",
+                ],
                 "required_output_keys": [
                     "orange_iou",
                     "green_iou",
@@ -173,7 +205,9 @@ def planned_probe_manifest() -> dict[str, Any]:
     }
 
 
-def _probe_result(name: str, *, verified: bool, status: str, **extra: Any) -> dict[str, Any]:
+def _probe_result(
+    name: str, *, verified: bool, status: str, **extra: Any
+) -> dict[str, Any]:
     payload = {"name": name, "verified": bool(verified), "status": status}
     payload.update(extra)
     return payload
@@ -189,9 +223,18 @@ def evaluate_probe_gate(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
             error_code="E526_POST_REOPEN_EVIDENCE_REQUIRED",
         )
     if name == "plot_readback":
-        expected = planned_probe_manifest()["probes"][name]["expected_post_reopen_counts"]
-        actual = {key: int((post.get(key) or {}).get("plot_count", -1)) for key in expected}
-        verified = all(actual[key] == value if key in {"one_line", "two_lines"} else actual[key] >= value for key, value in expected.items())
+        expected = planned_probe_manifest()["probes"][name][
+            "expected_post_reopen_counts"
+        ]
+        actual = {
+            key: int((post.get(key) or {}).get("plot_count", -1)) for key in expected
+        }
+        verified = all(
+            actual[key] == value
+            if key in {"one_line", "two_lines"}
+            else actual[key] >= value
+            for key, value in expected.items()
+        )
         return _probe_result(
             name,
             verified=verified,
@@ -201,10 +244,18 @@ def evaluate_probe_gate(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
             error_code=None if verified else "E400_STRUCTURE_MISMATCH",
         )
     if name == "graphobject_readback":
-        expected_names = planned_probe_manifest()["probes"][name]["expected_object_names"]
-        found_names = [str(item.get("name")) for item in post.get("objects", []) if isinstance(item, dict)]
+        expected_names = planned_probe_manifest()["probes"][name][
+            "expected_object_names"
+        ]
+        found_names = [
+            str(item.get("name"))
+            for item in post.get("objects", [])
+            if isinstance(item, dict)
+        ]
         found_normalized = {item.lower() for item in found_names}
-        missing = [item for item in expected_names if item.lower() not in found_normalized]
+        missing = [
+            item for item in expected_names if item.lower() not in found_normalized
+        ]
         return _probe_result(
             name,
             verified=not missing,
@@ -220,7 +271,11 @@ def evaluate_probe_gate(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
         verified = (
             isinstance(cases, list)
             and len(cases) == expected_cases
-            and all(item.get("bbox") and item.get("coordinate_delta") is not None for item in cases if isinstance(item, dict))
+            and all(
+                item.get("bbox") and item.get("coordinate_delta") is not None
+                for item in cases
+                if isinstance(item, dict)
+            )
         )
         return _probe_result(
             name,
@@ -251,7 +306,10 @@ def evaluate_probe_gate(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
         )
     if name == "coordinate_mapping":
         required = planned_probe_manifest()["probes"][name]["required_output_keys"]
-        verified = all(post.get(key) is not None for key in required) and post.get("post_reopen") is True
+        verified = (
+            all(post.get(key) is not None for key in required)
+            and post.get("post_reopen") is True
+        )
         return _probe_result(
             name,
             verified=verified,
@@ -259,7 +317,9 @@ def evaluate_probe_gate(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
             measurements=post,
             error_code=None if verified else "E521_FULL_COORDINATE_PROBE_REQUIRED",
         )
-    return _probe_result(name, verified=False, status="unknown_probe", error_code="E100_SCHEMA_INVALID")
+    return _probe_result(
+        name, verified=False, status="unknown_probe", error_code="E100_SCHEMA_INVALID"
+    )
 
 
 def _gate_result(probe_results: list[dict[str, Any]]) -> dict[str, Any]:
@@ -277,7 +337,12 @@ def _gate_result(probe_results: list[dict[str, Any]]) -> dict[str, Any]:
 def run_dry_probe(output: Path) -> dict[str, Any]:
     payload = planned_probe_manifest()
     probe_results = [
-        _probe_result(name, verified=False, status="dry_run_not_verified", error_code="E521_LIVE_PROBE_REQUIRED")
+        _probe_result(
+            name,
+            verified=False,
+            status="dry_run_not_verified",
+            error_code="E521_LIVE_PROBE_REQUIRED",
+        )
         for name in PROBE_NAMES
     ]
     payload["mode"] = "dry_run"
@@ -302,7 +367,9 @@ def _set_object_name(obj: Any, name: str) -> None:
         pass
 
 
-def add_named_ellipse(layer: Any, name: str, x1: float, y1: float, x2: float, y2: float) -> bool:
+def add_named_ellipse(
+    layer: Any, name: str, x1: float, y1: float, x2: float, y2: float
+) -> bool:
     try:
         obj = layer.obj.GraphObjects.Add(GRAPHOBJECT_ELLIPSE_TYPE)
         if obj is None:
@@ -379,7 +446,11 @@ def _add_contour_page(op: Any, name: str, *, three_region: bool = False) -> None
 
     book = op.new_book("m", lname=f"{name}_data")
     sheet = book[0]
-    values = three_region_matrix() if three_region else np.tile(np.array([0.0, 1.0, 2.0]), (18, 6))
+    values = (
+        three_region_matrix()
+        if three_region
+        else np.tile(np.array([0.0, 1.0, 2.0]), (18, 6))
+    )
     sheet.from_np(values)
     page = op.new_graph(lname=name, template="CONTOUR")
     plot = page[0].add_mplot(sheet, z=0, type="contour")
@@ -467,7 +538,7 @@ def _export_probe_pages(op: Any, output_dir: Path, phase: str) -> dict[str, Any]
 def _build_probe_project(opju: Path, pre_export_dir: Path) -> dict[str, Any]:
     import originpro as op  # type: ignore
 
-    op.set_show(False)
+    op.set_show(True)
     try:
         op.new(asksave=False)
         _add_coordinate_page(op)
@@ -499,13 +570,20 @@ def run_live_probe(output: Path) -> dict[str, Any]:
     payload["steps"] = []
     if not payload["python_is_admin"]:
         probe_results = [
-            _probe_result(name, verified=False, status="not_attempted", error_code="E120_ENVIRONMENT_MISMATCH")
+            _probe_result(
+                name,
+                verified=False,
+                status="not_attempted",
+                error_code="E120_ENVIRONMENT_MISMATCH",
+            )
             for name in PROBE_NAMES
         ]
         payload["status"] = "failed"
         payload["error_code"] = "E120_ENVIRONMENT_MISMATCH"
         payload["origin_attach_not_attempted"] = True
-        payload["message"] = "Administrator Python is required before importing originpro or OriginExt."
+        payload["message"] = (
+            "Administrator Python is required before importing originpro or OriginExt."
+        )
         payload["probe_results"] = probe_results
         payload["gate_result"] = _gate_result(probe_results)
         _write_json(output, payload)
@@ -515,12 +593,14 @@ def run_live_probe(output: Path) -> dict[str, Any]:
     opju = output.with_name(output.stem + "_probe.opju").resolve()
     pre_export_dir = output.with_name(output.stem + "_pre_save").resolve()
     post_export_dir = output.with_name(output.stem + "_post_reopen").resolve()
-    readback_path = output.with_name(output.stem + "_post_reopen_readback.json").resolve()
-    release_status = "builder_owns_hidden_session"
+    readback_path = output.with_name(
+        output.stem + "_post_reopen_readback.json"
+    ).resolve()
+    release_status = "builder_owns_visible_session"
     try:
         payload["steps"].append("before_import_originpro")
         _write_json(output, payload)
-        payload["steps"].append("new_hidden_builder_session")
+        payload["steps"].append("new_visible_builder_session")
         payload["artifacts"] = _build_probe_project(opju, pre_export_dir)
         payload["steps"].append("after_import_originpro")
         payload["steps"].append("saved_probe_opju")
@@ -539,7 +619,9 @@ def run_live_probe(output: Path) -> dict[str, Any]:
             "--post-export-dir",
             str(post_export_dir),
         ]
-        completed = subprocess.run(command, text=True, capture_output=True, timeout=180, check=False)
+        completed = subprocess.run(
+            command, text=True, capture_output=True, timeout=180, check=False
+        )
         payload["inspection_worker"] = {
             "command": command,
             "returncode": completed.returncode,
@@ -553,8 +635,12 @@ def run_live_probe(output: Path) -> dict[str, Any]:
         payload["steps"].append("post_reopen_readback_complete")
         payload["post_reopen_readback"] = readback
         evidence = readback.get("probe_evidence", {})
-        probe_results = [evaluate_probe_gate(name, evidence.get(name, {})) for name in PROBE_NAMES]
-        payload["status"] = "ok" if all(item["verified"] for item in probe_results) else "partial"
+        probe_results = [
+            evaluate_probe_gate(name, evidence.get(name, {})) for name in PROBE_NAMES
+        ]
+        payload["status"] = (
+            "ok" if all(item["verified"] for item in probe_results) else "partial"
+        )
     except Exception as exc:
         payload["status"] = "failed"
         payload["error_code"] = "E521_LIVE_PROBE_FAILED"
@@ -562,7 +648,12 @@ def run_live_probe(output: Path) -> dict[str, Any]:
         payload["message"] = str(exc)
         payload["traceback"] = traceback.format_exc(limit=8)
         probe_results = [
-            _probe_result(name, verified=False, status="failed", error_code="E521_LIVE_PROBE_FAILED")
+            _probe_result(
+                name,
+                verified=False,
+                status="failed",
+                error_code="E521_LIVE_PROBE_FAILED",
+            )
             for name in PROBE_NAMES
         ]
     finally:
@@ -580,9 +671,19 @@ def probe_exit_code(payload: dict[str, Any]) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OriginPlot v5.8.8 Origin 2022 calibration probe gate.")
-    parser.add_argument("--output", type=Path, default=Path("outputs/originplot_v588_calibration_probe.json"))
-    parser.add_argument("--live", action="store_true", help="Attempt live Origin probe execution; requires admin Python.")
+    parser = argparse.ArgumentParser(
+        description="OriginPlot v5.8.8 Origin 2022 calibration probe gate."
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("outputs/originplot_v588_calibration_probe.json"),
+    )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Attempt live Origin probe execution; requires admin Python.",
+    )
     args = parser.parse_args()
     payload = run_live_probe(args.output) if args.live else run_dry_probe(args.output)
     print(json.dumps(payload, ensure_ascii=False, indent=2))

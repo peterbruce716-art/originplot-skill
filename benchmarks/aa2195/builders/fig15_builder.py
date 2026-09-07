@@ -6,7 +6,7 @@ import math
 
 from .common_origin_utils import (
     axisless_layer_command,
-    create_hidden_graph_page,
+    create_visible_graph_page,
     disable_speed_mode,
     origin_font_size,
     page_dot_command,
@@ -60,7 +60,9 @@ def _text_size(record: dict[str, Any], candidate_params: dict[str, Any]) -> floa
     return float(record["font_size"]) * global_scale * role_scale
 
 
-def _set_plot_style(plot: Any, *, color: str, width: float, dotted: bool = False) -> None:
+def _set_plot_style(
+    plot: Any, *, color: str, width: float, dotted: bool = False
+) -> None:
     try:
         plot.color = color
     except Exception:
@@ -89,7 +91,12 @@ def _set_layer_frame(layer: Any, frame: tuple[float, float, float, float]) -> No
     left, top, width, height = frame
     command = page_percent_layer_command(frame)
     layer.lt_exec(command)
-    for prop, value in {"left": left, "top": top, "width": width, "height": height}.items():
+    for prop, value in {
+        "left": left,
+        "top": top,
+        "width": width,
+        "height": height,
+    }.items():
         try:
             layer.set_float(prop, value)
         except Exception:
@@ -129,7 +136,11 @@ def _add_scale_label(
             label.set_int("attach", 2)
         except Exception:
             pass
-        for prop, value in {"x1": local_x, "y1": local_y, "fsize": origin_font_size(size)}.items():
+        for prop, value in {
+            "x1": local_x,
+            "y1": local_y,
+            "fsize": origin_font_size(size),
+        }.items():
             try:
                 label.set_float(prop, float(value))
             except Exception:
@@ -200,7 +211,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     fresh_source = load_fresh_figure_data(candidate_params, "fig15")
     geometry = fig15_geometry()
     fresh_panels = fresh_source["data"]["panels"]
-    smoothing_window = _candidate_int(candidate_params.get("fig15_curve_smoothing_window"), 5)
+    smoothing_window = _candidate_int(
+        candidate_params.get("fig15_curve_smoothing_window"), 5
+    )
     smoothing_max_delta = _candidate_float(
         candidate_params.get("fig15_curve_smoothing_max_delta"),
         0.006,
@@ -222,7 +235,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         }
         curve_processing.append({"panel": panel["name"], **evidence})
     page_size_inches = (8.5, 3.35)
-    page = create_hidden_graph_page(
+    page = create_visible_graph_page(
         op,
         lname="Fig15_source_calibrated_two_layer",
         template="LINE",
@@ -261,7 +274,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         layer_index = 0 if is_left else 1
         layer = left if is_left else right
         panel = panels[layer_index]
-        source_y_adjusted = float(record["y"]) + TEXT_Y_OFFSETS.get(str(record["role"]), 0.0)
+        source_y_adjusted = float(record["y"]) + TEXT_Y_OFFSETS.get(
+            str(record["role"]), 0.0
+        )
         created = _add_scale_label(
             layer,
             panel,
@@ -302,11 +317,16 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "text": caption_text,
             "attach": 2,
             "layer_index": 0,
-            "effective_font_size": _candidate_float(candidate_params.get("caption_font_size"), 9.0),
+            "effective_font_size": _candidate_float(
+                candidate_params.get("caption_font_size"), 9.0
+            ),
             "created": caption_created,
         }
     )
-    required_graphobject_contracts["fig15_caption"] = {"attach": 2, "text_contains": "Fig. 15."}
+    required_graphobject_contracts["fig15_caption"] = {
+        "attach": 2,
+        "text_contains": "Fig. 15.",
+    }
     expected_names_by_layer[0].append("fig15_caption")
     axis_contract = [
         {
@@ -333,19 +353,23 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
                     if path_name == "curve"
                     else f"fig15_geometry.panels.{panel['name']}.{path_name}"
                 ),
-                "kind": "fresh_crop_curve_geometry" if path_name == "curve" else "source_calibrated_panel_geometry",
+                "kind": "fresh_crop_curve_geometry"
+                if path_name == "curve"
+                else "source_calibrated_panel_geometry",
             },
             "continuity": "single_xy" if path_name == "curve" else "nan_separated_xy",
             "same_worksheet": True,
-            "consumers": [{
-                "consumer_id": path_name,
-                "kind": "plot",
-                "view": "canonical",
-                "layer_index": layer_index,
-                "plot_index": plot_index,
-                "x_column": chr(ord("A") + plot_index * 2),
-                "y_column": chr(ord("B") + plot_index * 2),
-            }],
+            "consumers": [
+                {
+                    "consumer_id": path_name,
+                    "kind": "plot",
+                    "view": "canonical",
+                    "layer_index": layer_index,
+                    "plot_index": plot_index,
+                    "x_column": chr(ord("A") + plot_index * 2),
+                    "y_column": chr(ord("B") + plot_index * 2),
+                }
+            ],
         }
         for layer_index, panel in enumerate(panels)
         for plot_index, path_name in enumerate(path_names)
@@ -387,7 +411,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "legend_plot_reference_contracts": [],
         "source_geometry_groups": source_geometry_contract(source_groups),
         "axis_route": "worksheet_arrowhead_paths",
-        "axis_arrowhead_segment_count": sum(panel["axes"]["arrowhead_segment_count"] for panel in panels),
+        "axis_arrowhead_segment_count": sum(
+            panel["axes"]["arrowhead_segment_count"] for panel in panels
+        ),
         "axis_contract": axis_contract,
         "required_graphobject_names_by_layer": expected_names_by_layer,
         "required_graphobject_contracts": required_graphobject_contracts,
@@ -414,7 +440,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "font_family": FIG15_FONT,
             "text_scale": _candidate_float(candidate_params.get("text_scale"), 1.0),
             "text_role_scales": candidate_params.get("text_role_scales", {}),
-            "caption_font_size": _candidate_float(candidate_params.get("caption_font_size"), 9.0),
+            "caption_font_size": _candidate_float(
+                candidate_params.get("caption_font_size"), 9.0
+            ),
         },
         "candidate_params": candidate_params,
     }

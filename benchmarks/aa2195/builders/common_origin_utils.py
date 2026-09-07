@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from adapters.inspection.adapter import origin_graph_pages
@@ -9,6 +10,78 @@ from adapters.inspection.adapter import origin_graph_pages
 
 def origin_font_size(points: float) -> float:
     return max(5.0, min(float(points), 18.0))
+
+
+MAX_EXPORT_SUPERSAMPLE = 4
+
+
+def resolve_export_supersample(params: dict[str, Any] | None) -> int:
+    """Return the validated ``export_supersample`` factor, defaulting to 1.
+
+    1 means export straight at the benchmark canvas, which is the promoted
+    behaviour and stays byte-identical.
+    """
+    requested = (params or {}).get("export_supersample", 1)
+    if isinstance(requested, bool):
+        raise ValueError(
+            f"export_supersample requested={requested!r} is not an integer"
+        )
+    if isinstance(requested, int):
+        factor = requested
+    elif isinstance(requested, str) and re.fullmatch(r"[+-]?\d+", requested):
+        factor = int(requested)
+    else:
+        raise ValueError(
+            f"export_supersample requested={requested!r} is not an integer"
+        )
+    if factor < 1 or factor > MAX_EXPORT_SUPERSAMPLE:
+        raise ValueError(
+            f"export_supersample requested={factor} outside allowed range "
+            f"[1, {MAX_EXPORT_SUPERSAMPLE}]"
+        )
+    return factor
+
+
+def export_page_png(
+    page: Any,
+    path: str | Path,
+    canvas_size: Any,
+    supersample: int = 1,
+) -> dict[str, Any]:
+    """Export a graph page to PNG, optionally rendering above the canvas first.
+
+    The benchmark compares an Origin export against a source crop that PyMuPDF
+    rasterised at scale 3.0, so the source carries a soft anti-aliased edge that
+    a 1:1 Origin export does not. Rendering at ``supersample`` times the canvas
+    and resampling down reproduces that edge physics instead of comparing a
+    crisp raster against a smooth one.
+
+    ``supersample=1`` takes exactly the original code path.
+    """
+    width = int(canvas_size[0])
+    height = int(canvas_size[1]) if len(canvas_size) > 1 else 0
+    factor = resolve_export_supersample({"export_supersample": supersample})
+    if factor == 1:
+        page.save_fig(str(path), type="png", replace=True, width=width)
+        return {"supersample": 1, "export_width": width, "resampled": False}
+
+    from PIL import Image
+
+    page.save_fig(str(path), type="png", replace=True, width=width * factor)
+    with Image.open(path) as rendered:
+        rendered.load()
+        if height > 0:
+            target = (width, height)
+        else:
+            target = (width, max(1, round(rendered.height * width / rendered.width)))
+        resampled = rendered.resize(target, Image.LANCZOS)
+    resampled.save(path)
+    return {
+        "supersample": factor,
+        "export_width": width * factor,
+        "resampled": True,
+        "resampled_to": list(target),
+    }
 
 
 def page_dot_command(
@@ -60,7 +133,9 @@ def page_percent_layer_command(frame: tuple[float, float, float, float]) -> str:
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def page_name(page: Any) -> str:
@@ -116,21 +191,21 @@ def fit_page_to_window(page: Any) -> dict[str, str]:
     }
 
 
-def create_hidden_graph_page(op: Any, *, lname: str, template: str) -> Any:
-    """Create a graph page hidden first so object-by-object styling does not flash."""
-    page = op.new_graph(lname=lname, template=template, hidden=True)
+def create_visible_graph_page(op: Any, *, lname: str, template: str) -> Any:
+    """Create a graph page in the visible Origin session."""
+    page = op.new_graph(lname=lname, template=template, hidden=False)
     try:
-        page.show = False
+        page.show = True
     except Exception:
         pass
     return page
 
 
 def reveal_graph_page(page: Any) -> dict[str, bool | str]:
-    """Reveal a graph page only after styling is complete."""
+    """Keep a graph page visible after styling is complete."""
     evidence: dict[str, bool | str] = {
         "status": "applied",
-        "graph_page_created_hidden": True,
+        "graph_page_created_visible": True,
         "revealed_after_styling": False,
     }
     try:

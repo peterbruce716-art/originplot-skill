@@ -18,6 +18,8 @@ tmp_v5_validation/
 
 # Local environments and installed packages
 site-packages/
+build/
+*.egg-info/
 
 # Private or user-supplied scientific data
 data/

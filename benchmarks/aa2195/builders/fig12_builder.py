@@ -5,7 +5,7 @@ from typing import Any
 
 from .common_origin_utils import (
     axisless_layer_command,
-    create_hidden_graph_page,
+    create_visible_graph_page,
     disable_speed_mode,
     origin_font_size,
     page_dot_command,
@@ -27,7 +27,17 @@ from .source_geometry import source_geometry_contract
 HEIGHT = 590.0
 GRAPHOBJECT_RECTANGLE_TYPE = 8
 COLORBAR_COLORS = ["#fcbf6e", "#b1df89", "#c6dfec"]
-FIG12_PANEL_KEYS = {"PSC": 0, "UC": 1, "TR": 2, "a": 0, "b": 1, "c": 2, "0": 0, "1": 1, "2": 2}
+FIG12_PANEL_KEYS = {
+    "PSC": 0,
+    "UC": 1,
+    "TR": 2,
+    "a": 0,
+    "b": 1,
+    "c": 2,
+    "0": 0,
+    "1": 1,
+    "2": 2,
+}
 FIG12_DEFAULT_LABEL_SIZES = {
     "panel": 11.0,
     "contour": 8.4,
@@ -53,6 +63,9 @@ FIG12_Y_AXIS_TITLE_FSIZE = 23.0
 FIG12_AXIS_FONT = "Times New Roman"
 FIG12_CONTOUR_LINE_COLOR = (86, 107, 68)
 FIG12_CONTOUR_LINE_WIDTH = 0.05
+# Every panel declares four z-levels, so four line slots must be styled or the
+# unstyled one falls back to Origin's default black.
+FIG12_CONTOUR_LINE_SLOTS = 4
 FIG12_DEFAULT_PATH_OVERLAY_COLOR = "#708e57"
 FIG12_PATH_OVERLAY_COLOR = FIG12_DEFAULT_PATH_OVERLAY_COLOR
 FIG12_PATH_OVERLAY_TYPE = 34
@@ -86,8 +99,14 @@ def _shift_bbox(
     return (float(x0) + dx, float(y0) + dy, float(x1) + dx, float(y1) + dy)
 
 
-def _fig12_colorbar_offsets(candidate_params: dict[str, Any]) -> dict[int, dict[str, float]]:
-    raw = candidate_params.get("fig12_colorbar_offsets") if isinstance(candidate_params, dict) else None
+def _fig12_colorbar_offsets(
+    candidate_params: dict[str, Any],
+) -> dict[int, dict[str, float]]:
+    raw = (
+        candidate_params.get("fig12_colorbar_offsets")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     offsets = {index: {"dx": 0.0, "dy": 0.0} for index in range(3)}
     if not isinstance(raw, dict):
         return offsets
@@ -112,13 +131,21 @@ def _bounded_size(value: Any, *, default: float, limit: float = 18.0) -> float:
 
 def _fig12_label_sizes(candidate_params: dict[str, Any]) -> dict[str, float]:
     sizes = dict(FIG12_DEFAULT_LABEL_SIZES)
-    raw_absolute = candidate_params.get("fig12_label_sizes") if isinstance(candidate_params, dict) else None
+    raw_absolute = (
+        candidate_params.get("fig12_label_sizes")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if isinstance(raw_absolute, dict):
         for role, default in FIG12_DEFAULT_LABEL_SIZES.items():
             if role in raw_absolute:
                 sizes[role] = _bounded_size(raw_absolute.get(role), default=default)
 
-    raw_offsets = candidate_params.get("fig12_label_size_offsets") if isinstance(candidate_params, dict) else None
+    raw_offsets = (
+        candidate_params.get("fig12_label_size_offsets")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if isinstance(raw_offsets, dict):
         for role, default in FIG12_DEFAULT_LABEL_SIZES.items():
             if role in raw_offsets:
@@ -128,7 +155,11 @@ def _fig12_label_sizes(candidate_params: dict[str, Any]) -> dict[str, float]:
 
 
 def _fig12_matrix_biases(candidate_params: dict[str, Any]) -> dict[int, float]:
-    raw = candidate_params.get("fig12_matrix_biases") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig12_matrix_biases")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     biases = dict(FIG12_DEFAULT_MATRIX_BIASES)
     if not isinstance(raw, dict):
         return biases
@@ -141,7 +172,11 @@ def _fig12_matrix_biases(candidate_params: dict[str, Any]) -> dict[int, float]:
 
 
 def _fig12_matrix_contrasts(candidate_params: dict[str, Any]) -> dict[int, float]:
-    raw = candidate_params.get("fig12_matrix_contrasts") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig12_matrix_contrasts")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     contrasts = dict(FIG12_DEFAULT_MATRIX_CONTRASTS)
     if not isinstance(raw, dict):
         return contrasts
@@ -154,14 +189,24 @@ def _fig12_matrix_contrasts(candidate_params: dict[str, Any]) -> dict[int, float
     return contrasts
 
 
-def _fig12_matrix_region_values(candidate_params: dict[str, Any]) -> dict[int, list[float]]:
-    raw = candidate_params.get("fig12_matrix_region_values") if isinstance(candidate_params, dict) else None
+def _fig12_matrix_region_values(
+    candidate_params: dict[str, Any],
+) -> dict[int, list[float]]:
+    raw = (
+        candidate_params.get("fig12_matrix_region_values")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     values: dict[int, list[float]] = dict(FIG12_DEFAULT_MATRIX_REGION_VALUES)
     if not isinstance(raw, dict):
         return values
     for key, sequence in raw.items():
         panel_index = FIG12_PANEL_KEYS.get(str(key))
-        if panel_index is None or not isinstance(sequence, (list, tuple)) or len(sequence) != 3:
+        if (
+            panel_index is None
+            or not isinstance(sequence, (list, tuple))
+            or len(sequence) != 3
+        ):
             continue
         try:
             parsed = [float(item) for item in sequence]
@@ -172,7 +217,11 @@ def _fig12_matrix_region_values(candidate_params: dict[str, Any]) -> dict[int, l
 
 
 def _fig12_path_overlays_enabled(candidate_params: dict[str, Any]) -> bool:
-    value = candidate_params.get("fig12_path_overlays") if isinstance(candidate_params, dict) else None
+    value = (
+        candidate_params.get("fig12_path_overlays")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     return bool(value) if isinstance(value, bool) else False
 
 
@@ -183,7 +232,9 @@ def _fig12_path_overlay_stroke_width(candidate_params: dict[str, Any]) -> float:
         else None
     )
     try:
-        width = FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH if value is None else float(value)
+        width = (
+            FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH if value is None else float(value)
+        )
     except (TypeError, ValueError):
         width = FIG12_DEFAULT_PATH_OVERLAY_STROKE_WIDTH
     return max(0.25, min(1.0, width))
@@ -205,7 +256,11 @@ def _fig12_path_overlay_color(candidate_params: dict[str, Any]) -> str:
 
 
 def _fig12_axis_title_overlays_enabled(candidate_params: dict[str, Any]) -> bool:
-    value = candidate_params.get("fig12_axis_title_overlays") if isinstance(candidate_params, dict) else None
+    value = (
+        candidate_params.get("fig12_axis_title_overlays")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     return bool(value) if isinstance(value, bool) else False
 
 
@@ -221,7 +276,9 @@ def _add_fig12_axis_title_overlay(
 ) -> bool:
     """Add a page-coordinate rich-text axis title with stable post-reopen geometry."""
     try:
-        label = layer.add_label(rf"\f:{FIG12_AXIS_FONT}({text})", float(x), _page_y(float(y)))
+        label = layer.add_label(
+            rf"\f:{FIG12_AXIS_FONT}({text})", float(x), _page_y(float(y))
+        )
         if label is None:
             return False
         _set_object_name(label, name)
@@ -270,7 +327,7 @@ def _fig12_boundary_svg(
     y0 = max(0, int(round(top_pct / 100.0 * height)) + 1)
     x1 = min(width, int(round((left_pct + width_pct) / 100.0 * width)) - 1)
     y1 = min(height, int(round((top_pct + height_pct) / 100.0 * height)) - 1)
-    classes, valid = _classify_fig12_palette_pixels(rgb[y0:y1 + 1, x0:x1 + 1])
+    classes, valid = _classify_fig12_palette_pixels(rgb[y0 : y1 + 1, x0 : x1 + 1])
     classes = _fill_invalid_class_regions(classes, valid)
     crop_height, crop_width = classes.shape
     paths: list[str] = []
@@ -330,14 +387,24 @@ def _add_fig12_path_overlay(
     with tempfile.TemporaryDirectory(prefix="originplot_fig12_") as temp_dir:
         svg_path = Path(temp_dir) / f"boundary_{panel_index}.svg"
         contour_count, path_count = _fig12_boundary_svg(
-            panel["name"], source_crop, svg_path, stroke_width=stroke_width, stroke_color=stroke_color
+            panel["name"],
+            source_crop,
+            svg_path,
+            stroke_width=stroke_width,
+            stroke_color=stroke_color,
         )
         layer.lt_exec(f'draw -paths {name} "{svg_path.as_posix()}";')
-        objects = [item for item in layer.obj.GraphObjects if str(item.GetName()).upper() == name.upper()]
+        objects = [
+            item
+            for item in layer.obj.GraphObjects
+            if str(item.GetName()).upper() == name.upper()
+        ]
         if not objects:
             raise RuntimeError(f"Fig12 boundary path object was not created: {name}")
         obj = objects[-1]
-    left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[panel["name"]]
+    left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[
+        panel["name"]
+    ]
     # The SVG crop already excludes the one-pixel frame border. Keep the
     # imported object on the exact source panel frame so Origin's scaling does
     # not introduce a second artificial inset.
@@ -351,7 +418,9 @@ def _add_fig12_path_overlay(
         obj.SetDX(width)
         obj.SetDY(height)
     except Exception as exc:
-        raise RuntimeError(f"Fig12 boundary path coordinate binding failed: {exc}") from exc
+        raise RuntimeError(
+            f"Fig12 boundary path coordinate binding failed: {exc}"
+        ) from exc
     expected_names.append(name)
     required_graphobject_contracts[name] = {
         "object_type": FIG12_PATH_OVERLAY_TYPE,
@@ -380,10 +449,14 @@ def _add_fig12_path_overlay(
     }
 
 
-def _fig12_data_to_page(panel: dict[str, Any], x: float, y: float) -> tuple[float, float]:
+def _fig12_data_to_page(
+    panel: dict[str, Any], x: float, y: float
+) -> tuple[float, float]:
     import math
 
-    left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[panel["name"]]
+    left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[
+        panel["name"]
+    ]
     left = left_pct / 100.0 * 805.0
     top = top_pct / 100.0 * HEIGHT
     width = width_pct / 100.0 * 805.0
@@ -391,17 +464,21 @@ def _fig12_data_to_page(panel: dict[str, Any], x: float, y: float) -> tuple[floa
     x_fraction = (float(x) - float(panel["xlim"][0])) / (
         float(panel["xlim"][1]) - float(panel["xlim"][0])
     )
-    y_fraction = (
-        math.log10(float(y)) - math.log10(float(panel["ylim"][0]))
-    ) / (
+    y_fraction = (math.log10(float(y)) - math.log10(float(panel["ylim"][0]))) / (
         math.log10(float(panel["ylim"][1])) - math.log10(float(panel["ylim"][0]))
     )
     source_y = top + (1.0 - y_fraction) * height
     return left + x_fraction * width, HEIGHT - source_y
 
 
-def _fig12_panel_layout_offsets(candidate_params: dict[str, Any]) -> dict[int, dict[str, float]]:
-    raw = candidate_params.get("fig12_panel_layout_offsets") if isinstance(candidate_params, dict) else None
+def _fig12_panel_layout_offsets(
+    candidate_params: dict[str, Any],
+) -> dict[int, dict[str, float]]:
+    raw = (
+        candidate_params.get("fig12_panel_layout_offsets")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     offsets = {index: {"dx": 0.0, "dy": 0.0} for index in range(3)}
     if not isinstance(raw, dict):
         return offsets
@@ -417,12 +494,18 @@ def _fig12_panel_layout_offsets(candidate_params: dict[str, Any]) -> dict[int, d
 
 
 def _fig12_matrix_mode(candidate_params: dict[str, Any]) -> str:
-    raw = candidate_params.get("fig12_matrix_mode") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig12_matrix_mode")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     value = str(raw or "source_palette_digitized")
     return value if value in FIG12_MATRIX_MODES else "source_palette_digitized"
 
 
-def _fig12_matrix_resolution(candidate_params: dict[str, Any]) -> tuple[int, int, float]:
+def _fig12_matrix_resolution(
+    candidate_params: dict[str, Any],
+) -> tuple[int, int, float]:
     raw = (
         candidate_params.get("fig12_matrix_resolution_scale")
         if isinstance(candidate_params, dict)
@@ -454,7 +537,11 @@ def _fig12_matrix_smoothing_sigma(candidate_params: dict[str, Any]) -> float:
 
 
 def _fig12_y_minor_ticks(candidate_params: dict[str, Any]) -> int:
-    raw = candidate_params.get("fig12_y_minor_ticks") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig12_y_minor_ticks")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     try:
         value = int(round(float(raw)))
     except (TypeError, ValueError):
@@ -478,15 +565,21 @@ def _apply_matrix_bias(
     return np.clip(adjusted, min(levels), max(levels))
 
 
-def _apply_matrix_region_values(matrix: Any, levels: list[float], targets: list[float] | None) -> Any:
+def _apply_matrix_region_values(
+    matrix: Any, levels: list[float], targets: list[float] | None
+) -> Any:
     if targets is None:
         return matrix
     import numpy as np
 
     high, middle, low = map(float, targets)
     if not (levels[0] <= low < levels[1] < middle < levels[2] < high <= levels[3]):
-        raise ValueError("Fig12 matrix region values must preserve low/middle/high contour classes")
-    source_high, source_middle, source_low = _fig12_threshold_centered_region_values(levels)
+        raise ValueError(
+            "Fig12 matrix region values must preserve low/middle/high contour classes"
+        )
+    source_high, source_middle, source_low = _fig12_threshold_centered_region_values(
+        levels
+    )
     values = np.asarray(matrix, dtype=float)
     remapped = np.interp(
         values,
@@ -500,7 +593,12 @@ def _set_layer_frame(layer: Any, frame: tuple[float, float, float, float]) -> No
     left, top, width, height = frame
     command = page_percent_layer_command(frame)
     layer.lt_exec(command)
-    for prop, value in {"left": left, "top": top, "width": width, "height": height}.items():
+    for prop, value in {
+        "left": left,
+        "top": top,
+        "width": width,
+        "height": height,
+    }.items():
         try:
             layer.set_float(prop, value)
         except Exception:
@@ -537,17 +635,33 @@ def _apply_three_region_palette(layer: Any) -> None:
             pass
 
 
-def _apply_contour_line_style(layer: Any) -> None:
+def _apply_contour_line_style(layer: Any, *, show_lines: bool) -> None:
+    """Style the colormap contour lines and set their final visibility.
+
+    Visibility is part of this block on purpose. The path-overlay route used to
+    enable the lines here (``showLines(1)`` plus ``updateScale()``) and then
+    disable them in a separate, uncommitted ``showLines(0)``. That round trip
+    left the exported page dependent on whether the second command took effect:
+    roughly one run in fourteen kept the lines, doubling the boundary that the
+    type-34 overlay already draws. Setting the final state inside the one
+    committed block removes the round trip.
+
+    Every declared z-level is styled. The previous version wrote only
+    ``lineColor1..3`` and ``lineWidth1..3`` while each panel declares four
+    levels, so the fourth line fell back to Origin's default black -- which is
+    exactly what the stray pure-black segments in the failing exports were.
+    """
     red, green, blue = FIG12_CONTOUR_LINE_COLOR
     width = FIG12_CONTOUR_LINE_WIDTH
+    slots = "".join(
+        f"layer.cmap.lineColor{index}=color({red},{green},{blue}); "
+        f"layer.cmap.lineWidth{index}={width:g}; "
+        for index in range(1, FIG12_CONTOUR_LINE_SLOTS + 1)
+    )
     layer.lt_exec(
-        f"layer.cmap.lineColor1=color({red},{green},{blue}); "
-        f"layer.cmap.lineColor2=color({red},{green},{blue}); "
-        f"layer.cmap.lineColor3=color({red},{green},{blue}); "
-        f"layer.cmap.lineWidth1={width:g}; "
-        f"layer.cmap.lineWidth2={width:g}; "
-        f"layer.cmap.lineWidth3={width:g}; "
-        "layer.cmap.showLines(1); layer.cmap.showLabels(3); layer.cmap.updateScale();"
+        f"{slots}"
+        f"layer.cmap.showLines({1 if show_lines else 0}); "
+        "layer.cmap.showLabels(3); layer.cmap.updateScale();"
     )
 
 
@@ -575,7 +689,9 @@ def _add_native_graphobject(layer: Any, object_type: int, name: str) -> Any | No
         return None
 
 
-def _set_page_rectangle_geometry(obj: Any, bbox: tuple[float, float, float, float]) -> None:
+def _set_page_rectangle_geometry(
+    obj: Any, bbox: tuple[float, float, float, float]
+) -> None:
     x0, y0, x1, y1 = bbox
     lower = _page_y(y1)
     upper = _page_y(y0)
@@ -643,9 +759,13 @@ def _add_scale_label(
             label.set_int("attach", 2)
         except Exception:
             pass
-        origin_size = origin_font_size(size) if page_sized else max(
-            5.0,
-            min(48.0, float(size) * FIG12_ORIGIN_LABEL_SIZE_SCALES.get(role, 1.0)),
+        origin_size = (
+            origin_font_size(size)
+            if page_sized
+            else max(
+                5.0,
+                min(48.0, float(size) * FIG12_ORIGIN_LABEL_SIZE_SCALES.get(role, 1.0)),
+            )
         )
         for prop, value in {"x1": x, "y1": y, "fsize": origin_size}.items():
             try:
@@ -675,7 +795,9 @@ def _add_scale_label(
         return False
 
 
-def _add_page_label(layer: Any, name: str, text: str, x: float, y: float, size: float) -> bool:
+def _add_page_label(
+    layer: Any, name: str, text: str, x: float, y: float, size: float
+) -> bool:
     try:
         label = layer.add_label(text, x, _page_y(y))
         if label is None:
@@ -685,7 +807,11 @@ def _add_page_label(layer: Any, name: str, text: str, x: float, y: float, size: 
             label.set_int("attach", 2)
         except Exception:
             pass
-        for prop, value in {"x1": x, "y1": _page_y(y), "fsize": origin_font_size(size)}.items():
+        for prop, value in {
+            "x1": x,
+            "y1": _page_y(y),
+            "fsize": origin_font_size(size),
+        }.items():
             try:
                 label.set_float(prop, float(value))
             except Exception:
@@ -719,15 +845,22 @@ def _add_colorbar_overlay(
         records.append({"name": name, "bbox": (x0, top, x1, bottom), "color": color})
 
     title_name = f"fig12_cb_{panel_key}_ttl"
-    _add_page_label(layer, title_name, "lnZ", x0 + 5.0, y0 - 18.0, label_sizes["colorbar_title"])
+    _add_page_label(
+        layer, title_name, "lnZ", x0 + 5.0, y0 - 18.0, label_sizes["colorbar_title"]
+    )
     required_graphobject_contracts[title_name] = {"attach": 2, "text_contains": "lnZ"}
     expected_names.append(title_name)
 
     for index, value in enumerate(reversed(levels)):
         y = y0 + index * segment_height
         label_name = f"fig12_cb_{panel_key}_k{index + 1}"
-        _add_page_label(layer, label_name, value, x1 + 10.0, y + 4.0, label_sizes["colorbar_tick"])
-        required_graphobject_contracts[label_name] = {"attach": 2, "text_contains": value}
+        _add_page_label(
+            layer, label_name, value, x1 + 10.0, y + 4.0, label_sizes["colorbar_tick"]
+        )
+        required_graphobject_contracts[label_name] = {
+            "attach": 2,
+            "text_contains": value,
+        }
         expected_names.append(label_name)
 
     return {
@@ -744,8 +877,12 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     fresh_source = load_fresh_figure_data(candidate_params, "fig12")
     matrix_mode = _fig12_matrix_mode(candidate_params)
     if matrix_mode == "analytic_fallback":
-        raise RuntimeError("E127_FRESH_SOURCE_REQUIRED: Fig12 analytic fallback is forbidden in a fresh rebuild")
-    matrix_nx, matrix_ny, matrix_resolution_scale = _fig12_matrix_resolution(candidate_params)
+        raise RuntimeError(
+            "E127_FRESH_SOURCE_REQUIRED: Fig12 analytic fallback is forbidden in a fresh rebuild"
+        )
+    matrix_nx, matrix_ny, matrix_resolution_scale = _fig12_matrix_resolution(
+        candidate_params
+    )
     matrix_smoothing_sigma = _fig12_matrix_smoothing_sigma(candidate_params)
     y_minor_ticks = _fig12_y_minor_ticks(candidate_params)
     matrix_source_crop = fresh_source["source_crop"]
@@ -767,7 +904,7 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     panel_layout_offsets = _fig12_panel_layout_offsets(candidate_params)
     canvas_size = (805, 590)
     page_size_inches = (8.05, 5.9)
-    page = create_hidden_graph_page(
+    page = create_visible_graph_page(
         op,
         lname="Fig12_source_calibrated_three_panel_contour",
         template="LINE",
@@ -796,14 +933,20 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             panel["matrix"], panel["levels"], matrix_region_values.get(index)
         )
         matrix_values = _apply_matrix_bias(
-            matrix_values, panel["levels"], matrix_biases[index], matrix_contrasts[index]
+            matrix_values,
+            panel["levels"],
+            matrix_biases[index],
+            matrix_contrasts[index],
         )
         worksheet_name = f"Fig12_{panel['name']}_worksheet_data"
         worksheet_book = op.new_book("w", lname=worksheet_name)
         worksheet_sheet = worksheet_book[0]
         import numpy as np
+
         x_axis = np.linspace(panel["xlim"][0], panel["xlim"][1], matrix_values.shape[1])
-        y_axis = np.geomspace(panel["ylim"][0], panel["ylim"][1], matrix_values.shape[0])
+        y_axis = np.geomspace(
+            panel["ylim"][0], panel["ylim"][1], matrix_values.shape[0]
+        )
         xx, yy = np.meshgrid(x_axis, y_axis)
         z_values = matrix_values
         worksheet_sheet.from_list(0, xx.ravel().tolist(), lname="Temperature", axis="X")
@@ -831,7 +974,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             pass
         layer.set_xlim(*panel["xlim"])
         layer.set_ylim(*panel["ylim"])
-        layout_percent = _offset_layer_frame(panel["layout_percent"], panel_layout_offsets[index])
+        layout_percent = _offset_layer_frame(
+            panel["layout_percent"], panel_layout_offsets[index]
+        )
         _set_layer_frame(layer, layout_percent)
         remove_default_labels(layer)
         _apply_three_region_palette(layer)
@@ -839,8 +984,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             layer.lt_exec(
                 "layer.y.type=2; layer.x.from=250; layer.x.to=400; "
                 f"layer.y.minorTicks={y_minor_ticks}; "
-                "label -xb \"Temperature/\u2103\"; "
-                "label -yl \"Strain rate/s\\+(-1)\"; "
+                'label -xb "Temperature/\u2103"; '
+                'label -yl "Strain rate/s\\+(-1)"; '
                 "yl.rotate=90; "
                 f"layer.x.label.font=font({FIG12_AXIS_FONT}); "
                 f"layer.y.label.font=font({FIG12_AXIS_FONT}); "
@@ -859,9 +1004,10 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         # the published boundaries rather than equal-interval defaults.
         try:
             plot.zlevels = {"minors": 0, "levels": panel["levels"]}
-            _apply_contour_line_style(layer)
-            if path_overlays_enabled:
-                layer.lt_exec("layer.cmap.showLines(0);")
+            # The overlay route draws its own vectorized boundary, so the native
+            # contour lines must end up hidden. Ask for that final state
+            # directly rather than enabling then disabling them.
+            _apply_contour_line_style(layer, show_lines=not path_overlays_enabled)
         except Exception:
             pass
         try:
@@ -881,7 +1027,13 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
                 "size": label_sizes["panel"],
             },
             *[
-                {"role": "contour", "text": text, "x": x, "y": y, "size": label_sizes["contour"]}
+                {
+                    "role": "contour",
+                    "text": text,
+                    "x": x,
+                    "y": y,
+                    "size": label_sizes["contour"],
+                }
                 for x, y, text in panel["labels"]
             ],
             *[
@@ -904,7 +1056,13 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             if path_overlays_enabled:
                 page_x, page_y = _fig12_data_to_page(panel, record["x"], record["y"])
                 pending_overlay_labels.append(
-                    {"panel": panel, "record": record, "name": object_name, "x": page_x, "y": page_y}
+                    {
+                        "panel": panel,
+                        "record": record,
+                        "name": object_name,
+                        "x": page_x,
+                        "y": page_y,
+                    }
                 )
             else:
                 created = _add_scale_label(
@@ -1006,7 +1164,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     y_title_dy = (60.0, 60.0, 65.0)
     if axis_title_overlays_enabled:
         for index, panel in enumerate(panels):
-            left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[panel["name"]]
+            left_pct, top_pct, width_pct, height_pct = FIG12_SOURCE_FRAMES_PERCENT[
+                panel["name"]
+            ]
             left = left_pct / 100.0 * float(canvas_size[0])
             top = top_pct / 100.0 * HEIGHT
             width = width_pct / 100.0 * float(canvas_size[0])
@@ -1031,8 +1191,14 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
                 rotate=90.0,
             )
             expected_names_by_layer[3].extend([axis_x_name, axis_y_name])
-            required_graphobject_contracts[axis_x_name] = {"attach": 2, "text_contains": "Temperature"}
-            required_graphobject_contracts[axis_y_name] = {"attach": 2, "text_contains": "Strain rate"}
+            required_graphobject_contracts[axis_x_name] = {
+                "attach": 2,
+                "text_contains": "Temperature",
+            }
+            required_graphobject_contracts[axis_y_name] = {
+                "attach": 2,
+                "text_contains": "Strain rate",
+            }
     colorbar_bboxes = [
         (333.0, 82.0, 367.0, 188.0),
         (720.0, 82.0, 754.0, 188.0),
@@ -1068,38 +1234,44 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     disable_speed_mode(page)
     source_groups: list[dict[str, Any]] = []
     for index, panel in enumerate(panels):
-        consumers: list[dict[str, Any]] = [{
-            "consumer_id": "editable_xyz_contour",
-            "kind": "plot",
-            "view": "canonical",
-            "layer_index": index,
-            "plot_index": 0,
-            "x_column": "A",
-            "y_column": "B",
-            "z_column": "C",
-        }]
+        consumers: list[dict[str, Any]] = [
+            {
+                "consumer_id": "editable_xyz_contour",
+                "kind": "plot",
+                "view": "canonical",
+                "layer_index": index,
+                "plot_index": 0,
+                "x_column": "A",
+                "y_column": "B",
+                "z_column": "C",
+            }
+        ]
         if path_overlays_enabled:
-            consumers.append({
-                "consumer_id": "editable_local_region_fill_and_boundaries",
-                "kind": "graphobject",
-                "view": "derived",
-                "derivation": "vectorize the same classified palette field used to sample the XYZ matrix",
-                "object_name": f"fig12_boundary_{['a', 'b', 'c'][index]}",
-            })
-        source_groups.append({
-            "group_id": f"fig12.{panel['name']}.region_field",
-            "canonical_source": {
-                "source_id": (
-                    f"candidate.source_crop::{panel['name']}::classified_palette_field"
-                    if matrix_mode != "analytic_fallback"
-                    else f"fig12.analytic_field::{panel['name']}"
-                ),
-                "kind": panel.get("matrix_source", matrix_mode),
-            },
-            "continuity": "categorical_region_field",
-            "same_worksheet": True,
-            "consumers": consumers,
-        })
+            consumers.append(
+                {
+                    "consumer_id": "editable_local_region_fill_and_boundaries",
+                    "kind": "graphobject",
+                    "view": "derived",
+                    "derivation": "vectorize the same classified palette field used to sample the XYZ matrix",
+                    "object_name": f"fig12_boundary_{['a', 'b', 'c'][index]}",
+                }
+            )
+        source_groups.append(
+            {
+                "group_id": f"fig12.{panel['name']}.region_field",
+                "canonical_source": {
+                    "source_id": (
+                        f"candidate.source_crop::{panel['name']}::classified_palette_field"
+                        if matrix_mode != "analytic_fallback"
+                        else f"fig12.analytic_field::{panel['name']}"
+                    ),
+                    "kind": panel.get("matrix_source", matrix_mode),
+                },
+                "continuity": "categorical_region_field",
+                "same_worksheet": True,
+                "consumers": consumers,
+            }
+        )
     return {
         "page_name": "Fig12_source_calibrated_three_panel_contour",
         "expected_plot_count": 3,
@@ -1110,7 +1282,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "panel_inventory": panel_inventory,
         "required_worksheet_books": required_worksheet_books,
         "max_direct_plot_worksheet_rows": 5000,
-        "declared_direct_plot_worksheet_rows": sum(int(panel["matrix"].size) for panel in panels),
+        "declared_direct_plot_worksheet_rows": sum(
+            int(panel["matrix"].size) for panel in panels
+        ),
         "fig12_levels_reapplied_after_palette": True,
         "fig12_contour_line_style_reapplied_after_levels": True,
         "fig12_native_contour_lines_requested_visible": not path_overlays_enabled,
@@ -1123,7 +1297,11 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fig12_axis_font": FIG12_AXIS_FONT,
         "fig12_axis_title_overlays": axis_title_overlays_enabled,
         "fig12_axis_title_overlay_geometry": {
-            "x": {"dx_from_panel_left": 54.0, "dy_from_panel_bottom": 20.0, "fsize": 10.0},
+            "x": {
+                "dx_from_panel_left": 54.0,
+                "dy_from_panel_bottom": 20.0,
+                "fsize": 10.0,
+            },
             "y": {
                 "dx_from_panel_left": list(y_title_dx),
                 "dy_from_panel_top": list(y_title_dy),
@@ -1140,7 +1318,14 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fig12_contour_line_width": FIG12_CONTOUR_LINE_WIDTH,
         "worksheet_binding_inventory": worksheet_binding_inventory,
         "direct_worksheet_plot_contracts": [
-            {"layer_index": index, "plot_index": 0, "plot_type_code": 243, "x_column": "A", "y_column": "B", "z_column": "C"}
+            {
+                "layer_index": index,
+                "plot_index": 0,
+                "plot_type_code": 243,
+                "x_column": "A",
+                "y_column": "B",
+                "z_column": "C",
+            }
             for index in range(3)
         ],
         "subplot_worksheet_contracts": [
@@ -1186,6 +1371,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "fresh_source_bundle_sha256": fresh_source["bundle_data_sha256"],
         "fresh_source_pdf_sha256": fresh_source["source_pdf_sha256"],
         "candidate_params": {
-            key: value for key, value in candidate_params.items() if not str(key).startswith("_")
+            key: value
+            for key, value in candidate_params.items()
+            if not str(key).startswith("_")
         },
     }

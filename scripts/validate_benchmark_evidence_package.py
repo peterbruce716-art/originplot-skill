@@ -34,14 +34,18 @@ def is_absolute_path_text(value: str) -> bool:
     return bool(re.match(r"^[A-Za-z]:[\\/]", text) or text.startswith("/"))
 
 
-def identity_consistency_failures(payloads: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def identity_consistency_failures(
+    payloads: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
     failures: list[dict[str, Any]] = []
     for field in IDENTITY_FIELDS:
         values: dict[str, str] = {}
         for name, payload in sorted(payloads.items()):
             value = payload.get(field)
             if value in {None, ""}:
-                failures.append({"code": "identity_field_missing", "entry": name, "field": field})
+                failures.append(
+                    {"code": "identity_field_missing", "entry": name, "field": field}
+                )
             else:
                 values[name] = str(value)
         unique = sorted(set(values.values()))
@@ -63,9 +67,17 @@ def sha256_bytes(data: bytes) -> str:
 def read_entries(path: Path) -> dict[str, bytes]:
     if path.is_file():
         with zipfile.ZipFile(path) as archive:
-            return {name.replace("\\", "/"): archive.read(name) for name in archive.namelist() if not name.endswith("/")}
+            return {
+                name.replace("\\", "/"): archive.read(name)
+                for name in archive.namelist()
+                if not name.endswith("/")
+            }
     root = path.resolve()
-    return {item.relative_to(root).as_posix(): item.read_bytes() for item in root.rglob("*") if item.is_file()}
+    return {
+        item.relative_to(root).as_posix(): item.read_bytes()
+        for item in root.rglob("*")
+        if item.is_file()
+    }
 
 
 def json_strings(value: Any):
@@ -90,13 +102,36 @@ def artifact_records(value: Any):
             yield from artifact_records(item)
 
 
+def artifact_run_identity_failure(
+    record: dict[str, Any], expected_run_id: str
+) -> dict[str, Any] | None:
+    actual = record.get("run_id")
+    path = record.get("path")
+    if actual in {None, ""}:
+        return {
+            "code": "artifact_run_id_missing",
+            "expected": expected_run_id,
+            "path": path,
+        }
+    if str(actual) != expected_run_id:
+        return {
+            "code": "artifact_run_id_mismatch",
+            "expected": expected_run_id,
+            "actual": str(actual),
+            "path": path,
+        }
+    return None
+
+
 def validate(path: Path) -> dict[str, Any]:
     entries = read_entries(path)
     basenames = {Path(name).name for name in entries}
     failures = []
     for required in sorted(REQUIRED_FILES):
         if required not in basenames:
-            failures.append({"code": "missing_required_evidence_file", "file": required})
+            failures.append(
+                {"code": "missing_required_evidence_file", "file": required}
+            )
     run_artifacts = None
     report = None
     for name in sorted(entries):
@@ -111,7 +146,9 @@ def validate(path: Path) -> dict[str, Any]:
         try:
             payload = json.loads(data.decode("utf-8-sig"))
         except Exception as exc:
-            failures.append({"code": "json_parse_failed", "entry": name, "error": str(exc)})
+            failures.append(
+                {"code": "json_parse_failed", "entry": name, "error": str(exc)}
+            )
             continue
         if not isinstance(payload, dict):
             failures.append({"code": "json_root_not_object", "entry": name})
@@ -123,19 +160,53 @@ def validate(path: Path) -> dict[str, Any]:
             report = payload
         for text in json_strings(payload):
             if is_absolute_path_text(text):
-                failures.append({"code": "absolute_path_inside_json", "entry": name, "value": text})
+                failures.append(
+                    {"code": "absolute_path_inside_json", "entry": name, "value": text}
+                )
             if "run" in text.lower() and ("../" in text or "..\\" in text):
-                failures.append({"code": "external_run_reference_inside_json", "entry": name, "value": text})
+                failures.append(
+                    {
+                        "code": "external_run_reference_inside_json",
+                        "entry": name,
+                        "value": text,
+                    }
+                )
         for record in artifact_records(payload):
             rec_path = str(record.get("path") or "")
-            if record.get("provenance") != "live_same_run" or record.get("eligible_for_pass") is not True:
-                failures.append({"code": "artifact_not_live_same_run", "entry": name, "path": rec_path})
+            expected_run_id = str(payload.get("run_id") or "")
+            identity_failure = artifact_run_identity_failure(record, expected_run_id)
+            if identity_failure:
+                failures.append({"entry": name, **identity_failure})
+            if (
+                record.get("provenance") != "live_same_run"
+                or record.get("eligible_for_pass") is not True
+            ):
+                failures.append(
+                    {
+                        "code": "artifact_not_live_same_run",
+                        "entry": name,
+                        "path": rec_path,
+                    }
+                )
             if is_absolute_path_text(rec_path):
-                failures.append({"code": "absolute_artifact_record_path", "entry": name, "path": rec_path})
+                failures.append(
+                    {
+                        "code": "absolute_artifact_record_path",
+                        "entry": name,
+                        "path": rec_path,
+                    }
+                )
             rec_name = Path(rec_path).name
             matched = [entry for entry in entries if Path(entry).name == rec_name]
-            if record.get("exists") and record.get("sha256") and matched and sha256_bytes(entries[matched[0]]) != record.get("sha256"):
-                failures.append({"code": "sha256_mismatch", "entry": name, "path": rec_path})
+            if (
+                record.get("exists")
+                and record.get("sha256")
+                and matched
+                and sha256_bytes(entries[matched[0]]) != record.get("sha256")
+            ):
+                failures.append(
+                    {"code": "sha256_mismatch", "entry": name, "path": rec_path}
+                )
     required_json_payloads = {
         name: json_payloads[name]
         for name in sorted(REQUIRED_FILES)
@@ -144,15 +215,32 @@ def validate(path: Path) -> dict[str, Any]:
     failures.extend(identity_consistency_failures(required_json_payloads))
     if run_artifacts:
         text = json.dumps(run_artifacts, ensure_ascii=False).lower()
-        if "verified_seed_opju_copy" in text or "inherited_from_run" in text or "inherited_diagnostic" in text:
-            failures.append({"code": "inherited_or_seed_evidence_package_not_pass_eligible"})
+        if (
+            "verified_seed_opju_copy" in text
+            or "inherited_from_run" in text
+            or "inherited_diagnostic" in text
+        ):
+            failures.append(
+                {"code": "inherited_or_seed_evidence_package_not_pass_eligible"}
+            )
     if report and report.get("status") != "pass":
-        failures.append({"code": "semantic_benchmark_not_pass", "status": report.get("status")})
-    return {"schema": "originplot.benchmark_evidence_package_check.v1", "protocol": "v5.8.9-p18_live_same_run", "path": path.name, "entry_count": len(entries), "status": "ok" if not failures else "failed", "failures": failures}
+        failures.append(
+            {"code": "semantic_benchmark_not_pass", "status": report.get("status")}
+        )
+    return {
+        "schema": "originplot.benchmark_evidence_package_check.v1",
+        "protocol": "v5.8.9-p18_live_same_run",
+        "path": path.name,
+        "entry_count": len(entries),
+        "status": "ok" if not failures else "failed",
+        "failures": failures,
+    }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate a v5.5 live same-run OriginPlot evidence package.")
+    parser = argparse.ArgumentParser(
+        description="Validate a v5.5 live same-run OriginPlot evidence package."
+    )
     parser.add_argument("--path", required=True, type=Path)
     parser.add_argument("--json-out", type=Path)
     args = parser.parse_args()

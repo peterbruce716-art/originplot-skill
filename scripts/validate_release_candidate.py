@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import compileall
 import importlib.util
+import io
 import json
 import os
 import re
@@ -23,12 +24,12 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 VERSIONS = load_versions(SKILL_ROOT)
 EXPECTED_SKILL_VERSION = VERSIONS.contract_version
 EXPECTED_MIN_TESTS = 117
-REQUIRED_FIGURES = ("fig12", "fig15", "fig16")
+REQUIRED_FIGURES = ("fig3", "fig12", "fig14", "fig15", "fig16")
 RELEASE_GATE_ORDER = [
     "compileall",
     "run_all_tests",
     "random_directory_portability",
-    "validate_shareable_package_v5",
+    "validate_shareable_package_v6",
     "absolute_path_scan",
     "cache_temp_artifact_scan",
     "report_version_consistency",
@@ -58,7 +59,9 @@ def release_status(gates: dict[str, dict[str, Any]]) -> str:
     return "not_release_ready"
 
 
-def run_process(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> dict[str, Any]:
+def run_process(
+    command: list[str], *, cwd: Path, env: dict[str, str] | None = None
+) -> dict[str, Any]:
     completed = subprocess.run(
         command,
         cwd=str(cwd),
@@ -165,19 +168,36 @@ def portability_gate(skill_root: Path) -> dict[str, Any]:
 
 
 def build_and_validate_shareable_gate(skill_root: Path) -> tuple[dict[str, Any], bytes]:
-    builder = load_module("originplot_p12_package_builder", skill_root / "scripts" / "build_shareable_package.py")
-    validator = load_module(
-        "originplot_p12_package_validator", skill_root / "scripts" / "validate_shareable_package_v5.py"
+    """Build and validate the v6 shareable package.
+
+    The v5 gate was retired. scripts/validate_shareable_package_v5.py still
+    requires eight paths that the v6 restructure moved into benchmarks/aa2195
+    or removed outright, so it could not pass on a v6 tree at all. The v6
+    builder and validator describe the package this repository actually ships
+    and are what CI builds and checks.
+
+    The returned bytes stay part of the contract: absolute_path_scan and
+    cache_temp_artifact_scan run over this same archive.
+    """
+    builder = load_module(
+        "originplot_v6_package_builder",
+        skill_root / "scripts" / "build_shareable_package_v6.py",
     )
-    with tempfile.TemporaryDirectory(prefix="originplot_p12_package_") as tmp:
-        zip_path = Path(tmp) / "originplot-skill-p12.zip"
-        build = builder.build_zip(skill_root, zip_path)
-        validation = validator.validate(zip_path)
+    validator = load_module(
+        "originplot_v6_package_validator",
+        skill_root / "scripts" / "validate_shareable_package_v6.py",
+    )
+    with tempfile.TemporaryDirectory(prefix="originplot_v6_package_") as tmp:
+        zip_path = Path(tmp) / "originplot-skill-v6.zip"
+        builder.build(skill_root, zip_path)
+        failures = list(validator.validate(zip_path))
         data = zip_path.read_bytes()
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        entry_count = len(archive.namelist())
     return {
-        "status": "ok" if validation.get("status") == "ok" else "failed",
-        "entry_count": build.get("entry_count"),
-        "validation_failures": validation.get("failures", []),
+        "status": "ok" if not failures else "failed",
+        "entry_count": entry_count,
+        "validation_failures": failures,
     }, data
 
 
@@ -186,7 +206,10 @@ def iter_zip_text(zip_bytes: bytes):
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
         for name in archive.namelist():
-            if name.endswith("/") or Path(name).suffix.lower() not in TEXT_SCAN_SUFFIXES:
+            if (
+                name.endswith("/")
+                or Path(name).suffix.lower() not in TEXT_SCAN_SUFFIXES
+            ):
                 continue
             try:
                 yield name, archive.read(name).decode("utf-8-sig")
@@ -213,7 +236,10 @@ def cache_scan_gate(zip_bytes: bytes) -> dict[str, Any]:
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as archive:
         for name in archive.namelist():
             parts = set(Path(name).parts)
-            if parts.intersection(CACHE_PARTS) or Path(name).suffix.lower() in CACHE_SUFFIXES:
+            if (
+                parts.intersection(CACHE_PARTS)
+                or Path(name).suffix.lower() in CACHE_SUFFIXES
+            ):
                 findings.append(name)
     return {"status": "ok" if not findings else "failed", "findings": findings}
 
@@ -222,10 +248,16 @@ def report_version_gate(skill_root: Path, reports: list[Path]) -> dict[str, Any]
     skill_text = (skill_root / "SKILL.md").read_text(encoding="utf-8-sig")
     failures: list[dict[str, Any]] = []
     if f"OriginPlot Skill v{VERSIONS.release_version}" not in skill_text:
-        failures.append({"code": "skill_version_mismatch", "expected": VERSIONS.release_version})
-    runner_text = (skill_root / "scripts" / "run_all_tests.py").read_text(encoding="utf-8-sig")
+        failures.append(
+            {"code": "skill_version_mismatch", "expected": VERSIONS.release_version}
+        )
+    runner_text = (skill_root / "scripts" / "run_all_tests.py").read_text(
+        encoding="utf-8-sig"
+    )
     if "load_versions" not in runner_text:
-        failures.append({"code": "runner_version_source_missing", "expected": "version.json"})
+        failures.append(
+            {"code": "runner_version_source_missing", "expected": "version.json"}
+        )
     for report in reports:
         if not report.exists():
             failures.append({"code": "report_missing", "report": report.name})
@@ -243,11 +275,17 @@ def flatten_plot_records(readback: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(page, dict):
             continue
         for layer in page.get("layers", []):
-            records.extend(record for record in layer.get("plot_details", []) if isinstance(record, dict))
+            records.extend(
+                record
+                for record in layer.get("plot_details", [])
+                if isinstance(record, dict)
+            )
     return records
 
 
-def validate_live_readback_payload(readback: dict[str, Any], *, figure_id: str) -> dict[str, Any]:
+def validate_live_readback_payload(
+    readback: dict[str, Any], *, figure_id: str
+) -> dict[str, Any]:
     plots = flatten_plot_records(readback)
     expected = 10 if figure_id == "fig15" else None
     required = [
@@ -275,7 +313,9 @@ def validate_live_readback_payload(readback: dict[str, Any], *, figure_id: str) 
         if missing:
             failures.append({"plot_index": index, "missing_or_invalid": missing})
     if expected is not None and len(plots) != expected:
-        failures.append({"code": "plot_count_mismatch", "expected": expected, "actual": len(plots)})
+        failures.append(
+            {"code": "plot_count_mismatch", "expected": expected, "actual": len(plots)}
+        )
     return {
         "status": "ok" if not failures else "failed",
         "figure_id": figure_id,
@@ -285,7 +325,9 @@ def validate_live_readback_payload(readback: dict[str, Any], *, figure_id: str) 
     }
 
 
-def parse_evidence_args(values: list[str]) -> tuple[dict[str, Path], list[dict[str, Any]]]:
+def parse_evidence_args(
+    values: list[str],
+) -> tuple[dict[str, Path], list[dict[str, Any]]]:
     mapping: dict[str, Path] = {}
     failures: list[dict[str, Any]] = []
     for value in values:
@@ -300,9 +342,14 @@ def parse_evidence_args(values: list[str]) -> tuple[dict[str, Path], list[dict[s
     return mapping, failures
 
 
-def benchmark_evidence_gate(skill_root: Path, evidence_dirs: dict[str, Path], parse_failures: list[dict[str, Any]]) -> dict[str, Any]:
+def benchmark_evidence_gate(
+    skill_root: Path,
+    evidence_dirs: dict[str, Path],
+    parse_failures: list[dict[str, Any]],
+) -> dict[str, Any]:
     validator = load_module(
-        "originplot_p12_evidence_validator", skill_root / "scripts" / "validate_benchmark_evidence_package.py"
+        "originplot_p12_evidence_validator",
+        skill_root / "scripts" / "validate_benchmark_evidence_package.py",
     )
     results: dict[str, Any] = {}
     failures = list(parse_failures)
@@ -315,32 +362,50 @@ def benchmark_evidence_gate(skill_root: Path, evidence_dirs: dict[str, Path], pa
         results[figure] = result
         if result.get("status") != "ok":
             failures.append({"code": "evidence_validation_failed", "figure_id": figure})
-    return {"status": "ok" if not failures else "failed", "results": results, "failures": failures}
+    return {
+        "status": "ok" if not failures else "failed",
+        "results": results,
+        "failures": failures,
+    }
 
 
 def live_readback_gate(evidence_dirs: dict[str, Path]) -> dict[str, Any]:
     fig15 = evidence_dirs.get("fig15")
     if fig15 is None:
-        return {"status": "failed", "failures": [{"code": "fig15_canary_evidence_missing"}]}
+        return {
+            "status": "failed",
+            "failures": [{"code": "fig15_canary_evidence_missing"}],
+        }
     inspection = fig15 / "inspection.json"
     if not inspection.exists():
         return {"status": "failed", "failures": [{"code": "fig15_inspection_missing"}]}
     try:
         payload = json.loads(inspection.read_text(encoding="utf-8-sig"))
     except Exception as exc:
-        return {"status": "failed", "failures": [{"code": "fig15_inspection_parse_failed", "error": str(exc)}]}
+        return {
+            "status": "failed",
+            "failures": [{"code": "fig15_inspection_parse_failed", "error": str(exc)}],
+        }
     return validate_live_readback_payload(payload, figure_id="fig15")
 
 
-def final_release_bundle_gate(skill_root: Path, release_bundle: Path | None) -> dict[str, Any]:
+def final_release_bundle_gate(
+    skill_root: Path, release_bundle: Path | None
+) -> dict[str, Any]:
     if release_bundle is None:
-        return {"status": "failed", "failures": [{"code": "final_release_bundle_missing"}]}
+        return {
+            "status": "failed",
+            "failures": [{"code": "final_release_bundle_missing"}],
+        }
     validator = load_module(
-        "originplot_p18_release_bundle_validator", skill_root / "scripts" / "validate_release_bundle.py"
+        "originplot_p18_release_bundle_validator",
+        skill_root / "scripts" / "validate_release_bundle.py",
     )
     result = validator.validate_release_bundle(release_bundle)
     return {
-        "status": "ok" if result.get("bundle_validation", {}).get("clean") else "failed",
+        "status": "ok"
+        if result.get("bundle_validation", {}).get("clean")
+        else "failed",
         **result,
     }
 
@@ -358,7 +423,7 @@ def validate_release(
     gates["run_all_tests"] = run_all_tests_gate(skill_root)
     gates["random_directory_portability"] = portability_gate(skill_root)
     share_gate, zip_bytes = build_and_validate_shareable_gate(skill_root)
-    gates["validate_shareable_package_v5"] = share_gate
+    gates["validate_shareable_package_v6"] = share_gate
     gates["absolute_path_scan"] = absolute_path_scan_gate(zip_bytes)
     gates["cache_temp_artifact_scan"] = cache_scan_gate(zip_bytes)
     gates["report_version_consistency"] = report_version_gate(skill_root, reports)
@@ -367,7 +432,9 @@ def validate_release(
         skill_root, evidence_dirs, parse_failures
     )
     gates["live_readback_validation"] = live_readback_gate(evidence_dirs)
-    gates["final_release_bundle_validation"] = final_release_bundle_gate(skill_root, release_bundle)
+    gates["final_release_bundle_validation"] = final_release_bundle_gate(
+        skill_root, release_bundle
+    )
     return {
         "schema": "originplot.release_candidate_validation.v1",
         "skill_version": EXPECTED_SKILL_VERSION,
@@ -388,7 +455,7 @@ def main() -> int:
         action="append",
         default=[],
         metavar="FIGURE=PATH",
-        help="Repeat for fig12, fig15, and fig16.",
+        help="Repeat for fig3, fig12, fig14, fig15, and fig16.",
     )
     parser.add_argument("--report", action="append", type=Path, default=[])
     parser.add_argument("--release-bundle", type=Path)
@@ -405,7 +472,11 @@ def main() -> int:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)
         args.json_out.write_text(text + "\n", encoding="utf-8")
     print(text)
-    return 0 if result["release_status"] == "release_ready_for_fig12_targeted_optimization" else 2
+    return (
+        0
+        if result["release_status"] == "release_ready_for_fig12_targeted_optimization"
+        else 2
+    )
 
 
 if __name__ == "__main__":

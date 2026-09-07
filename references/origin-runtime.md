@@ -2,7 +2,7 @@
 
 ## Preflight
 
-Formal live execution requires Windows, Origin 2022 with a valid license, Python 3.10 with `originpro`, administrator Python, and a visible administrator-started Origin instance. The batch runner recognizes the supported process names `Origin64`, `Origin_64`, `Origin_32`, and `Origin`; require exactly one visible instance and preserve its PID regardless of installed bitness. Administrator privilege is one continuous envelope from the first action that can feed a live run through template retrieval/inspection, contract and candidate materialization, build, save, detach, reopen, readback, export, evidence packaging, and cleanup. Run `python scripts/assert_admin_preflight.py --json-out <run-root>/admin_preflight.json` before those actions. Never start unelevated and elevate only a later helper. Verify that the target OPJU is not open and that no stale lock blocks saving.
+Formal live execution requires Windows, Origin 2022 with a valid license, Python 3.10 with `originpro`, administrator Python, and a visible administrator-started Origin instance. The batch runner recognizes the supported process names `Origin64`, `Origin_64`, `Origin_32`, and `Origin`; require exactly one visible instance and preserve its PID regardless of installed bitness. Before process selection, it force-stops only confirmed `Origin*.exe -Embedding` residue and records the cleanup; it never targets a visible Origin window. Any non-Embedding or still-running residue is a hard conflict. Administrator privilege is one continuous envelope from the first action that can feed a live run through template retrieval/inspection, contract and candidate materialization, build, save, detach, reopen, readback, export, evidence packaging, and cleanup. Run `python scripts/assert_admin_preflight.py --json-out <run-root>/admin_preflight.json` before those actions. Never start unelevated and elevate only a later helper. Verify that the target OPJU is not open and that no stale lock blocks saving.
 
 Do not run `origin_attach_smoke.py` as the default formal preflight. The smoke script is an explicit live-debug diagnostic that clears the active project. The default formal path is the candidate worker itself. Snapshot the visible Origin PID before `op.attach()`, verify the same PID and visible window immediately after attach, reject any new `-Embedding` process with `E123_ORIGIN_SESSION_IDENTITY_DRIFT`, and require the same PID for the reopen phase.
 
@@ -13,9 +13,9 @@ Keep the application, source worksheets, progress worksheet, and graph page visi
 Formal AA2195 builds attach to the authorized visible instance. Build and reopen are separate phases. Session cleanup belongs in `finally` or the session context manager:
 
 - attached session: `op.detach()`;
-- worker-owned diagnostic hidden session: `op.exit()`.
+- worker-owned diagnostic visible session: `op.exit()`; this compatibility route is visible but is not pass-eligible.
 
-Hidden sessions are diagnostic-only unless an explicit future contract promotes them. A constructor hang or modal prompt is a failed bounded worker route, not evidence.
+All Origin sessions used by the skill must remain visible; diagnostic sessions are visible but diagnostic-only unless an explicit future contract promotes them. A constructor hang or modal prompt is a failed bounded worker route, not evidence.
 
 ## Save/reopen closure
 

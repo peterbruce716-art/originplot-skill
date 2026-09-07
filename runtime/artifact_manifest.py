@@ -54,7 +54,9 @@ def file_record(
     if inherited_from_run:
         record["inherited_from_run"] = inherited_from_run
         record["inheritance_reason"] = inheritance_reason or "unspecified"
-        record["eligible_for_pass"] = False if eligible_for_pass is None else bool(eligible_for_pass)
+        record["eligible_for_pass"] = (
+            False if eligible_for_pass is None else bool(eligible_for_pass)
+        )
     elif eligible_for_pass is not None:
         record["eligible_for_pass"] = bool(eligible_for_pass)
     return record
@@ -85,7 +87,9 @@ def read_artifacts(path: str | Path, run_id: str = "originplot-run") -> dict[str
         if payload.get("schema") != SCHEMA:
             raise ValueError(f"artifact manifest schema must be {SCHEMA}")
         if payload.get("run_id") not in {None, run_id}:
-            raise ValueError(f"artifact manifest run_id mismatch: {payload.get('run_id')} != {run_id}")
+            raise ValueError(
+                f"artifact manifest run_id mismatch: {payload.get('run_id')} != {run_id}"
+            )
         return payload
     return empty_manifest(run_id)
 
@@ -96,7 +100,9 @@ def write_artifacts(path: str | Path, payload: dict[str, Any]) -> None:
     if payload.get("schema") != SCHEMA:
         raise ValueError(f"artifact manifest schema must be {SCHEMA}")
     data = (json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
-    fd, temp_name = tempfile.mkstemp(prefix=manifest_path.name + ".", suffix=".tmp", dir=str(manifest_path.parent))
+    fd, temp_name = tempfile.mkstemp(
+        prefix=manifest_path.name + ".", suffix=".tmp", dir=str(manifest_path.parent)
+    )
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
@@ -109,12 +115,16 @@ def write_artifacts(path: str | Path, payload: dict[str, Any]) -> None:
             temp_path.unlink()
 
 
-def update_artifacts(path: str | Path, run_id: str, updates: dict[str, Any]) -> dict[str, Any]:
+def update_artifacts(
+    path: str | Path, run_id: str, updates: dict[str, Any]
+) -> dict[str, Any]:
     payload = read_artifacts(path, run_id=run_id)
     payload.setdefault("schema", SCHEMA)
     payload.setdefault("run_id", run_id)
     if payload["run_id"] != run_id:
-        raise ValueError(f"artifact manifest run_id mismatch: {payload['run_id']} != {run_id}")
+        raise ValueError(
+            f"artifact manifest run_id mismatch: {payload['run_id']} != {run_id}"
+        )
     for key, value in updates.items():
         if key == "operations":
             payload.setdefault("operations", [])
@@ -134,12 +144,19 @@ def update_artifacts(path: str | Path, run_id: str, updates: dict[str, Any]) -> 
 def context_paths(context: dict[str, Any]) -> tuple[Path, Path, str]:
     run_dir = Path(context.get("run_dir") or ".").resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
-    artifacts_path = Path(context.get("artifact_manifest") or run_dir / "run_artifacts.json").resolve()
+    artifacts_path = Path(
+        context.get("artifact_manifest") or run_dir / "run_artifacts.json"
+    ).resolve()
     run_id = str(context.get("run_id") or run_dir.name or "originplot-run")
     return run_dir, artifacts_path, run_id
 
 
-def note_operation(context: dict[str, Any], operation: dict[str, Any], status: str, extra: dict[str, Any] | None = None) -> None:
+def note_operation(
+    context: dict[str, Any],
+    operation: dict[str, Any],
+    status: str,
+    extra: dict[str, Any] | None = None,
+) -> None:
     _, artifacts_path, run_id = context_paths(context)
     record = {
         "seq": operation.get("seq"),
@@ -176,17 +193,43 @@ def walk_artifact_records(value: Any) -> list[dict[str, Any]]:
 def same_run_failures(payload: dict[str, Any]) -> list[dict[str, Any]]:
     run_id = str(payload.get("run_id") or "")
     failures: list[dict[str, Any]] = []
+    if not run_id:
+        failures.append({"code": "ARTIFACT_MANIFEST_RUN_ID_MISSING"})
     for record in walk_artifact_records(payload):
         record_run = record.get("run_id")
         if record.get("inherited_from_run"):
             if record.get("eligible_for_pass") is not False:
-                failures.append({"code": "INHERITED_ARTIFACT_ELIGIBLE_FOR_PASS", "path": record.get("path")})
+                failures.append(
+                    {
+                        "code": "INHERITED_ARTIFACT_ELIGIBLE_FOR_PASS",
+                        "path": record.get("path"),
+                    }
+                )
             continue
-        if record_run and run_id and record_run != run_id:
-            failures.append({"code": "ARTIFACT_RUN_ID_MISMATCH", "expected": run_id, "actual": record_run, "path": record.get("path")})
+        if not record_run:
+            failures.append(
+                {
+                    "code": "ARTIFACT_RUN_ID_MISSING",
+                    "expected": run_id,
+                    "path": record.get("path"),
+                }
+            )
+        elif run_id and record_run != run_id:
+            failures.append(
+                {
+                    "code": "ARTIFACT_RUN_ID_MISMATCH",
+                    "expected": run_id,
+                    "actual": record_run,
+                    "path": record.get("path"),
+                }
+            )
     return failures
 
 
 def has_seed_fallback(payload: dict[str, Any]) -> bool:
     text = json.dumps(payload, ensure_ascii=False).lower()
-    return "verified_seed_opju_copy" in text or "seed fallback" in text or "seed_opju" in text
+    return (
+        "verified_seed_opju_copy" in text
+        or "seed fallback" in text
+        or "seed_opju" in text
+    )

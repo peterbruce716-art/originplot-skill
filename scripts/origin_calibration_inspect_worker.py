@@ -23,12 +23,19 @@ from adapters.inspection.adapter import (  # noqa: E402
 from runtime.editable_opju import open_opju_editable  # noqa: E402
 
 
-GRAPHOBJECT_PROBE_NAMES = ["probe_rect_01", "probe_line_01", "probe_text_01", "probe_circle_01"]
+GRAPHOBJECT_PROBE_NAMES = [
+    "probe_rect_01",
+    "probe_line_01",
+    "probe_text_01",
+    "probe_circle_01",
+]
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def page_name(page: Any) -> str:
@@ -55,8 +62,12 @@ def bbox_delta(before: list[int] | None, after: list[int] | None) -> list[int] |
 def image_similarity(before: Path, after: Path) -> float:
     if not before.exists() or not after.exists():
         return 0.0
-    a = np.asarray(Image.open(before).convert("RGB").resize((360, 240)), dtype=np.float32)
-    b = np.asarray(Image.open(after).convert("RGB").resize((360, 240)), dtype=np.float32)
+    a = np.asarray(
+        Image.open(before).convert("RGB").resize((360, 240)), dtype=np.float32
+    )
+    b = np.asarray(
+        Image.open(after).convert("RGB").resize((360, 240)), dtype=np.float32
+    )
     return float(1.0 - np.mean(np.abs(a - b)) / 255.0)
 
 
@@ -118,12 +129,15 @@ def palette_metrics(path: Path) -> dict[str, Any]:
         "green_iou": iou(green_roi, thirds[1]),
         "blue_iou": iou(blue_roi, thirds[2]),
         "purple_region_absent": float(np.count_nonzero(purple) / colored_pixels) < 0.02,
-        "default_red_region_absent": float(np.count_nonzero(red) / colored_pixels) < 0.02,
+        "default_red_region_absent": float(np.count_nonzero(red) / colored_pixels)
+        < 0.02,
         "main_plot_bbox": [x1, y1, x2, y2],
     }
 
 
-def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) -> dict[str, Any]:
+def inspect_project(
+    project: Path, pre_export_dir: Path, post_export_dir: Path
+) -> dict[str, Any]:
     import originpro as op  # type: ignore
 
     payload: dict[str, Any] = {
@@ -133,7 +147,7 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
         "pages": {},
         "probe_evidence": {},
     }
-    op.set_show(False)
+    op.set_show(True)
     try:
         op.new(asksave=False)
         editable_evidence = open_opju_editable(op, project)
@@ -151,12 +165,16 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
                     labtalk_count = int(op.lt_int("count"))
                 except Exception:
                     pass
-                expected_object_names = GRAPHOBJECT_PROBE_NAMES if name == "GraphObjectProbe" else None
+                expected_object_names = (
+                    GRAPHOBJECT_PROBE_NAMES if name == "GraphObjectProbe" else None
+                )
                 layers.append(
                     {
                         "index": layer_index,
                         **inspect_layer_plots(layer, labtalk_count=labtalk_count),
-                        "graph_object_readback": inspect_graph_objects(layer, expected_names=expected_object_names),
+                        "graph_object_readback": inspect_graph_objects(
+                            layer, expected_names=expected_object_names
+                        ),
                     }
                 )
             widths = [720, 850, 1440] if name == "CoordinateMappingProbe" else [850]
@@ -185,11 +203,15 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
 
         graph_page = payload["pages"].get("GraphObjectProbe", {})
         graph_layers = graph_page.get("layers", [])
-        graph_readback = graph_layers[0].get("graph_object_readback", {}) if graph_layers else {}
+        graph_readback = (
+            graph_layers[0].get("graph_object_readback", {}) if graph_layers else {}
+        )
         payload["probe_evidence"]["graphobject_readback"] = {
             "post_reopen": {
                 "objects": graph_readback.get("objects", []),
-                "missing_names": graph_readback.get("missing_names", GRAPHOBJECT_PROBE_NAMES),
+                "missing_names": graph_readback.get(
+                    "missing_names", GRAPHOBJECT_PROBE_NAMES
+                ),
             }
         }
 
@@ -210,11 +232,15 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
                         "coordinate_delta": bbox_delta(before_bbox, after_bbox),
                     }
                 )
-        payload["probe_evidence"]["text_metrics"] = {"post_reopen": {"cases": text_cases}}
+        payload["probe_evidence"]["text_metrics"] = {
+            "post_reopen": {"cases": text_cases}
+        }
 
         coordinate_bboxes = {}
         for width in [720, 850, 1440]:
-            coordinate_bboxes[str(width)] = nonwhite_bbox(post_export_dir / f"CoordinateMappingProbe_{width}px.png")
+            coordinate_bboxes[str(width)] = nonwhite_bbox(
+                post_export_dir / f"CoordinateMappingProbe_{width}px.png"
+            )
         bbox_850 = coordinate_bboxes.get("850")
         width_850 = float(bbox_850[2] - bbox_850[0]) if bbox_850 else None
         height_850 = float(bbox_850[3] - bbox_850[1]) if bbox_850 else None
@@ -234,10 +260,17 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
         pre_palette = pre_export_dir / "ContourPaletteProbe_850px.png"
         post_palette = post_export_dir / "ContourPaletteProbe_850px.png"
         palette = palette_metrics(post_palette)
-        palette["post_reopen_palette_stable"] = image_similarity(pre_palette, post_palette) >= 0.98
-        palette["color_scale_status"] = "controlled" if all(
-            palette.get(key) for key in ["purple_region_absent", "default_red_region_absent"]
-        ) else "uncontrolled"
+        palette["post_reopen_palette_stable"] = (
+            image_similarity(pre_palette, post_palette) >= 0.98
+        )
+        palette["color_scale_status"] = (
+            "controlled"
+            if all(
+                palette.get(key)
+                for key in ["purple_region_absent", "default_red_region_absent"]
+            )
+            else "uncontrolled"
+        )
         payload["probe_evidence"]["contour_palette"] = {"post_reopen": palette}
         payload["status"] = "ok"
         return payload
@@ -246,14 +279,20 @@ def inspect_project(project: Path, pre_export_dir: Path, post_export_dir: Path) 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="OriginPlot v5.8.8 clean-session calibration inspection worker.")
+    parser = argparse.ArgumentParser(
+        description="OriginPlot v5.8.8 clean-session calibration inspection worker."
+    )
     parser.add_argument("--project", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--pre-export-dir", required=True, type=Path)
     parser.add_argument("--post-export-dir", required=True, type=Path)
     args = parser.parse_args()
     try:
-        payload = inspect_project(args.project.resolve(), args.pre_export_dir.resolve(), args.post_export_dir.resolve())
+        payload = inspect_project(
+            args.project.resolve(),
+            args.pre_export_dir.resolve(),
+            args.post_export_dir.resolve(),
+        )
         write_json(args.output, payload)
         return 0
     except Exception as exc:

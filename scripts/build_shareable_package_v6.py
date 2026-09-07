@@ -22,6 +22,9 @@ RUNTIME_FILES = {
     "schemas/operation-plan-v1.schema.json",
     "schemas/origin-worker-task-v2.schema.json",
     "schemas/origin-worker-result-v2.schema.json",
+    "docs/AGENT_QUICKSTART.md",
+    "docs/CAPABILITY_MATRIX.md",
+    "docs/DEVELOPMENT_GUIDE_v6.1.md",
 }
 
 PRODUCT_PREFIXES = ("originplot/",)

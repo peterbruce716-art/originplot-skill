@@ -3,7 +3,7 @@ name: originplot
 description: "AI workflow for auditable Origin/OriginPro scientific plotting. Inspect scientific tables, resolve semantic roles, create FigureSpec, compile OperationPlan, and execute verified editable Origin workflows when supported."
 ---
 
-# OriginPlot Skill v6.1.2
+# OriginPlot Skill v6.1.3
 
 ## Purpose
 
@@ -26,6 +26,22 @@ Keep these layers separate:
 - plotting specification
 - execution
 - evidence
+
+## Origin window visibility (mandatory)
+
+- The Origin application window must remain visible throughout every live Origin/OriginPro operation. Never call `op.set_show(False)`, create graph pages with `hidden=True`, or launch Origin with a hidden window style.
+- On this machine, use the installed Origin 2022 GUI under `C:\program\origin2022`; the live batch runner resolves an install directory or `Origin.exe` launcher to the real `Origin64.exe` GUI and starts it with `WindowStyle Normal`.
+- Before every live run, the runner force-stops only confirmed `Origin*.exe -Embedding` residue and records the stopped PIDs; visible Origin window processes are never targeted by this cleanup.
+- Formal attach requires exactly one visible, non-`-Embedding` Origin process with a stable PID. Any `-Embedding` process remaining after cleanup is a hard failure and must never be selected as the working Origin instance.
+- Any hidden Origin process that is not confirmed -Embedding is also a hard conflict; the runner never silently leaves a hidden Origin process alongside the visible working window.
+- The live runner restores and foregrounds the selected Origin main window before attach and before each figure worker, recording the window handle and presentation result in batch evidence.
+- The helper Python console may be redirected or hidden; that does not hide Origin. The Origin main window, worksheets, progress state, and graph page remain user-visible.
+- For a reproducible local run, pass `-LaunchOriginExe C:\program\origin2022`; the runner resolves the directory to the installed GUI and can use either `fresh_extract` or a previously validated source bundle.
+
+- Live benchmark runs sample the actual Origin window visibility and minimized state every 500 ms during each worker. Each figure must have valid pre-worker, post-worker, and post-display window evidence; foreground focus is recorded separately because users may switch applications.
+- After each figure completes, keep its Origin graph visible for 3 seconds by default (`-FigureDisplaySeconds 1..60`). Print figure progress and elapsed time; leave the final Origin window open for review.
+- The runner sets `visible_window_evidence_required=true` and invokes the auditor with `--require-visible-window-evidence`. Missing or hidden/minimized window samples fail this gate. Historical audits without this new evidence must not be described as having passed the new visibility gate.
+- Embedding cleanup must additionally verify the process has no main window before stopping it, preserving every window-bearing Origin process.
 
 ## Agent workflow
 

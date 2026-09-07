@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import ctypes
 import json
+import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
+
+
+def _powershell_executable() -> str:
+    standard = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
+    if standard.is_file():
+        return str(standard)
+    return shutil.which("pwsh") or shutil.which("powershell") or "powershell"
 
 
 def is_administrator_python() -> bool:
@@ -26,7 +34,7 @@ def has_visible_origin_process() -> bool:
     )
     try:
         completed = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", script],
+            [_powershell_executable(), "-NoProfile", "-Command", script],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -51,7 +59,7 @@ def origin_process_inventory() -> list[dict[str, Any]]:
     )
     try:
         completed = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", script],
+            [_powershell_executable(), "-NoProfile", "-Command", script],
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -62,7 +70,9 @@ def origin_process_inventory() -> list[dict[str, Any]]:
     except Exception:
         return []
     records = payload if isinstance(payload, list) else [payload]
-    return [record for record in records if isinstance(record, dict) and record.get("pid")]
+    return [
+        record for record in records if isinstance(record, dict) and record.get("pid")
+    ]
 
 
 def _is_embedding(record: dict[str, Any]) -> bool:
@@ -78,8 +88,12 @@ def _select_formal_origin_pid(
         if bool(record.get("visible")) and not _is_embedding(record)
     ]
     if expected_origin_pid is not None:
-        candidates = [record for record in candidates if int(record["pid"]) == int(expected_origin_pid)]
-    if len(candidates) != 1:
+        candidates = [
+            record
+            for record in candidates
+            if int(record["pid"]) == int(expected_origin_pid)
+        ]
+    if len(records) != 1 or len(candidates) != 1:
         raise RuntimeError(
             "E123_ORIGIN_SESSION_IDENTITY_DRIFT: formal attach requires exactly one "
             "visible non-Embedding Origin process with stable identity"
@@ -100,10 +114,17 @@ def validate_attached_origin_identity(
         int(record["pid"])
         for record in after
         if record.get("pid")
-        and int(record["pid"]) not in {int(item["pid"]) for item in before if item.get("pid")}
+        and int(record["pid"])
+        not in {int(item["pid"]) for item in before if item.get("pid")}
         and _is_embedding(record)
     )
-    if attached is None or not bool(attached.get("visible")) or _is_embedding(attached) or new_embedding_pids:
+    if (
+        len(after) != 1
+        or attached is None
+        or not bool(attached.get("visible"))
+        or _is_embedding(attached)
+        or new_embedding_pids
+    ):
         raise RuntimeError(
             "E123_ORIGIN_SESSION_IDENTITY_DRIFT: op.attach() did not preserve the "
             "administrator-started visible Origin process"
@@ -116,7 +137,9 @@ def validate_attached_origin_identity(
     }
 
 
-def assert_no_demo_watermark(path: str | Path, max_cyan_ratio: float = 0.0005) -> dict[str, Any]:
+def assert_no_demo_watermark(
+    path: str | Path, max_cyan_ratio: float = 0.0005
+) -> dict[str, Any]:
     import numpy as np
     from PIL import Image
 
@@ -125,7 +148,10 @@ def assert_no_demo_watermark(path: str | Path, max_cyan_ratio: float = 0.0005) -
         (image[:, :, 0] < 100)
         & (image[:, :, 1] > 180)
         & (image[:, :, 2] > 200)
-        & (np.abs(image[:, :, 1].astype(np.int16) - image[:, :, 2].astype(np.int16)) < 70)
+        & (
+            np.abs(image[:, :, 1].astype(np.int16) - image[:, :, 2].astype(np.int16))
+            < 70
+        )
     )
     ratio = float(np.mean(cyan_mask))
     if ratio > float(max_cyan_ratio):
@@ -133,7 +159,11 @@ def assert_no_demo_watermark(path: str | Path, max_cyan_ratio: float = 0.0005) -
             f"E122_ORIGIN_DEMO_EXPORT_BLOCKED: pre-save export contains demo cyan markings "
             f"(ratio={ratio:.8f}, max={float(max_cyan_ratio):.8f})"
         )
-    return {"status": "pass", "demo_cyan_ratio": ratio, "max_cyan_ratio": float(max_cyan_ratio)}
+    return {
+        "status": "pass",
+        "demo_cyan_ratio": ratio,
+        "max_cyan_ratio": float(max_cyan_ratio),
+    }
 
 
 @contextmanager
@@ -142,7 +172,7 @@ def origin_session(
     *,
     attach_existing_authorized: bool = True,
     require_administrator: bool = True,
-    allow_diagnostic_hidden: bool = False,
+    allow_diagnostic_new: bool = False,
     expected_origin_pid: int | None = None,
 ) -> Iterator[dict[str, Any]]:
     if require_administrator and not is_administrator_python():
@@ -153,8 +183,12 @@ def origin_session(
     if attach_existing_authorized:
         before = origin_process_inventory()
         _select_formal_origin_pid(before, expected_origin_pid)
-        op.attach()
+        attached = False
         try:
+            op.set_show(True)
+            op.attach()
+            attached = True
+            op.set_show(True)
             identity = validate_attached_origin_identity(
                 before,
                 origin_process_inventory(),
@@ -168,20 +202,24 @@ def origin_session(
                 **identity,
             }
         finally:
-            op.detach()
+            if attached:
+                try:
+                    op.set_show(True)
+                finally:
+                    op.detach()
         return
 
-    if not allow_diagnostic_hidden:
+    if not allow_diagnostic_new:
         raise RuntimeError(
             "E121_ATTACH_POLICY_VIOLATION: Formal OriginPlot runs must attach to an "
-            "administrator-opened visible Origin process; hidden/new sessions are diagnostic-only."
+            "administrator-opened visible Origin process; newly created sessions are diagnostic-only."
         )
 
-    op.set_show(False)
     try:
+        op.set_show(True)
         op.new(asksave=False)
         yield {
-            "strategy": "diagnostic_new_hidden_not_pass_eligible",
+            "strategy": "diagnostic_new_visible_not_pass_eligible",
             "admin_required": "false",
             "origin_process_policy": "diagnostic_only_not_formal_reproduction",
             "release": "op.exit()",

@@ -108,3 +108,11 @@ def test_v6_shareable_builder_excludes_cache_artifacts(tmp_path: Path) -> None:
 
     assert not should_include(cache_file, tmp_path)
     assert should_include(source_file, tmp_path)
+
+
+def test_v6_shareable_builder_includes_documented_guides(tmp_path: Path) -> None:
+    guide = tmp_path / "docs" / "AGENT_QUICKSTART.md"
+    guide.parent.mkdir(parents=True)
+    guide.write_text("# guide", encoding="utf-8")
+
+    assert should_include(guide, tmp_path)

@@ -43,6 +43,9 @@ jobs:
       - name: Skill doctor
         run: python scripts/skill_doctor.py
 
+      - name: Version consistency
+        run: python scripts/check_version_consistency.py
+
       - name: Ruff check
         run: |
           echo '=== Ruff check start ==='

@@ -262,4 +262,23 @@ CI also runs an installed-package isolation smoke test from outside the reposito
 
 Repository-authored code and documentation are MIT licensed. Origin/OriginPro, Origin templates, paper figures and user-provided data retain their own licenses/rights.
 
-Product version: **6.0.0**. Historical AA2195 benchmark evidence identity: **5.8.9-p18**.
+Product version: **6.1.3**. Historical AA2195 benchmark evidence identity: **5.8.9-p18**.
+
+For a licensed five-figure visible-window smoke benchmark, run Administrator PowerShell 7 with Origin 2022 installed at `C:\program\origin2022`:
+
+```powershell
+$reuseBatchRoot = Read-Host "Absolute path to a prior audited five-figure batch"
+if (-not (Test-Path -LiteralPath $reuseBatchRoot -PathType Container)) {
+  throw "Reuse batch root was not found."
+}
+$batchRoot = Join-Path (Get-Location) ("bench_live_visible_{0}" -f (Get-Date -Format "yyyyMMdd_HHmmss"))
+& .\scripts\run_five_figure_live_batch.ps1 `
+  -OutputRoot $batchRoot `
+  -SourceDataPolicy validated_reuse `
+  -ReuseBatchRoot $reuseBatchRoot `
+  -LaunchOriginExe "C:\program\origin2022"
+python .\scripts\audit_five_figure_batch.py --root $batchRoot --require-visible-window-evidence
+python .\scripts\compare_five_figure_batches.py `
+  --baseline $reuseBatchRoot `
+  --candidate $batchRoot
+```

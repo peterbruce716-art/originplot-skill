@@ -5,7 +5,7 @@ import math
 
 from .common_origin_utils import (
     axisless_layer_command,
-    create_hidden_graph_page,
+    create_visible_graph_page,
     disable_speed_mode,
     origin_font_size,
     page_dot_command,
@@ -91,22 +91,38 @@ def _bounded_float(value: Any, *, default: float = 0.0, limit: float = 8.0) -> f
 
 
 def _fig16_tuning(candidate_params: dict[str, Any]) -> dict[str, float]:
-    raw = candidate_params.get("fig16_tuning") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig16_tuning")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if not isinstance(raw, dict):
         raw = {}
     tuning: dict[str, float] = {}
     for key in FIG16_TUNING_KEYS:
         default = float(DEFAULT_FIG16_TUNING.get(key, 0.0))
-        fallback = candidate_params.get(key, default) if isinstance(candidate_params, dict) else default
+        fallback = (
+            candidate_params.get(key, default)
+            if isinstance(candidate_params, dict)
+            else default
+        )
         tuning[key] = _bounded_float(raw.get(key, fallback), default=default)
     return tuning
 
 
 def _fig16_text_sizes(candidate_params: dict[str, Any]) -> dict[str, float]:
-    raw_sizes = candidate_params.get("fig16_text_sizes") if isinstance(candidate_params, dict) else None
+    raw_sizes = (
+        candidate_params.get("fig16_text_sizes")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if not isinstance(raw_sizes, dict):
         raw_sizes = {}
-    raw_offsets = candidate_params.get("fig16_text_size_offsets") if isinstance(candidate_params, dict) else None
+    raw_offsets = (
+        candidate_params.get("fig16_text_size_offsets")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if not isinstance(raw_offsets, dict):
         raw_offsets = {}
     sizes: dict[str, float] = {}
@@ -115,7 +131,9 @@ def _fig16_text_sizes(candidate_params: dict[str, Any]) -> dict[str, float]:
         if absolute is None and isinstance(candidate_params, dict):
             absolute = candidate_params.get(f"{key}_font_size")
         if absolute is not None:
-            sizes[key] = max(6.0, min(18.0, _bounded_float(absolute, default=default, limit=18.0)))
+            sizes[key] = max(
+                6.0, min(18.0, _bounded_float(absolute, default=default, limit=18.0))
+            )
             continue
         offset = _bounded_float(raw_offsets.get(key), default=0.0, limit=2.0)
         sizes[key] = max(6.0, min(18.0, default + offset))
@@ -126,8 +144,14 @@ def _apply_fig16_color_candidate(
     geometry: dict[str, Any],
     candidate_params: dict[str, Any],
 ) -> dict[str, str]:
-    raw = candidate_params.get("fig16_colors") if isinstance(candidate_params, dict) else None
-    current = {str(key): str(value) for key, value in (geometry.get("colors") or {}).items()}
+    raw = (
+        candidate_params.get("fig16_colors")
+        if isinstance(candidate_params, dict)
+        else None
+    )
+    current = {
+        str(key): str(value) for key, value in (geometry.get("colors") or {}).items()
+    }
     if not isinstance(raw, dict):
         return current
     overrides: dict[str, str] = {}
@@ -239,7 +263,9 @@ def _set_rectangle_geometry(
     obj.SetDY(upper - lower)
 
 
-def _line_geometry_contract(x1: float, y1: float, x2: float, y2: float) -> dict[str, float]:
+def _line_geometry_contract(
+    x1: float, y1: float, x2: float, y2: float
+) -> dict[str, float]:
     return {
         "x1": float(x1),
         "y1": _origin_y(y1),
@@ -249,10 +275,24 @@ def _line_geometry_contract(x1: float, y1: float, x2: float, y2: float) -> dict[
     }
 
 
-def _draw_rectangle(layer: Any, name: str, bbox: tuple[int, int, int, int], color: str, *, dashed: bool = False, transparent: bool = False) -> None:
+def _draw_rectangle(
+    layer: Any,
+    name: str,
+    bbox: tuple[int, int, int, int],
+    color: str,
+    *,
+    dashed: bool = False,
+    transparent: bool = False,
+) -> None:
     red, green, blue = _rgb(color)
-    fill = f"fillColor=color({red},{green},{blue}); transparency=100" if transparent else f"fillColor=color({red},{green},{blue}); transparency=0"
-    line_color = f"color=color({red},{green},{blue})" if transparent else "color=color(0,0,0)"
+    fill = (
+        f"fillColor=color({red},{green},{blue}); transparency=100"
+        if transparent
+        else f"fillColor=color({red},{green},{blue}); transparency=0"
+    )
+    line_color = (
+        f"color=color({red},{green},{blue})" if transparent else "color=color(0,0,0)"
+    )
     style = "lineStyle=2" if dashed else "lineStyle=0"
     obj = _add_native_graphobject(layer, GRAPHOBJECT_RECTANGLE_TYPE, name)
     if obj is None:
@@ -359,7 +399,9 @@ def _draw_dashed_frame(
     records: list[dict[str, Any]] = []
     records.extend(_draw_dashed_line_segments(layer, f"{prefix}_top", x0, y0, x1, y0))
     records.extend(_draw_dashed_line_segments(layer, f"{prefix}_right", x1, y0, x1, y1))
-    records.extend(_draw_dashed_line_segments(layer, f"{prefix}_bottom", x1, y1, x0, y1))
+    records.extend(
+        _draw_dashed_line_segments(layer, f"{prefix}_bottom", x1, y1, x0, y1)
+    )
     records.extend(_draw_dashed_line_segments(layer, f"{prefix}_left", x0, y1, x0, y0))
     return records
 
@@ -396,7 +438,16 @@ def _draw_ellipse(
     )
 
 
-def _add_text(layer: Any, name: str, text: str, x: float, y: float, size: float, *, bold: bool = False) -> None:
+def _add_text(
+    layer: Any,
+    name: str,
+    text: str,
+    x: float,
+    y: float,
+    size: float,
+    *,
+    bold: bool = False,
+) -> None:
     weight = 700 if bold else 400
     label = layer.add_label(text, x, _origin_y(y))
     if label is None:
@@ -424,7 +475,9 @@ def _add_text(layer: Any, name: str, text: str, x: float, y: float, size: float,
             pass
 
 
-def _fresh_fig16_geometry(candidate_params: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def _fresh_fig16_geometry(
+    candidate_params: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     fresh_source = load_fresh_figure_data(candidate_params, "fig16")
     geometry = fig16_geometry()
     data = fresh_source["data"]
@@ -445,13 +498,15 @@ def _fresh_fig16_geometry(candidate_params: dict[str, Any]) -> tuple[dict[str, A
     return geometry, fresh_source
 
 
-def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
+def _build_graphobject_legacy(
+    op: Any, candidate_params: dict[str, Any]
+) -> dict[str, Any]:
     geometry, fresh_source = _fresh_fig16_geometry(candidate_params)
     effective_colors = _apply_fig16_color_candidate(geometry, candidate_params)
     tuning = _fig16_tuning(candidate_params)
     text_sizes = _fig16_text_sizes(candidate_params)
     page_size_inches = (7.2, 3.75)
-    page = create_hidden_graph_page(
+    page = create_visible_graph_page(
         op,
         lname="Fig16_source_calibrated_graphobjects",
         template="LINE",
@@ -504,7 +559,9 @@ def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict
     bar_inventory: list[dict[str, Any]] = []
     for record in geometry["bars"]:
         object_name = f"fig16_bar_{record['name']}"
-        bar_bbox = _shift_bar_bbox(record["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"])
+        bar_bbox = _shift_bar_bbox(
+            record["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"]
+        )
         _draw_rectangle(layer, object_name, bar_bbox, record["color"])
         require_object(object_name, geometry_bbox=bar_bbox)
         bar_inventory.append({**record, "bbox": bar_bbox, "object_name": object_name})
@@ -565,12 +622,28 @@ def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict
     for index, record in enumerate(geometry["legend"], start=1):
         box_name = f"fig16_legend_box_{index:02d}"
         text_name = f"fig16_legend_text_{index:02d}"
-        legend_bbox = _shift_bbox(record["bbox"], tuning["legend_dx"], tuning["legend_dy"])
+        legend_bbox = _shift_bbox(
+            record["bbox"], tuning["legend_dx"], tuning["legend_dy"]
+        )
         _draw_rectangle(layer, box_name, legend_bbox, record["color"])
-        _add_text(layer, text_name, record["label"], legend_bbox[2] + 8, legend_bbox[1] + 9, text_sizes["legend"])
+        _add_text(
+            layer,
+            text_name,
+            record["label"],
+            legend_bbox[2] + 8,
+            legend_bbox[1] + 9,
+            text_sizes["legend"],
+        )
         require_object(box_name, geometry_bbox=legend_bbox)
         require_object(text_name, text_contains=record["label"])
-        legend_inventory.append({**record, "bbox": legend_bbox, "box_object_name": box_name, "text_object_name": text_name})
+        legend_inventory.append(
+            {
+                **record,
+                "bbox": legend_bbox,
+                "box_object_name": box_name,
+                "text_object_name": text_name,
+            }
+        )
 
     stage_inventory: list[dict[str, Any]] = []
     for index, record in enumerate(geometry["stage_labels"], start=1):
@@ -724,7 +797,9 @@ def _build_graphobject_legacy(op: Any, candidate_params: dict[str, Any]) -> dict
     }
 
 
-def _append_path(xs: list[float], ys: list[float], points: list[tuple[float, float]]) -> None:
+def _append_path(
+    xs: list[float], ys: list[float], points: list[tuple[float, float]]
+) -> None:
     for x, y in points:
         xs.append(float(x))
         ys.append(_origin_y(float(y)))
@@ -732,7 +807,9 @@ def _append_path(xs: list[float], ys: list[float], points: list[tuple[float, flo
     ys.append(math.nan)
 
 
-def _append_chart_path(xs: list[float], ys: list[float], points: list[tuple[float, float]]) -> None:
+def _append_chart_path(
+    xs: list[float], ys: list[float], points: list[tuple[float, float]]
+) -> None:
     for x, y in points:
         xs.append(float(x))
         ys.append(float(y))
@@ -755,14 +832,26 @@ def _append_dashed_source_segment(
     offset = 0.0
     while offset < length:
         stop = min(offset + 4.0, length)
-        _append_chart_path(xs, ys, [
-            (float(start[0]) + ux * offset, _stack_chart_y(float(start[1]) + uy * offset)),
-            (float(start[0]) + ux * stop, _stack_chart_y(float(start[1]) + uy * stop)),
-        ])
+        _append_chart_path(
+            xs,
+            ys,
+            [
+                (
+                    float(start[0]) + ux * offset,
+                    _stack_chart_y(float(start[1]) + uy * offset),
+                ),
+                (
+                    float(start[0]) + ux * stop,
+                    _stack_chart_y(float(start[1]) + uy * stop),
+                ),
+            ],
+        )
         offset += 7.0
 
 
-def _style_native_plot(plot: Any, color: str, width: float, dotted: bool = False) -> None:
+def _style_native_plot(
+    plot: Any, color: str, width: float, dotted: bool = False
+) -> None:
     try:
         plot.color = color
     except Exception:
@@ -784,7 +873,11 @@ def _style_native_plot(plot: Any, color: str, width: float, dotted: bool = False
 
 
 def _fig16_column_gap(candidate_params: dict[str, Any]) -> float | None:
-    raw = candidate_params.get("fig16_column_gap_percent") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig16_column_gap_percent")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if raw is None:
         return None
     try:
@@ -794,7 +887,11 @@ def _fig16_column_gap(candidate_params: dict[str, Any]) -> float | None:
 
 
 def _fig16_group_frame_width(candidate_params: dict[str, Any]) -> float:
-    raw = candidate_params.get("fig16_group_frame_width") if isinstance(candidate_params, dict) else None
+    raw = (
+        candidate_params.get("fig16_group_frame_width")
+        if isinstance(candidate_params, dict)
+        else None
+    )
     if raw is None:
         return 0.5
     try:
@@ -809,7 +906,9 @@ def _fig16_background_color(candidate_params: dict[str, Any]) -> str | None:
     return _valid_hex_color(candidate_params.get("fig16_background_color"))
 
 
-def _style_float_column(plot: Any, color: str, gap_percent: float | None = None) -> None:
+def _style_float_column(
+    plot: Any, color: str, gap_percent: float | None = None
+) -> None:
     red, green, blue = _rgb(color)
     _style_native_plot(plot, color, 1.0)
     commands = [f"-pfb color({red},{green},{blue})", "-pbc color(0,0,0)"]
@@ -831,8 +930,14 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     group_frame_width = _fig16_group_frame_width(candidate_params)
     background_color = _fig16_background_color(candidate_params)
     page_size_inches = (7.2, 3.75)
-    page = create_hidden_graph_page(op, lname="Fig16_gid399_native_stackcolumn", template="STACKCOLUMN")
-    page.lt_exec(page_dot_command(*page_size_inches, page.get_float("resx"), page.get_float("resy")))
+    page = create_visible_graph_page(
+        op, lname="Fig16_gid399_native_stackcolumn", template="STACKCOLUMN"
+    )
+    page.lt_exec(
+        page_dot_command(
+            *page_size_inches, page.get_float("resx"), page.get_float("resy")
+        )
+    )
     disable_speed_mode(page)
     layer = page[0]
     layer.lt_exec(page_percent_layer_command((0.0, 0.0, 100.0, 100.0)))
@@ -872,21 +977,31 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         wh = bars_by_name[f"wh_{stage_index:02d}"]
         drv = bars_by_name[f"drv_{stage_index:02d}"]
         drx = bars_by_name[f"drx_{stage_index:02d}"]
-        wh_box = _shift_bar_bbox(wh["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"])
-        drv_box = _shift_bar_bbox(drv["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"])
-        drx_box = _shift_bar_bbox(drx["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"])
-        x_values.extend([
-            (wh_box[0] + wh_box[2]) / 2.0,
-            (drv_box[0] + drv_box[2]) / 2.0 + s_slot_x_offsets[stage_index - 1],
-        ])
+        wh_box = _shift_bar_bbox(
+            wh["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"]
+        )
+        drv_box = _shift_bar_bbox(
+            drv["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"]
+        )
+        drx_box = _shift_bar_bbox(
+            drx["bbox"], tuning["bar_top_dy"], tuning["bar_bottom_dy"]
+        )
+        x_values.extend(
+            [
+                (wh_box[0] + wh_box[2]) / 2.0,
+                (drv_box[0] + drv_box[2]) / 2.0 + s_slot_x_offsets[stage_index - 1],
+            ]
+        )
         wh_values.extend([float(wh_box[3] - wh_box[1]), 0.0])
         drv_values.extend([0.0, float(drv_box[3] - drv_box[1])])
         drx_values.extend([0.0, max(0.0, float(drx_box[3] - drx_box[1]))])
-        bar_inventory.extend([
-            {**wh, "bbox": wh_box, "worksheet_family": "WH"},
-            {**drv, "bbox": drv_box, "worksheet_family": "DRV"},
-            {**drx, "bbox": drx_box, "worksheet_family": "DRX"},
-        ])
+        bar_inventory.extend(
+            [
+                {**wh, "bbox": wh_box, "worksheet_family": "WH"},
+                {**drv, "bbox": drv_box, "worksheet_family": "DRV"},
+                {**drx, "bbox": drx_box, "worksheet_family": "DRX"},
+            ]
+        )
     sheet.from_list(0, x_values, lname="H_S_slot_x", axis="X")
     sheet.from_list(1, wh_values, lname="WH", axis="Y")
     sheet.from_list(2, drv_values, lname="DRV", axis="Y")
@@ -897,10 +1012,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         plot = layer.add_plot(sheet, colx=0, coly=column, type=213)
         _style_float_column(plot, effective_colors[family], column_gap_percent)
         stack_plots.append((plot, family))
-        direct_contracts.append({
-            "layer_index": 0, "plot_index": plot_index, "plot_type_code": 213,
-            "x_column": "A", "y_column": chr(ord("A") + column),
-        })
+        direct_contracts.append(
+            {
+                "layer_index": 0,
+                "plot_index": plot_index,
+                "plot_type_code": 213,
+                "x_column": "A",
+                "y_column": chr(ord("A") + column),
+            }
+        )
     # STACKCOLUMN supplies the native plot family; grouping activates its
     # cumulative stack semantics after the three Worksheet plots are added.
     layer.group(True, 0, 2)
@@ -916,15 +1036,19 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     for record in geometry["group_boxes"]:
         x0, y0, x1, y1 = record["bbox"]
         for start, end in (
-            ((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)),
-            ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)),
+            ((x0, y0), (x1, y0)),
+            ((x1, y0), (x1, y1)),
+            ((x1, y1), (x0, y1)),
+            ((x0, y1), (x0, y0)),
         ):
             _append_dashed_source_segment(frame_x, frame_y, start, end)
-        group_inventory.append({
-            **record,
-            "frame_route": "worksheet_xy_path",
-            "baseline_route": "native_column_bottom_edges_no_extra_baseline",
-        })
+        group_inventory.append(
+            {
+                **record,
+                "frame_route": "worksheet_xy_path",
+                "baseline_route": "native_column_bottom_edges_no_extra_baseline",
+            }
+        )
 
     circle_x: list[float] = []
     circle_y: list[float] = []
@@ -933,7 +1057,10 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         cx = float(record["x"]) + tuning["stage_circle_dx"]
         cy = float(record["y"]) + tuning["stage_circle_dy"]
         points = [
-            (cx + 9.0 * math.cos(2.0 * math.pi * step / 48.0), _stack_chart_y(cy + 9.0 * math.sin(2.0 * math.pi * step / 48.0)))
+            (
+                cx + 9.0 * math.cos(2.0 * math.pi * step / 48.0),
+                _stack_chart_y(cy + 9.0 * math.sin(2.0 * math.pi * step / 48.0)),
+            )
             for step in range(49)
         ]
         _append_chart_path(circle_x, circle_y, points)
@@ -948,10 +1075,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         sheet.from_list(y_col, ys, lname=f"{name}_y", axis="Y")
         plot = overlay.add_plot(sheet, colx=x_col, coly=y_col, type="line")
         _style_native_plot(plot, color, width, dotted=dotted)
-        direct_contracts.append({
-            "layer_index": 1, "plot_index": len(direct_contracts) - 3, "plot_type_code": 200,
-            "x_column": chr(ord("A") + x_col), "y_column": chr(ord("A") + y_col),
-        })
+        direct_contracts.append(
+            {
+                "layer_index": 1,
+                "plot_index": len(direct_contracts) - 3,
+                "plot_type_code": 200,
+                "x_column": chr(ord("A") + x_col),
+                "y_column": chr(ord("A") + y_col),
+            }
+        )
         column += 2
 
     required_graphobject_contracts: dict[str, dict[str, Any]] = {}
@@ -959,7 +1091,10 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     legend_names: list[str] = []
     legend_inventory: list[dict[str, Any]] = []
     legend_contracts: list[dict[str, Any]] = []
-    def add_text_contract(name: str, text: str, x: float, y: float, size: float, bold: bool = False) -> None:
+
+    def add_text_contract(
+        name: str, text: str, x: float, y: float, size: float, bold: bool = False
+    ) -> None:
         rich_text = f"\\f:Times New Roman({text})"
         label = overlay.add_label(rich_text, x, _stack_chart_y(y))
         if label is None:
@@ -976,10 +1111,29 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         required_graphobject_contracts[name] = {"attach": 2, "text_contains": text}
         expected_names.append(name)
 
-    add_text_contract("fig16_header_h", "H: Hardening level", 18 + tuning["header_dx"], 8 + tuning["header_dy"], text_sizes["header"])
-    add_text_contract("fig16_header_s", "S: Softening level", 18 + tuning["header_dx"], 28 + tuning["header_dy"], text_sizes["header"])
+    add_text_contract(
+        "fig16_header_h",
+        "H: Hardening level",
+        18 + tuning["header_dx"],
+        8 + tuning["header_dy"],
+        text_sizes["header"],
+    )
+    add_text_contract(
+        "fig16_header_s",
+        "S: Softening level",
+        18 + tuning["header_dx"],
+        28 + tuning["header_dy"],
+        text_sizes["header"],
+    )
     for record in geometry["group_boxes"]:
-        add_text_contract(f"fig16_group_label_{record['name'].lower()}", record["name"], record["bbox"][0] + 8 + tuning["group_label_dx"], 65 + tuning["group_label_dy"], text_sizes["group_label"], True)
+        add_text_contract(
+            f"fig16_group_label_{record['name'].lower()}",
+            record["name"],
+            record["bbox"][0] + 8 + tuning["group_label_dx"],
+            65 + tuning["group_label_dy"],
+            text_sizes["group_label"],
+            True,
+        )
     for index, record in enumerate(geometry["legend"], start=1):
         # Reopened Origin exports each plot-reference sample with a 2 px
         # border. These per-row corrections overlap the WH/DRV borders while
@@ -992,9 +1146,13 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         )
         object_name = f"fig16_legend_text_{index:02d}"
         legend_text = f"\\l({index}) {record['label']}"
-        legend_label = layer.add_label(legend_text, bbox[0], _stack_chart_y(bbox[1] - 6))
+        legend_label = layer.add_label(
+            legend_text, bbox[0], _stack_chart_y(bbox[1] - 6)
+        )
         if legend_label is None:
-            raise RuntimeError(f"Origin failed to create Fig16 plot-derived legend: {object_name}")
+            raise RuntimeError(
+                f"Origin failed to create Fig16 plot-derived legend: {object_name}"
+            )
         _set_object_name(legend_label, object_name)
         try:
             legend_label.set_int("attach", 2)
@@ -1003,21 +1161,28 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             legend_label.set_float("fsize", origin_font_size(text_sizes["legend"]))
         except Exception:
             pass
-        required_graphobject_contracts[object_name] = {"attach": 2, "text_contains": record["label"]}
-        legend_names.append(object_name)
-        legend_contracts.append({
-            "object_name": object_name,
-            "layer_index": 0,
-            "plot_numbers": [index],
+        required_graphobject_contracts[object_name] = {
+            "attach": 2,
             "text_contains": record["label"],
-        })
-        legend_inventory.append({
-            **record,
-            "bbox": bbox,
-            "plot_number": index,
-            "layer_index": 0,
-            "swatch_route": "plot_derived_legend_reference",
-        })
+        }
+        legend_names.append(object_name)
+        legend_contracts.append(
+            {
+                "object_name": object_name,
+                "layer_index": 0,
+                "plot_numbers": [index],
+                "text_contains": record["label"],
+            }
+        )
+        legend_inventory.append(
+            {
+                **record,
+                "bbox": bbox,
+                "plot_number": index,
+                "layer_index": 0,
+                "swatch_route": "plot_derived_legend_reference",
+            }
+        )
     for index, record in enumerate(geometry["stage_labels"], start=1):
         # Origin's exported Times New Roman glyphs have digit-specific side
         # bearings. These offsets center the reopened glyph bbox, not merely
@@ -1030,12 +1195,27 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             record["y"] - 9.5 + tuning["stage_text_dy"],
             text_sizes["stage"],
         )
-        add_text_contract(f"fig16_relation_text_{index:02d}", record["relation"], record["relation_x"] - 14 + tuning["relation_text_dx"], record["relation_y"] - 13 + tuning["relation_text_dy"], text_sizes["relation"])
+        add_text_contract(
+            f"fig16_relation_text_{index:02d}",
+            record["relation"],
+            record["relation_x"] - 14 + tuning["relation_text_dx"],
+            record["relation_y"] - 13 + tuning["relation_text_dy"],
+            text_sizes["relation"],
+        )
 
-    axis_contract = [{
-        "layer_index": 0, "x.showAxes": 0, "y.showAxes": 0, "x.showLabels": 0,
-        "y.showLabels": 0, "x.ticks": 0, "y.ticks": 0, "x.arrow.show": 0, "y.arrow.show": 0,
-    }]
+    axis_contract = [
+        {
+            "layer_index": 0,
+            "x.showAxes": 0,
+            "y.showAxes": 0,
+            "x.showLabels": 0,
+            "y.showLabels": 0,
+            "x.ticks": 0,
+            "y.ticks": 0,
+            "x.arrow.show": 0,
+            "y.arrow.show": 0,
+        }
+    ]
     layer.lt_exec("label -r Legend;")
     overlay.set_xlim(0.0, 720.0)
     overlay.set_ylim(-41.0, 334.0)
@@ -1044,64 +1224,81 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     disable_speed_mode(layer)
     disable_speed_mode(overlay)
     construction_visibility = reveal_graph_page(page)
-    source_groups: list[dict[str, Any]] = [{
-        "group_id": "fig16.h_s_stage_row_model",
-        "canonical_source": {
-            "source_id": "fig16_geometry.bars::H_S_stage_rows",
-            "kind": "paired_hardening_softening_stage_rows",
-        },
-        "continuity": "stacked_columns",
-        "same_worksheet": True,
-        "consumers": [
-            {
-                "consumer_id": family,
-                "kind": "plot",
-                "view": "canonical" if plot_index == 0 else "derived",
-                "derivation": None if plot_index == 0 else f"select {family} family from the same H/S stage rows",
-                "layer_index": 0,
-                "plot_index": plot_index,
-                "x_column": "A",
-                "y_column": chr(ord("B") + plot_index),
-            }
-            for plot_index, family in enumerate(("WH", "DRV", "DRX"))
-        ],
-    }]
-    for plot_index, (name, x_column, y_column, continuity) in enumerate((
-        ("group_frames", "E", "F", "nan_separated_xy"),
-        ("stage_circles", "G", "H", "nan_separated_xy"),
-    )):
-        source_groups.append({
-            "group_id": f"fig16.{name}",
+    source_groups: list[dict[str, Any]] = [
+        {
+            "group_id": "fig16.h_s_stage_row_model",
             "canonical_source": {
-                "source_id": f"fig16_geometry.{name}",
-                "kind": "source_calibrated_overlay_geometry",
+                "source_id": "fig16_geometry.bars::H_S_stage_rows",
+                "kind": "paired_hardening_softening_stage_rows",
             },
-            "continuity": continuity,
+            "continuity": "stacked_columns",
             "same_worksheet": True,
-            "consumers": [{
-                "consumer_id": name,
-                "kind": "plot",
-                "view": "canonical",
-                "layer_index": 1,
-                "plot_index": plot_index,
-                "x_column": x_column,
-                "y_column": y_column,
-            }],
-        })
+            "consumers": [
+                {
+                    "consumer_id": family,
+                    "kind": "plot",
+                    "view": "canonical" if plot_index == 0 else "derived",
+                    "derivation": None
+                    if plot_index == 0
+                    else f"select {family} family from the same H/S stage rows",
+                    "layer_index": 0,
+                    "plot_index": plot_index,
+                    "x_column": "A",
+                    "y_column": chr(ord("B") + plot_index),
+                }
+                for plot_index, family in enumerate(("WH", "DRV", "DRX"))
+            ],
+        }
+    ]
+    for plot_index, (name, x_column, y_column, continuity) in enumerate(
+        (
+            ("group_frames", "E", "F", "nan_separated_xy"),
+            ("stage_circles", "G", "H", "nan_separated_xy"),
+        )
+    ):
+        source_groups.append(
+            {
+                "group_id": f"fig16.{name}",
+                "canonical_source": {
+                    "source_id": f"fig16_geometry.{name}",
+                    "kind": "source_calibrated_overlay_geometry",
+                },
+                "continuity": continuity,
+                "same_worksheet": True,
+                "consumers": [
+                    {
+                        "consumer_id": name,
+                        "kind": "plot",
+                        "view": "canonical",
+                        "layer_index": 1,
+                        "plot_index": plot_index,
+                        "x_column": x_column,
+                        "y_column": y_column,
+                    }
+                ],
+            }
+        )
     return {
         "page_name": "Fig16_gid399_native_stackcolumn",
         "expected_plot_count": 5,
         "expected_plot_count_by_layer": {0: 3, 1: 2},
         "expected_graphobject_count": len(required_graphobject_contracts),
         "route": "gid399_stackcolumn_213_with_plot_derived_legend",
-        "canvas_size": geometry["canvas"], "page_size_inches": page_size_inches,
-        "bar_inventory": bar_inventory, "group_inventory": group_inventory,
-        "stage_inventory": stage_inventory, "legend_inventory": legend_inventory,
+        "canvas_size": geometry["canvas"],
+        "page_size_inches": page_size_inches,
+        "bar_inventory": bar_inventory,
+        "group_inventory": group_inventory,
+        "stage_inventory": stage_inventory,
+        "legend_inventory": legend_inventory,
         "required_worksheet_books": [worksheet_name],
-        "worksheet_binding_inventory": [{
-            "worksheet_name": worksheet_name, "association_mode": "direct_worksheet_plot_binding",
-            "target_layer_index": 0, "target_plot_count": 3,
-        }],
+        "worksheet_binding_inventory": [
+            {
+                "worksheet_name": worksheet_name,
+                "association_mode": "direct_worksheet_plot_binding",
+                "target_layer_index": 0,
+                "target_plot_count": 3,
+            }
+        ],
         "direct_worksheet_plot_contracts": direct_contracts,
         "subplot_worksheet_contracts": [
             {
@@ -1128,7 +1325,9 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "local_instantiation_template": "STACKCOLUMN.otp",
             "selection_reason": "GID399 supplies verified native stacked-column semantics and direct Worksheet bindings; GID1652 supplies the faceted PSC/CP/TR layout reference.",
         },
-        "fig16_tuning": tuning, "fig16_colors": effective_colors, "fig16_text_sizes": text_sizes,
+        "fig16_tuning": tuning,
+        "fig16_colors": effective_colors,
+        "fig16_text_sizes": text_sizes,
         "fig16_column_gap_percent": column_gap_percent,
         "fig16_group_frame_width": group_frame_width,
         "fig16_background_color": background_color,
@@ -1157,7 +1356,15 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
             "s_slot_x_offsets": list(s_slot_x_offsets),
             "header_source_y_correction": -5.0,
             "psc_relation_source_y_corrections": [-8.0, -17.0],
-            "stage_centers_source_calibrated": [[65, 352], [157, 352], [250, 352], [360, 352], [452, 352], [559, 352], [650, 352]],
+            "stage_centers_source_calibrated": [
+                [65, 352],
+                [157, 352],
+                [250, 352],
+                [360, 352],
+                [452, 352],
+                [559, 352],
+                [650, 352],
+            ],
         },
         "required_graphobject_names_by_layer": {0: legend_names, 1: expected_names},
         "required_graphobject_contracts": required_graphobject_contracts,

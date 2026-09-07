@@ -53,13 +53,18 @@ def json_safe(value: Any, *, key: str | None = None) -> Any:
     if isinstance(value, Path):
         return value.name
     if isinstance(value, str):
-        if key == "project_root" and (WINDOWS_ABSOLUTE_RE.match(value) or value.startswith("/")):
+        if key == "project_root" and (
+            WINDOWS_ABSOLUTE_RE.match(value) or value.startswith("/")
+        ):
             return "."
         if WINDOWS_ABSOLUTE_RE.match(value) or value.startswith("/"):
             return "source_crop.png" if key == "source_crop" else Path(value).name
         return value
     if isinstance(value, dict):
-        return {str(item_key): json_safe(item, key=str(item_key)) for item_key, item in value.items()}
+        return {
+            str(item_key): json_safe(item, key=str(item_key))
+            for item_key, item in value.items()
+        }
     if isinstance(value, (list, tuple)):
         return [json_safe(item, key=key) for item in value]
     if isinstance(value, float) and not math.isfinite(value):
@@ -74,7 +79,8 @@ def json_safe(value: Any, *, key: str | None = None) -> Any:
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(
-        json.dumps(json_safe(payload), ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        json.dumps(json_safe(payload), ensure_ascii=False, indent=2, allow_nan=False)
+        + "\n",
         encoding="utf-8",
     )
 
@@ -87,7 +93,11 @@ def copy_required(source: Path, target: Path) -> None:
 
 
 def create_comparison_board(source: Path, pre: Path, post: Path, output: Path) -> None:
-    with Image.open(source) as src_image, Image.open(pre) as pre_image, Image.open(post) as post_image:
+    with (
+        Image.open(source) as src_image,
+        Image.open(pre) as pre_image,
+        Image.open(post) as post_image,
+    ):
         src = src_image.convert("RGB")
         size = src.size
         pre_rgb = pre_image.convert("RGB").resize(size)
@@ -186,9 +196,13 @@ def materialize_standard_evidence(
     figurespec = {
         "schema": "originplot.figurespec.v5",
         **ident,
-        "figure_class": "native_chart" if figure_id == "fig12" else "semantic_schematic",
+        "figure_class": "native_chart"
+        if figure_id == "fig12"
+        else "semantic_schematic",
         "acceptance_mode": "visual_editable",
-        "reproduction_mode": route_safe.get("reproduction_mode", "reconstructed_approximate"),
+        "reproduction_mode": route_safe.get(
+            "reproduction_mode", "reconstructed_approximate"
+        ),
         "primary_route": route_safe.get("route"),
         "source_crop": "source_crop.png",
     }
@@ -196,7 +210,15 @@ def materialize_standard_evidence(
         "schema": "originplot.compiled_ir.v5",
         **ident,
         "primary_route": route_safe,
-        "operations": ["build", "pre_save_export", "save", "release", "reopen", "inspect", "post_reopen_export"],
+        "operations": [
+            "build",
+            "pre_save_export",
+            "save",
+            "release",
+            "reopen",
+            "inspect",
+            "post_reopen_export",
+        ],
     }
     operation_plan = {
         "schema": "originplot.operation_plan.v5",
@@ -285,6 +307,7 @@ def materialize_standard_evidence(
         artifact_records.append(
             {
                 "path": name,
+                "run_id": run_id,
                 "sha256": sha256_file(path),
                 "exists": True,
                 "provenance": "live_same_run",

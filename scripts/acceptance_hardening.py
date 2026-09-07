@@ -24,8 +24,11 @@ FIG12_DEFAULTS = {
     "fig12_contour_label_size_offset": 0.0,
     "fig12_mechanism_label_size_offset": 0.0,
     "fig12_label_sizes": {
-        "panel": 11.0, "contour": 8.4, "mechanism": 10.0,
-        "colorbar_title": 10.0, "colorbar_tick": 8.0,
+        "panel": 11.0,
+        "contour": 8.4,
+        "mechanism": 10.0,
+        "colorbar_title": 10.0,
+        "colorbar_tick": 8.0,
     },
 }
 FIG12_NUMERIC_RANGES = {
@@ -39,46 +42,93 @@ FIG12_NUMERIC_RANGES = {
 TARGET_VISUAL_GATES = {
     "fig3": {
         # Source-calibrated four-panel route; other geometry/color gates remain strict.
-        "mae_0_1": ("max", 0.090), "ssim_score": ("min", 0.650),
-        "layout_score": ("min", 0.955), "edge_score": ("min", 0.600),
-        "color_score": ("min", 0.900), "registration_abs_dx_px": ("max", 12.0),
-        "registration_abs_dy_px": ("max", 8.0), "foreground_f1": ("min", 0.520),
-        "edge_f1": ("min", 0.550), "nonwhite_delta": ("max", 0.030),
+        "mae_0_1": ("max", 0.090),
+        "ssim_score": ("min", 0.650),
+        "layout_score": ("min", 0.955),
+        "edge_score": ("min", 0.600),
+        "color_score": ("min", 0.900),
+        "registration_abs_dx_px": ("max", 12.0),
+        "registration_abs_dy_px": ("max", 8.0),
+        "foreground_f1": ("min", 0.520),
+        "edge_f1": ("min", 0.550),
+        "nonwhite_delta": ("max", 0.030),
     },
     "fig12": {
-        "mae_0_1": ("max", 0.0405), "ssim_score": ("min", 0.7770),
-        "layout_score": ("min", 0.9420), "edge_score": ("min", 0.7450),
-        "color_score": ("min", 0.9200), "registration_abs_dx_px": ("max", 16.0),
-        "registration_abs_dy_px": ("max", 6.0), "content_bbox_axis_error_px": ("max", 31.0),
-        "nonwhite_delta": ("max", 0.035), "foreground_f1": ("min", 0.970),
+        "mae_0_1": ("max", 0.0405),
+        "ssim_score": ("min", 0.7770),
+        "layout_score": ("min", 0.9420),
+        "edge_score": ("min", 0.7450),
+        "color_score": ("min", 0.9200),
+        "registration_abs_dx_px": ("max", 16.0),
+        "registration_abs_dy_px": ("max", 6.0),
+        "content_bbox_axis_error_px": ("max", 31.0),
+        "nonwhite_delta": ("max", 0.035),
+        "foreground_f1": ("min", 0.970),
         "edge_f1": ("min", 0.810),
     },
     "fig15": {
-        "mae_0_1": ("max", 0.040), "ssim_score": ("min", 0.810),
-        "layout_score": ("min", 0.985), "edge_score": ("min", 0.730),
-        "color_score": ("min", 0.925), "registration_abs_dx_px": ("max", 4.0),
-        "registration_abs_dy_px": ("max", 2.0), "foreground_f1": ("min", 0.700),
-        "edge_f1": ("min", 0.730), "nonwhite_delta": ("max", 0.035),
+        "mae_0_1": ("max", 0.040),
+        "ssim_score": ("min", 0.810),
+        "layout_score": ("min", 0.985),
+        "edge_score": ("min", 0.730),
+        "color_score": ("min", 0.925),
+        "registration_abs_dx_px": ("max", 4.0),
+        "registration_abs_dy_px": ("max", 2.0),
+        "foreground_f1": ("min", 0.700),
+        "edge_f1": ("min", 0.730),
+        "nonwhite_delta": ("max", 0.035),
     },
     "fig14": {
-        "mae_0_1": ("max", 0.065), "ssim_score": ("min", 0.760),
-        "layout_score": ("min", 0.970), "edge_score": ("min", 0.650),
-        "color_score": ("min", 0.930), "registration_abs_dx_px": ("max", 8.0),
-        "registration_abs_dy_px": ("max", 6.0), "foreground_f1": ("min", 0.430),
-        "edge_f1": ("min", 0.440), "nonwhite_delta": ("max", 0.012),
+        "mae_0_1": ("max", 0.065),
+        "ssim_score": ("min", 0.760),
+        "layout_score": ("min", 0.970),
+        "edge_score": ("min", 0.650),
+        "color_score": ("min", 0.930),
+        "registration_abs_dx_px": ("max", 8.0),
+        "registration_abs_dy_px": ("max", 6.0),
+        "foreground_f1": ("min", 0.430),
+        "edge_f1": ("min", 0.440),
+        "nonwhite_delta": ("max", 0.012),
     },
     "fig16": {
-        "mae_0_1": ("max", 0.067), "ssim_score": ("min", 0.695),
-        "layout_score": ("min", 0.985), "edge_score": ("min", 0.590),
-        "color_score": ("min", 0.950), "registration_abs_dx_px": ("max", 5.0),
-        "registration_abs_dy_px": ("max", 2.0), "foreground_f1": ("min", 0.970),
-        "edge_f1": ("min", 0.820), "nonwhite_delta": ("max", 0.065),
+        "mae_0_1": ("max", 0.067),
+        "ssim_score": ("min", 0.695),
+        "layout_score": ("min", 0.985),
+        "edge_score": ("min", 0.590),
+        "color_score": ("min", 0.950),
+        "registration_abs_dx_px": ("max", 5.0),
+        "registration_abs_dy_px": ("max", 2.0),
+        "foreground_f1": ("min", 0.970),
+        "edge_f1": ("min", 0.820),
+        "nonwhite_delta": ("max", 0.065),
         "fig16_bar_boundary_max_error_px": ("max", 1.0),
         "fig16_bar_boundary_mean_error_px": ("max", 0.5),
         "fig16_bar_boundary_missing_segments": ("max", 0.0),
     },
 }
 NEAR_THRESHOLD_MARGIN = 0.001
+# A single absolute margin cannot describe gates whose units differ by orders of
+# magnitude: mae_0_1 and ssim_score live on 0..1, registration_abs_dx_px allows up
+# to 16 px, content_bbox_axis_error_px up to 31 px, and
+# fig16_bar_boundary_missing_segments is a count with a zero-tolerance limit.
+# Judging all of them against 0.001 reported "nothing is near threshold" while
+# fig12 edge_score sat 0.41% of its budget away from failing. Headroom is
+# therefore also measured relative to each gate's own budget.
+NEAR_THRESHOLD_HEADROOM_FRACTION = 0.10
+
+
+def gate_headroom_fraction(direction: str, threshold: float, margin: float) -> float:
+    """Return the passing margin as a fraction of the gate's own budget.
+
+    For a ``min`` gate the reachable budget is ``1 - threshold`` (every ``min``
+    metric here is a 0..1 score); for a ``max`` gate it is the threshold itself,
+    i.e. the distance from a perfect 0 to the limit. A zero-width budget is a
+    zero-tolerance gate, which by definition has no headroom at all.
+    """
+    span = (1.0 - threshold) if direction == "min" else threshold
+    if span <= 0.0:
+        return 0.0
+    return margin / span
 
 
 def derive_release_status(
@@ -87,8 +137,12 @@ def derive_release_status(
     visual_baseline: bool | str,
 ) -> dict[str, Any]:
     promoted = visual_baseline is True or visual_baseline == "promoted"
-    visual_status = "promoted" if promoted else (
-        str(visual_baseline) if isinstance(visual_baseline, str) else "not_promoted"
+    visual_status = (
+        "promoted"
+        if promoted
+        else (
+            str(visual_baseline) if isinstance(visual_baseline, str) else "not_promoted"
+        )
     )
     overall = bool(runtime_release_ready and structure_pass and promoted)
     return {
@@ -112,24 +166,43 @@ def evaluate_target_visual_gate(
 ) -> dict[str, Any]:
     if figure not in TARGET_VISUAL_GATES:
         raise ValueError(f"unsupported figure visual gate: {figure}")
-    shift = metrics.get("registration_shift") if isinstance(metrics.get("registration_shift"), dict) else {}
+    shift = (
+        metrics.get("registration_shift")
+        if isinstance(metrics.get("registration_shift"), dict)
+        else {}
+    )
     source_bbox = metrics.get("source_content_bbox")
     actual_bbox = metrics.get("actual_content_bbox")
     values = dict(metrics)
     values["registration_abs_dx_px"] = abs(float(shift.get("dx_px", 999.0)))
     values["registration_abs_dy_px"] = abs(float(shift.get("dy_px", 999.0)))
-    if isinstance(source_bbox, list) and isinstance(actual_bbox, list) and len(source_bbox) == len(actual_bbox) == 4:
-        values["content_bbox_axis_error_px"] = max(abs(float(a) - float(b)) for a, b in zip(source_bbox, actual_bbox))
+    if (
+        isinstance(source_bbox, list)
+        and isinstance(actual_bbox, list)
+        and len(source_bbox) == len(actual_bbox) == 4
+    ):
+        values["content_bbox_axis_error_px"] = max(
+            abs(float(a) - float(b)) for a, b in zip(source_bbox, actual_bbox)
+        )
     else:
         values["content_bbox_axis_error_px"] = 999.0
     if "nonwhite_delta" not in values:
-        values["nonwhite_delta"] = abs(float(metrics.get("source_nonwhite_ratio", 0.0)) - float(metrics.get("actual_nonwhite_ratio", 0.0)))
+        values["nonwhite_delta"] = abs(
+            float(metrics.get("source_nonwhite_ratio", 0.0))
+            - float(metrics.get("actual_nonwhite_ratio", 0.0))
+        )
     checks: dict[str, bool] = {}
     gate_margins: dict[str, float] = {}
+    gate_headroom_fractions: dict[str, float] = {}
     for name, (direction, threshold) in TARGET_VISUAL_GATES[figure].items():
         value = float(values.get(name, 999.0 if direction == "max" else -999.0))
         checks[name] = value <= threshold if direction == "max" else value >= threshold
-        gate_margins[name] = threshold - value if direction == "max" else value - threshold
+        gate_margins[name] = (
+            threshold - value if direction == "max" else value - threshold
+        )
+        gate_headroom_fractions[name] = gate_headroom_fraction(
+            direction, float(threshold), gate_margins[name]
+        )
     failures = [name for name, passed in checks.items() if not passed]
     if figure == "fig15" and not frozen_identity_recognized:
         failures.append("frozen_render_identity_not_recognized")
@@ -140,19 +213,31 @@ def evaluate_target_visual_gate(
     return {
         "schema": "originplot.target_visual_gate.v1",
         "figure_id": figure,
-        "baseline_role": "frozen_regression" if figure in {"fig15", "fig16"} else "candidate_baseline",
+        "baseline_role": "frozen_regression"
+        if figure in {"fig15", "fig16"}
+        else "candidate_baseline",
         "thresholds": TARGET_VISUAL_GATES[figure],
         "values": {name: values.get(name) for name in TARGET_VISUAL_GATES[figure]},
         "checks": checks,
         "gate_margins": gate_margins,
+        "gate_headroom_fractions": gate_headroom_fractions,
+        "near_threshold_margin": NEAR_THRESHOLD_MARGIN,
+        "near_threshold_headroom_fraction": NEAR_THRESHOLD_HEADROOM_FRACTION,
         "near_threshold_metrics": sorted(
-            name for name, margin in gate_margins.items()
-            if checks[name] and margin < NEAR_THRESHOLD_MARGIN
+            name
+            for name, margin in gate_margins.items()
+            if checks[name]
+            and (
+                margin < NEAR_THRESHOLD_MARGIN
+                or gate_headroom_fractions[name] < NEAR_THRESHOLD_HEADROOM_FRACTION
+            )
         ),
         "failures": failures,
         "frozen_identity_recognized": (
-            bool(frozen_identity_recognized) if figure == "fig15"
-            else bool(fig16_frozen_identity_recognized) if figure == "fig16"
+            bool(frozen_identity_recognized)
+            if figure == "fig15"
+            else bool(fig16_frozen_identity_recognized)
+            if figure == "fig16"
             else None
         ),
         "visual_baseline_status": status,
@@ -188,9 +273,14 @@ def render_parameter_fingerprint(payload: dict[str, Any]) -> dict[str, Any]:
         "feature_flags": payload.get("feature_flags") or {},
     }
     normalized = _normalize_json(identity)
-    encoded = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    encoded = json.dumps(
+        normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
     effective_encoded = json.dumps(
-        _normalize_json(effective), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        _normalize_json(effective),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
     return {
         "schema": RENDER_IDENTITY_SCHEMA,
@@ -205,7 +295,9 @@ def render_parameter_fingerprint(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _number_record(name: str, requested: Any, default: float, low: float, high: float, strict: bool) -> tuple[float, dict[str, Any]]:
+def _number_record(
+    name: str, requested: Any, default: float, low: float, high: float, strict: bool
+) -> tuple[float, dict[str, Any]]:
     defaulted = requested is None
     try:
         number = default if defaulted else float(requested)
@@ -213,9 +305,19 @@ def _number_record(name: str, requested: Any, default: float, low: float, high: 
         raise ValueError(f"{name} requested={requested!r} is not numeric") from exc
     clamped = number < low or number > high
     if strict and clamped:
-        raise ValueError(f"{name} requested={number} outside allowed range [{low}, {high}]")
+        raise ValueError(
+            f"{name} requested={number} outside allowed range [{low}, {high}]"
+        )
     effective = min(high, max(low, number))
-    reason = "below_minimum" if number < low else "above_maximum" if number > high else "default_used" if defaulted else "within_range"
+    reason = (
+        "below_minimum"
+        if number < low
+        else "above_maximum"
+        if number > high
+        else "default_used"
+        if defaulted
+        else "within_range"
+    )
     return effective, {
         "requested": requested,
         "effective": effective,
@@ -226,18 +328,26 @@ def _number_record(name: str, requested: Any, default: float, low: float, high: 
     }
 
 
-def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> dict[str, Any]:
+def normalize_fig12_parameters(
+    requested: dict[str, Any], *, strict: bool
+) -> dict[str, Any]:
     requested = requested if isinstance(requested, dict) else {}
     requested = dict(requested)
     legacy_offsets = requested.get("fig12_label_size_offsets")
     if isinstance(legacy_offsets, dict):
-        requested.setdefault("fig12_contour_label_size_offset", legacy_offsets.get("contour"))
-        requested.setdefault("fig12_mechanism_label_size_offset", legacy_offsets.get("mechanism"))
+        requested.setdefault(
+            "fig12_contour_label_size_offset", legacy_offsets.get("contour")
+        )
+        requested.setdefault(
+            "fig12_mechanism_label_size_offset", legacy_offsets.get("mechanism")
+        )
     effective = json.loads(json.dumps(FIG12_DEFAULTS))
     records: dict[str, Any] = {}
     diagnostic = False
     for name, (low, high) in FIG12_NUMERIC_RANGES.items():
-        value, record = _number_record(name, requested.get(name), float(FIG12_DEFAULTS[name]), low, high, strict)
+        value, record = _number_record(
+            name, requested.get(name), float(FIG12_DEFAULTS[name]), low, high, strict
+        )
         if name == "fig12_y_minor_ticks":
             value = int(round(value))
             record["effective"] = value
@@ -248,7 +358,9 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
     allowed_modes = ["source_palette_digitized", "analytic_fallback"]
     if mode is not None and mode not in allowed_modes:
         if strict:
-            raise ValueError(f"fig12_matrix_mode requested={mode!r} allowed={allowed_modes}")
+            raise ValueError(
+                f"fig12_matrix_mode requested={mode!r} allowed={allowed_modes}"
+            )
         diagnostic = True
         effective["fig12_matrix_mode"] = FIG12_DEFAULTS["fig12_matrix_mode"]
     elif mode is not None:
@@ -259,7 +371,11 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
         "clamped": mode is not None and mode not in allowed_modes,
         "defaulted": mode is None,
         "allowed_values": allowed_modes,
-        "reason": "invalid_choice" if mode is not None and mode not in allowed_modes else "default_used" if mode is None else "valid_choice",
+        "reason": "invalid_choice"
+        if mode is not None and mode not in allowed_modes
+        else "default_used"
+        if mode is None
+        else "valid_choice",
     }
     for name in (
         "fig12_panel_layout_offsets",
@@ -282,11 +398,16 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
             raise ValueError("fig12_path_overlays must be boolean")
         path_overlays = False
         diagnostic = True
-    effective["fig12_path_overlays"] = FIG12_DEFAULTS["fig12_path_overlays"] if path_overlays is None else path_overlays
+    effective["fig12_path_overlays"] = (
+        FIG12_DEFAULTS["fig12_path_overlays"]
+        if path_overlays is None
+        else path_overlays
+    )
     records["fig12_path_overlays"] = {
         "requested": requested.get("fig12_path_overlays"),
         "effective": effective["fig12_path_overlays"],
-        "clamped": path_overlays is not None and not isinstance(requested.get("fig12_path_overlays"), bool),
+        "clamped": path_overlays is not None
+        and not isinstance(requested.get("fig12_path_overlays"), bool),
         "defaulted": path_overlays is None,
         "reason": "default_used" if path_overlays is None else "normalized",
     }
@@ -324,12 +445,15 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
         axis_title_overlays = False
         diagnostic = True
     effective["fig12_axis_title_overlays"] = (
-        FIG12_DEFAULTS["fig12_axis_title_overlays"] if axis_title_overlays is None else axis_title_overlays
+        FIG12_DEFAULTS["fig12_axis_title_overlays"]
+        if axis_title_overlays is None
+        else axis_title_overlays
     )
     records["fig12_axis_title_overlays"] = {
         "requested": requested.get("fig12_axis_title_overlays"),
         "effective": effective["fig12_axis_title_overlays"],
-        "clamped": axis_title_overlays is not None and not isinstance(requested.get("fig12_axis_title_overlays"), bool),
+        "clamped": axis_title_overlays is not None
+        and not isinstance(requested.get("fig12_axis_title_overlays"), bool),
         "defaulted": axis_title_overlays is None,
         "reason": "default_used" if axis_title_overlays is None else "normalized",
     }
@@ -337,7 +461,9 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
     raw_sizes = raw_sizes if isinstance(raw_sizes, dict) else {}
     for role, default in FIG12_DEFAULTS["fig12_label_sizes"].items():
         name = f"fig12_label_sizes.{role}"
-        value, record = _number_record(name, raw_sizes.get(role), float(default), 4.0, 18.0, strict)
+        value, record = _number_record(
+            name, raw_sizes.get(role), float(default), 4.0, 18.0, strict
+        )
         effective["fig12_label_sizes"][role] = value
         records[name] = record
     return {
@@ -347,5 +473,7 @@ def normalize_fig12_parameters(requested: dict[str, Any], *, strict: bool) -> di
         "promotion_eligible": not diagnostic,
         "effective_parameters": effective,
         "parameter_normalization": records,
-        "warnings": ["clamped_parameters_make_candidate_diagnostic"] if diagnostic else [],
+        "warnings": ["clamped_parameters_make_candidate_diagnostic"]
+        if diagnostic
+        else [],
     }

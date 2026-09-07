@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -89,7 +89,9 @@ def _plot_family(plot_type: Any) -> str:
         code = None
     if code in PLOT_TYPE_FAMILIES:
         return PLOT_TYPE_FAMILIES[code]
-    normalized = str(plot_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+    normalized = (
+        str(plot_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+    )
     aliases = {
         "l": "line",
         "line": "line",
@@ -143,7 +145,9 @@ def _parse_origin_dataset(value: Any, op: Any | None = None) -> dict[str, Any]:
     }
     if not raw:
         return result
-    match = re.match(r"^(?P<book>.+)_(?P<column>[^_@]+)(?:@(?P<sheet_index>\d+))?$", raw)
+    match = re.match(
+        r"^(?P<book>.+)_(?P<column>[^_@]+)(?:@(?P<sheet_index>\d+))?$", raw
+    )
     if not match:
         return result
     workbook = match.group("book")
@@ -186,7 +190,9 @@ def _labtalk_plot_semantics(op: Any, plot_number: int) -> dict[str, Any]:
     except Exception as exc:
         errors["visible"] = f"{exc.__class__.__name__}: {exc}"
     try:
-        y_dataset = str(op.get_lt_str(f"layer.plot{plot_number}.name$") or "").strip() or None
+        y_dataset = (
+            str(op.get_lt_str(f"layer.plot{plot_number}.name$") or "").strip() or None
+        )
     except Exception as exc:
         errors["y_dataset"] = f"{exc.__class__.__name__}: {exc}"
     if y_dataset:
@@ -240,7 +246,11 @@ def _labtalk_plot_semantics(op: Any, plot_number: int) -> dict[str, Any]:
     z_column = z_parts["column"]
     binding = None
     if workbook and worksheet and x_column and y_column:
-        columns = f"{x_column},{y_column},{z_column}" if z_column else f"{x_column},{y_column}"
+        columns = (
+            f"{x_column},{y_column},{z_column}"
+            if z_column
+            else f"{x_column},{y_column}"
+        )
         binding = f"[{workbook}]{worksheet}!({columns})"
     result = {
         "plot_type": plot_type_code,
@@ -274,7 +284,11 @@ def _plot_detail(plot: Any, index: int) -> dict[str, Any]:
         except (TypeError, ValueError):
             plot_type = candidate_type
     raw_plot = getattr(plot, "obj", None)
-    plot_type_name = _read_property(raw_plot, ["GetTypeName", "TypeName"]) if raw_plot is not None else None
+    plot_type_name = (
+        _read_property(raw_plot, ["GetTypeName", "TypeName"])
+        if raw_plot is not None
+        else None
+    )
     binding = _read_property(plot, ["lt_range"])
     visible = _read_property(plot, ["visible"])
     if visible is None and raw_plot is not None:
@@ -283,13 +297,19 @@ def _plot_detail(plot: Any, index: int) -> dict[str, Any]:
         visible = _read_parameterized_property(plot, ["get_int"], ["visible", "show"])
     line_color = _read_property(plot, ["color"])
     if line_color is None:
-        line_color = _read_parameterized_property(plot, ["get_str", "get_int"], ["color", "line.color"])
+        line_color = _read_parameterized_property(
+            plot, ["get_str", "get_int"], ["color", "line.color"]
+        )
     line_width = _read_property(plot, ["linewidth", "width"])
     if line_width is None:
-        line_width = _read_parameterized_property(plot, ["get_float"], ["line.width", "linewidth", "width"])
+        line_width = _read_parameterized_property(
+            plot, ["get_float"], ["line.width", "linewidth", "width"]
+        )
     line_style = _read_property(plot, ["line_style", "linestyle"])
     if line_style is None:
-        line_style = _read_parameterized_property(plot, ["get_int", "get_str"], ["line.style", "style"])
+        line_style = _read_parameterized_property(
+            plot, ["get_int", "get_str"], ["line.style", "style"]
+        )
     zlevels = _read_property(plot, ["zlevels"])
     style = {
         key: value
@@ -309,7 +329,9 @@ def _plot_detail(plot: Any, index: int) -> dict[str, Any]:
         "plot_type": plot_type,
         "plot_type_code": plot_type,
         "plot_type_name": plot_type_name,
-        "plot_family": _plot_family(plot_type if plot_type is not None else plot_type_name),
+        "plot_family": _plot_family(
+            plot_type if plot_type is not None else plot_type_name
+        ),
         "data_binding": binding,
         **_parse_origin_binding(binding),
         "visible": visible,
@@ -361,7 +383,9 @@ def _labtalk_plot_symbol_style(op: Any, plot: Any) -> dict[str, Any]:
         return {}
 
 
-def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | None = None) -> dict[str, Any]:
+def inspect_layer_plots(
+    layer: Any, labtalk_count: int | None = None, op: Any | None = None
+) -> dict[str, Any]:
     """Read plots through the public GLayer API and cross-check LabTalk count."""
     plot_list_error = None
     try:
@@ -388,7 +412,9 @@ def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | 
         detail["graph_plot_range"] = detail.get("data_binding")
         if op is not None:
             semantics = _labtalk_plot_semantics(op, index + 1)
-            detail.update({key: value for key, value in semantics.items() if value is not None})
+            detail.update(
+                {key: value for key, value in semantics.items() if value is not None}
+            )
             if line_style is not None:
                 detail["line_style"] = line_style
                 detail.setdefault("style", {})["line_style"] = line_style
@@ -405,7 +431,8 @@ def inspect_layer_plots(layer: Any, labtalk_count: int | None = None, op: Any | 
         "plot_count": plot_list_count,
         "plot_list_count": plot_list_count,
         "labtalk_layer_count": labtalk_count,
-        "readback_disagreement": labtalk_count is not None and plot_list_count != int(labtalk_count),
+        "readback_disagreement": labtalk_count is not None
+        and plot_list_count != int(labtalk_count),
         "plot_details": plot_details,
     }
     if plot_list_error:
@@ -478,18 +505,26 @@ def _graph_object_record(obj: Any, index: int) -> dict[str, Any]:
     return record
 
 
-def inspect_graph_objects(layer: Any, expected_names: list[str] | None = None) -> dict[str, Any]:
+def inspect_graph_objects(
+    layer: Any, expected_names: list[str] | None = None
+) -> dict[str, Any]:
     objects: list[dict[str, Any]] = []
     errors: list[str] = []
     try:
         collection = layer.obj.GraphObjects
         count = int(collection.GetCount())
     except Exception as exc:
-        return {"status": "unavailable", "objects": [], "error": f"{exc.__class__.__name__}: {exc}"}
+        return {
+            "status": "unavailable",
+            "objects": [],
+            "error": f"{exc.__class__.__name__}: {exc}",
+        }
     enumerated_objects: list[dict[str, Any]] = []
     enumeration_error = None
     try:
-        enumerated_objects = [_graph_object_record(obj, index) for index, obj in enumerate(collection)]
+        enumerated_objects = [
+            _graph_object_record(obj, index) for index, obj in enumerate(collection)
+        ]
     except Exception as exc:
         enumeration_error = f"{exc.__class__.__name__}: {exc}"
     names = [str(name) for name in (expected_names or [])]
@@ -544,41 +579,68 @@ class Adapter:
         self.config = config or {}
         self.execution_mode = str(self.config.get("execution_mode") or "live")
         if self.config.get("allow_noop") and self.execution_mode != "test":
-            raise RuntimeError("allow_noop is test-only; live inspection refuses no-op adapters")
+            raise RuntimeError(
+                "allow_noop is test-only; live inspection refuses no-op adapters"
+            )
         self.allow_noop = bool(self.config.get("allow_noop"))
         self.op = None
         self.project_path: Path | None = None
 
     def supports(self, operation: dict[str, Any]) -> bool:
-        return operation.get("adapter_route") == self.route and operation.get("operation_id") in self.OPERATIONS
+        return (
+            operation.get("adapter_route") == self.route
+            and operation.get("operation_id") in self.OPERATIONS
+        )
 
-    def execute(self, operation: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    def execute(
+        self, operation: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         operation_id = str(operation.get("operation_id"))
         if self.allow_noop:
             note_operation(context, operation, "completed", {"noop": True})
-            return {"status": "completed", "route": self.route, "operation_id": operation_id, "noop": True}
+            return {
+                "status": "completed",
+                "route": self.route,
+                "operation_id": operation_id,
+                "noop": True,
+            }
         method = getattr(self, f"op_{operation_id.replace('.', '_')}", None)
         if method is None:
-            return {"status": "unsupported", "route": self.route, "operation_id": operation_id}
+            return {
+                "status": "unsupported",
+                "route": self.route,
+                "operation_id": operation_id,
+            }
         result = method(operation.get("payload") or {}, context)
         note_operation(context, operation, "completed", result)
-        return {"status": "completed", "route": self.route, "operation_id": operation_id, **result}
+        return {
+            "status": "completed",
+            "route": self.route,
+            "operation_id": operation_id,
+            **result,
+        }
 
     def _origin(self):
         if self.op is None:
             import originpro as op
 
-            op.set_show(False)
+            op.set_show(True)
             op.new(asksave=False)
             self.op = op
         return self.op
 
-    def op_project_reopen_clean(self, payload: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    def op_project_reopen_clean(
+        self, payload: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         project_path = Path(str(payload.get("project_path") or ""))
         if not project_path.is_absolute():
-            project_path = (Path(context.get("workspace") or ".") / project_path).resolve()
+            project_path = (
+                Path(context.get("workspace") or ".") / project_path
+            ).resolve()
         if not project_path.exists():
-            raise FileNotFoundError(f"project.reopen.clean cannot find OPJU: {project_path}")
+            raise FileNotFoundError(
+                f"project.reopen.clean cannot find OPJU: {project_path}"
+            )
         self.project_path = project_path
         op = self._origin()
         editable_evidence = open_opju_editable(op, project_path)
@@ -589,7 +651,9 @@ class Adapter:
             "editable_open_evidence": editable_evidence,
         }
 
-    def op_project_inspect(self, payload: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    def op_project_inspect(
+        self, payload: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         op = self._origin()
         contracts = payload.get("contracts") or {}
         graph_pages = []
@@ -623,13 +687,17 @@ class Adapter:
                         labtalk_count = int(op.lt_int("count"))
                     except Exception as exc:
                         labtalk_error = f"{exc.__class__.__name__}: {exc}"
-                    plot_readback = inspect_layer_plots(layer, labtalk_count=labtalk_count, op=op)
+                    plot_readback = inspect_layer_plots(
+                        layer, labtalk_count=labtalk_count, op=op
+                    )
                     layer_record = {
                         "index": layer_index,
                         "name": getattr(layer, "name", ""),
                         "plots": plot_readback["plot_count"],
                         **plot_readback,
-                        "graph_object_readback": inspect_graph_objects(layer, expected_names=expected_object_names),
+                        "graph_object_readback": inspect_graph_objects(
+                            layer, expected_names=expected_object_names
+                        ),
                     }
                     if labtalk_error:
                         layer_record["labtalk_layer_count_error"] = labtalk_error
@@ -640,13 +708,18 @@ class Adapter:
                                 "page": record["long_name"] or record["name"],
                                 "layer_index": layer_index,
                                 "plot_list_count": plot_readback["plot_list_count"],
-                                "labtalk_layer_count": plot_readback["labtalk_layer_count"],
+                                "labtalk_layer_count": plot_readback[
+                                    "labtalk_layer_count"
+                                ],
                             }
                         )
                     for axis_name, attr in {"x": "xlim", "y": "ylim"}.items():
                         try:
                             values = getattr(layer, attr)
-                            layer_record[f"{axis_name}_limits"] = [float(values[0]), float(values[1])]
+                            layer_record[f"{axis_name}_limits"] = [
+                                float(values[0]),
+                                float(values[1]),
+                            ]
                         except Exception as exc:
                             layer_record[f"{axis_name}_limits_error"] = str(exc)
                     layers.append(layer_record)
@@ -659,22 +732,33 @@ class Adapter:
         expected = contracts.get("expected") or {}
         primary = contracts.get("primary_graph")
         errors: list[str] = []
-        if primary and primary not in {item["long_name"] or item["name"] for item in graph_pages}:
+        if primary and primary not in {
+            item["long_name"] or item["name"] for item in graph_pages
+        }:
             errors.append(f"primary graph not found: {primary}")
-        if expected.get("graph_pages") is not None and len(graph_pages) < int(expected["graph_pages"]):
+        if expected.get("graph_pages") is not None and len(graph_pages) < int(
+            expected["graph_pages"]
+        ):
             errors.append("graph page count below expected")
-        if expected.get("workbooks") is not None and len(workbook_pages) < int(expected["workbooks"]):
+        if expected.get("workbooks") is not None and len(workbook_pages) < int(
+            expected["workbooks"]
+        ):
             errors.append("workbook count below expected")
         actual_plot_count = sum(
             int(layer.get("plot_count", 0))
             for page in graph_pages
             for layer in page.get("layer_details", [])
         )
-        if expected.get("plots") is not None and actual_plot_count < int(expected["plots"]):
+        if expected.get("plots") is not None and actual_plot_count < int(
+            expected["plots"]
+        ):
             errors.append("plot count below expected")
         inspection = {
             "schema": "originplot.inspection.v5",
-            "project": {"path": str(self.project_path), "exists": bool(self.project_path and self.project_path.exists())},
+            "project": {
+                "path": str(self.project_path),
+                "exists": bool(self.project_path and self.project_path.exists()),
+            },
             "process": {"pid": os.getpid()},
             "workbooks": workbook_pages,
             "matrices": matrices,
@@ -687,14 +771,27 @@ class Adapter:
         run_dir = Path(context.get("run_dir") or ".").resolve()
         inspection_path = run_dir / "inspection.json"
         inspection_path.parent.mkdir(parents=True, exist_ok=True)
-        inspection_path.write_text(json.dumps(inspection, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        inspection_path.write_text(
+            json.dumps(inspection, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
         _, artifacts_path, run_id = _artifact_context(context)
-        update_artifacts(artifacts_path, run_id, {"inspection": file_record(inspection_path)})
+        update_artifacts(
+            artifacts_path,
+            run_id,
+            {"inspection": file_record(inspection_path, run_id=run_id)},
+        )
         if errors:
             raise RuntimeError("; ".join(errors))
-        return {"inspection_path": str(inspection_path), "graph_pages": len(graph_pages), "workbooks": len(workbook_pages)}
+        return {
+            "inspection_path": str(inspection_path),
+            "graph_pages": len(graph_pages),
+            "workbooks": len(workbook_pages),
+        }
 
-    def op_graph_export_postreopen(self, payload: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    def op_graph_export_postreopen(
+        self, payload: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         op = self._origin()
         path = Path(str(payload.get("path") or "post_reopen.png"))
         if not path.is_absolute():
@@ -705,15 +802,27 @@ class Adapter:
             raise RuntimeError("no graph page available for post-reopen export")
         export = payload.get("export") or {}
         fmt = str(export.get("format") or path.suffix.lower().lstrip(".") or "png")
-        width = int(export.get("width_px") or self.config.get("export_width_px") or 1600)
+        width = int(
+            export.get("width_px") or self.config.get("export_width_px") or 1600
+        )
         replace = bool(export.get("replace", True))
         try:
             pages[0].save_fig(str(path), type=fmt, replace=replace, width=width)
         except TypeError as exc:
-            raise RuntimeError(f"Origin export must support fixed type/replace/width parameters: {exc}") from exc
+            raise RuntimeError(
+                f"Origin export must support fixed type/replace/width parameters: {exc}"
+            ) from exc
         _, artifacts_path, run_id = _artifact_context(context)
-        update_artifacts(artifacts_path, run_id, {"post_reopen_export": file_record(path)})
-        return {"path": str(path), "size_bytes": path.stat().st_size, "export": {"format": fmt, "width_px": width, "replace": replace}}
+        update_artifacts(
+            artifacts_path,
+            run_id,
+            {"post_reopen_export": file_record(path, run_id=run_id)},
+        )
+        return {
+            "path": str(path),
+            "size_bytes": path.stat().st_size,
+            "export": {"format": fmt, "width_px": width, "replace": replace},
+        }
 
     def close(self) -> None:
         if self.op is None:

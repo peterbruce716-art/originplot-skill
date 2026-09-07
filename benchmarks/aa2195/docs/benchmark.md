@@ -84,6 +84,90 @@ Official entrances:
 - Keep the 15% native column gap. Use the explicit Origin layer background `#fefefe` to match the current PDF raster's near-white antialiased mean without changing WH/DRV/DRX scientific colors or post-processing the PNG.
 - Promotion requires all live visual gates plus a passing `source_data_gate`, source crop/data hashes, effective builder route, geometry version, Origin version, and export profile. A reused data bundle additionally requires a passing `originplot.aa2195_validated_data_reuse.v1` record. Metrics without that identity remain non-promoted.
 
+## Cross-batch reproducibility
+
+`render_identity.fingerprint` records the declared inputs (effective parameters, builder route, data digest, geometry version, source crop hash, Origin version, export profile, template ids, font profile, feature flags). It is **not** a hash of the export, so two runs can share a fingerprint and still produce different pixels. Do not read matching fingerprints as matching output.
+
+A measured example on Origin 2022, same machine, same day, same `fresh_extract` source bundle and identical Fig12 fingerprint: a batch against a freshly launched Origin (`origin_launch_mode=batch_started`) and two batches against a reused warm Origin (`origin_launch_mode=preexisting_visible`) disagreed on Fig12 while Fig3/Fig14/Fig15/Fig16 stayed bit-identical.
+
+| Fig12 metric | fresh Origin | reused Origin | delta | gate |
+| --- | --- | --- | --- | --- |
+| `edge_f1` | 0.821641555 | 0.811466457 | -0.010175097 | min 0.810 |
+| `edge_score` | 0.746058099 | 0.750113543 | +0.004055444 | min 0.745 |
+| `color_score` | 0.975087643 | 0.970851343 | -0.004236300 | min 0.920 |
+| `ssim_score` | 0.801233053 | 0.803695619 | +0.002462566 | min 0.777 |
+
+The two reused-Origin batches reproduced each other exactly, so the difference tracked Origin process state rather than run-to-run noise. The consequence was the part that mattered: Fig12 `edge_f1` fell to 0.0015 above its floor, 0.77% of the gate budget, purely from how Origin was started. That divergence is fixed below and `edge_f1` headroom is back to 6.13% in both launch modes, but the general lesson stands: a fingerprint match is not an output match, and a gate this tight can be flipped by an input nothing records.
+
+Record `origin_launch_mode` with any Fig12 claim, and use `scripts/compare_five_figure_batches.py --baseline <root> --candidate <root>` to diff two batches. It reports per-metric drift, `pass_flip`, `near_threshold_regression`, and `identity_claims_equality_but_metrics_differ` for the case above. Comparing batches is not optional for a promotion claim: the per-run audit answers "did this pass?", not "is this the same figure as last time?".
+
+The pixels that moved were three 1 px vertical black lines (x=489 y 54-268, x=285 y 323-541) present in some exports and absent in others. Nothing else differed: the readback recorded identical plot counts, types, bindings, graph objects and `zlevels` in both runs, so no structural gate can see this difference at all.
+
+`layer.cmap.showLines` is never read back either, even though this document calls `showLines(3)` a hard failure and `showLines(0)` the canonical type-34 overlay state. `scripts/probe_fig12_contour_line_state.py` establishes why, by opening the two saved projects that differ only by those three lines and reading every candidate colormap property on each contour layer. On Origin 2022 `showLines`, `enableLines`, `lines`, `lineVisible`, `showLine`, `numLevels` and `showLabels` do not resolve at all, while `numColors`, `lineColor1`, `lineColor2`, `lineWidth1..3`, `lineStyle1` and `cmap.type` resolve and are **identical** in both states. No property distinguishes them.
+
+Two consequences. First, contour-line visibility is not recoverable from property readback on this Origin version, so the `showLines` contract cannot be gated structurally and pixel comparison is the only detector -- which is what `compare_five_figure_batches.py` is for. Second, do not "verify" it by reading through `plot.get_int`: an unresolvable LabTalk property leaves the destination variable at its previous value, so an unguarded read returns the last number read and looks like evidence. The probe brackets every read with a sentinel and reports control expressions separately for exactly this reason.
+
+`_apply_contour_line_style` commits its colormap edits with `updateScale()`, while the later `showLines(0)` in the path-overlay route does not. Adding a matching `updateScale()` was tried as a fix and **made the problem worse**: it re-commits the colormap from its scale settings, which restores the `showLines(1)` that `_apply_contour_line_style` had just set, so the lines came back. That change was reverted.
+
+What the intermittency actually looks like, measured on Origin 2022 with the current code, by counting black pixels in the post-reopen export (6512 = lines off, 6945 = lines on):
+
+| context | runs | lines off | lines on |
+| --- | --- | --- | --- |
+| fig12 alone, repeated in one Origin process | 20 | 19 | 1 |
+| fig3 then fig12, repeated | 4 | 4 | 0 |
+| full five-figure batches | 3 | 2 | 1 |
+
+The flip happens **inside a single Origin process with identical inputs** -- the second of twenty otherwise identical standalone runs came out with the lines on. It is therefore not a function of launch mode, process age, or what ran before it; earlier batches that appeared to group by launch mode were coincidence at this rate. `showLines(0)` simply fails to persist to the saved project roughly one run in fourteen across all contexts observed here.
+
+Two things follow, and the second is the important one.
+
+The lines-off state is the canonical route: this document requires `showLines(0)` precisely so the editable source-vectorized boundary is not doubled. So the intermittent failure produces a **doubled boundary that the contract forbids**.
+
+And the visual gate prefers that violation. Against the same source crop:
+
+| metric | lines off (canonical) | lines on (doubled) | gate |
+| --- | --- | --- | --- |
+| `edge_f1` | 0.811466 (0.77% headroom) | 0.821642 (6.13%) | min 0.810 |
+| `edge_score` | 0.750114 (2.01%) | 0.746058 (0.41%) | min 0.745 |
+| `ssim_score` | 0.803696 | 0.801233 | min 0.777 |
+| `color_score` | 0.970851 | 0.975088 | min 0.920 |
+
+Both states pass, and each sits within roughly 2% of a different floor, so neither is comfortable. But `edge_f1` rewards the doubled boundary by +0.0102 -- a second boundary matches more source edge pixels -- which means the metric that is supposed to police boundary fidelity scores the contract violation higher than the compliant render. The promoted p18 baseline is a lines-on run, so the retained Fig12 evidence records the doubled-boundary state. Re-promoting Fig12 against a compliant render would leave `edge_f1` at 0.77% of budget, so that gate needs re-derivation from the canonical route rather than inheritance from a violating one.
+
+### The round trip, and what was changed
+
+Two defects in `_apply_contour_line_style` explain the mechanism.
+
+It styled `lineColor1..3` and `lineWidth1..3` while every panel declares **four** z-levels, so the fourth contour line kept Origin's default styling. That is exactly what the stray segments are: 433 pure-black pixels forming two full-height vertical lines, black rather than the configured `(86, 107, 68)` because that slot was never written.
+
+More importantly, the overlay route enabled the lines and then disabled them: `_apply_contour_line_style` ended with `showLines(1)` and `updateScale()`, and the caller then issued a bare `showLines(0)` with no commit of its own. The exported page therefore depended on whether that trailing command took effect. Adding `updateScale()` after it does **not** help and makes it worse -- that re-commits the colormap from its scale settings and restores the `showLines(1)` just set.
+
+The function now takes the final visibility as an argument, styles all four slots, and sets colour, width, visibility and labels in one committed block. The overlay route asks for lines-off directly, so the enable-then-disable round trip no longer exists and cannot be half-applied.
+
+Evidence for the change: 40 standalone live runs plus a full five-figure batch all produced byte-identical canonical exports, against a measured baseline failure rate of 2 in 27 (7.4%). Zero failures in 40 runs has p ~ 0.046 under that baseline, which is suggestive rather than conclusive on its own; the structural argument -- the command that produced the failing state is no longer issued -- carries the rest. Fig3, Fig14, Fig15 and Fig16 exports are unchanged byte for byte. Detection remains available through `scripts/compare_five_figure_batches.py`, and a Fig12 promotion claim should still state which state it captured.
+
+## Export supersampling
+
+`extract_aa2195_fresh_source_bundle.py` rasterises the source crops with PyMuPDF at scale 2.0-3.0, so a source crop carries a soft anti-aliased edge. Origin exports at the benchmark canvas 1:1, which does not. Measured on Fig3: the source has 256 distinct grey levels and 8.22% intermediate-grey pixels, the 1:1 export has 158 levels and 5.04%. That gap, not missing geometry, accounts for essentially all of Fig3's ink deficit -- the export is *darker* than the source in the very-dark band and short only in the mid-grey halo.
+
+The optional `export_supersample` candidate parameter (integer, 1-4, default 1) renders the page at N times the canvas and resamples down with Lanczos, reproducing that edge physics. It changes only how the page is rasterised; the Worksheet bindings, plots and OPJU are untouched. `export_supersample=1` is the promoted path and is byte-identical to a build without the parameter. Any factor above 1 is recorded in the builder route and changes `render_identity.fingerprint`, so a supersampled export cannot be mistaken for a 1:1 one. `_effective_builder_route` in `scripts/origin_candidate_worker.py` is an allowlist: a route key missing from it is dropped silently, so a new rendering parameter must be registered there or it will not reach the identity.
+
+Measured same-run on administrator Origin 2022:
+
+| figure | metric | gate | N=1 | N=2 | N=3 |
+| --- | --- | --- | --- | --- | --- |
+| Fig3 | `foreground_f1` | min 0.520 | 0.535192 | 0.585823 | 0.591160 |
+| Fig3 | `edge_f1` | min 0.550 | 0.569649 | 0.605866 | 0.612261 |
+| Fig3 | `ssim_score` | min 0.650 | 0.732804 | 0.747381 | 0.746974 |
+| Fig3 | `nonwhite_delta` | max 0.030 | 0.026751 | 0.006893 | 0.007398 |
+| Fig3 | `color_score` | min 0.900 | 0.929951 | 0.911270 | 0.941897 |
+| Fig14 | `edge_f1` | min 0.440 | 0.453847 | **0.424573 fails** | 0.466741 |
+| Fig14 | `foreground_f1` | min 0.430 | 0.448658 | 0.465190 | 0.454363 |
+| Fig14 | `registration_abs_dy_px` | max 6.0 | 5.500000 | 6.000000 | 6.000000 |
+| Fig14 | `nonwhite_delta` | max 0.012 | 0.009684 | 0.001304 | 0.004062 |
+
+Fig3 improves on every gate at N=3 and its `near_threshold_metrics` empties from `['edge_f1', 'foreground_f1']` to `[]`. Fig14 does not: N=2 fails `edge_f1` outright, and although N=3 passes, it drives `registration_abs_dy_px` to exactly its 6.0 px limit, i.e. zero headroom. Supersampling is therefore a per-figure decision backed by a same-run measurement, not a global default, and none of these variants is promoted. Promotion still requires the full live gate set plus the recorded identity.
+
 ## Fresh-extract release execution
 
 When the source PDF is supplied and old data is disallowed, the accepted AA2195 route is a same-run `fresh_extract` batch. Use a new or empty output root, resolve Python 3.10 with `scripts/resolve_python310.ps1`, run `scripts/assert_admin_preflight.py` elevated, and attach to exactly one visible administrator Origin 2022 process. The batch must create a new `source_bundle/source_bundle.json`, materialize per-figure candidates from that same manifest, run Fig3/Fig12/Fig14/Fig15/Fig16 live workers, and finish with `live_validation_status.json` plus `five_figure_batch_audit.json`.

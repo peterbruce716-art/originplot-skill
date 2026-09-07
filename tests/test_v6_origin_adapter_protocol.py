@@ -79,7 +79,9 @@ def test_adapter_rejects_unknown_operation_before_origin_execution() -> None:
             {"op": "typo_silent_operation"},
         ),
     )
-    with pytest.raises(RuntimeError, match="E520_OPERATION_PLAN_INVALID.*typo_silent_operation"):
+    with pytest.raises(
+        RuntimeError, match="E520_OPERATION_PLAN_INVALID.*typo_silent_operation"
+    ):
         _validate_operation_names(plan)
 
 
@@ -97,7 +99,11 @@ def test_adapter_uses_reusable_selected_template_path() -> None:
         plot_type="line",
         source={"path": "data.csv"},
         profile="standard",
-        metadata={"template_decision": {"selected": {"path": r"C:\\Templates\\paper.otpu", "reusable": True}}},
+        metadata={
+            "template_decision": {
+                "selected": {"path": r"C:\\Templates\\paper.otpu", "reusable": True}
+            }
+        },
     )
     assert _template_for(plan) == r"C:\\Templates\\paper.otpu"
 
@@ -108,7 +114,11 @@ def test_adapter_falls_back_when_template_has_no_reusable_path() -> None:
         plot_type="stacked_bar",
         source={"path": "data.csv"},
         profile="standard",
-        metadata={"template_decision": {"selected": {"detail_url": "https://example.invalid", "reusable": False}}},
+        metadata={
+            "template_decision": {
+                "selected": {"detail_url": "https://example.invalid", "reusable": False}
+            }
+        },
     )
     assert _template_for(plan) == "COLUMN"
 
@@ -208,7 +218,9 @@ def test_heatmap_live_adapter_fails_closed_before_origin_plot_call() -> None:
 
         def add_plot(self, *_args, **_kwargs):
             self.calls += 1
-            raise AssertionError("heatmap must be blocked before Origin add_plot is called")
+            raise AssertionError(
+                "heatmap must be blocked before Origin add_plot is called"
+            )
 
     class Writer:
         sheet = object()

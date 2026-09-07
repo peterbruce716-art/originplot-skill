@@ -4,7 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from . import fig3_builder, fig12_builder, fig14_builder, fig15_builder, fig16_builder
-from .common_origin_utils import find_graph, fit_page_to_window
+from .common_origin_utils import (
+    export_page_png,
+    find_graph,
+    fit_page_to_window,
+    resolve_export_supersample,
+)
 from .readback import (
     inspect_page,
     validate_axis_contract,
@@ -47,10 +52,18 @@ def _page_names(page: Any) -> set[str]:
     return names
 
 
-def _validate_required_worksheet_books(op: Any, expected_names: list[str]) -> dict[str, Any]:
+def _validate_required_worksheet_books(
+    op: Any, expected_names: list[str]
+) -> dict[str, Any]:
     expected = [str(name) for name in expected_names if str(name)]
     if not expected:
-        return {"status": "not_required", "expected": [], "found": [], "missing": [], "aliases": {}}
+        return {
+            "status": "not_required",
+            "expected": [],
+            "found": [],
+            "missing": [],
+            "aliases": {},
+        }
 
     found: set[str] = set()
     aliases: dict[str, list[str]] = {}
@@ -83,7 +96,9 @@ def _validate_required_worksheet_books(op: Any, expected_names: list[str]) -> di
         "expected": expected,
         "found": sorted(name for name in found if name in expected),
         "missing": missing,
-        "aliases": {name: aliases.get(name, [name]) for name in expected if name not in missing},
+        "aliases": {
+            name: aliases.get(name, [name]) for name in expected if name not in missing
+        },
     }
 
 
@@ -94,7 +109,12 @@ def _validate_worksheet_row_budget(
 ) -> dict[str, Any]:
     expected = [str(name) for name in expected_names if str(name)]
     if not expected:
-        return {"status": "not_required", "limit": int(limit), "total_rows": 0, "worksheets": []}
+        return {
+            "status": "not_required",
+            "limit": int(limit),
+            "total_rows": 0,
+            "worksheets": [],
+        }
     finder = getattr(op, "find_book", None)
     enumerated_books: dict[str, Any] = {}
     try:
@@ -112,7 +132,9 @@ def _validate_worksheet_row_budget(
                 book = finder("w", name)
         except Exception as exc:
             book = None
-            errors.append({"worksheet_book": name, "error": f"{exc.__class__.__name__}: {exc}"})
+            errors.append(
+                {"worksheet_book": name, "error": f"{exc.__class__.__name__}: {exc}"}
+            )
         if book is None:
             errors.append({"worksheet_book": name, "error": "worksheet book not found"})
             continue
@@ -122,19 +144,43 @@ def _validate_worksheet_row_budget(
             try:
                 sheets = list(book)
             except Exception as exc:
-                errors.append({"worksheet_book": name, "error": f"worksheet enumeration unavailable: {exc.__class__.__name__}: {exc}"})
+                errors.append(
+                    {
+                        "worksheet_book": name,
+                        "error": f"worksheet enumeration unavailable: {exc.__class__.__name__}: {exc}",
+                    }
+                )
                 continue
         for index, sheet in enumerate(sheets):
             try:
                 shape = tuple(int(value) for value in sheet.shape)
                 rows = int(shape[0])
             except Exception as exc:
-                errors.append({"worksheet_book": name, "worksheet_index": str(index), "error": f"row shape unavailable: {exc.__class__.__name__}: {exc}"})
+                errors.append(
+                    {
+                        "worksheet_book": name,
+                        "worksheet_index": str(index),
+                        "error": f"row shape unavailable: {exc.__class__.__name__}: {exc}",
+                    }
+                )
                 continue
-            records.append({"worksheet_book": name, "worksheet_index": index, "rows": rows, "shape": list(shape)})
+            records.append(
+                {
+                    "worksheet_book": name,
+                    "worksheet_index": index,
+                    "rows": rows,
+                    "shape": list(shape),
+                }
+            )
     total_rows = sum(int(record["rows"]) for record in records)
     status = "ok" if not errors and total_rows <= int(limit) else "failed"
-    return {"status": status, "limit": int(limit), "total_rows": total_rows, "worksheets": records, "errors": errors}
+    return {
+        "status": status,
+        "limit": int(limit),
+        "total_rows": total_rows,
+        "worksheets": records,
+        "errors": errors,
+    }
 
 
 def _validate_worksheet_binding_inventory(
@@ -170,7 +216,7 @@ def build_origin_figure(
     output_dir: Path | None = None,
     attach_existing_authorized: bool = True,
     require_administrator: bool = True,
-    allow_diagnostic_hidden: bool = False,
+    allow_diagnostic_new: bool = False,
 ) -> dict[str, Any]:
     if figure_id not in BUILDERS:
         return {
@@ -179,14 +225,14 @@ def build_origin_figure(
             "error_code": "E100_SCHEMA_INVALID",
             "message": f"Unknown figure_id: {figure_id}",
         }
-    if not attach_existing_authorized and not allow_diagnostic_hidden:
+    if not attach_existing_authorized and not allow_diagnostic_new:
         return {
             "schema": "originplot.build_origin_figure.v588",
             "status": "failed",
             "error_code": "E121_ATTACH_POLICY_VIOLATION",
             "message": (
                 "Formal OriginPlot runs default to administrator attach-existing. "
-                "Hidden or newly created Origin sessions are diagnostic-only and cannot be promoted."
+                "Newly created Origin sessions are diagnostic-only and cannot be promoted."
             ),
             "attach_existing_authorized": False,
             "opju_generation_allowed": False,
@@ -225,6 +271,8 @@ def build_origin_figure(
     pre_png = output_dir / f"{figure_id}_builder_pre_save.png"
     png = output_dir / f"{figure_id}_builder_post_reopen.png"
     params = candidate_params or {}
+    export_supersample = resolve_export_supersample(params)
+    export_evidence: dict[str, Any] = {}
     build_record: dict[str, Any] = {}
     build_session: dict[str, str] = {}
     editable_view_evidence: dict[str, Any] = {}
@@ -232,17 +280,31 @@ def build_origin_figure(
         op,
         attach_existing_authorized=attach_existing_authorized,
         require_administrator=False,
-        allow_diagnostic_hidden=allow_diagnostic_hidden,
+        allow_diagnostic_new=allow_diagnostic_new,
     ) as build_session:
         if attach_existing_authorized:
             op.new(asksave=False)
         build_record = BUILDERS[figure_id](op, params)
         page = find_graph(op, build_record["page_name"])
         if page is None:
-            raise RuntimeError(f"Built graph page not found before save: {build_record['page_name']}")
+            raise RuntimeError(
+                f"Built graph page not found before save: {build_record['page_name']}"
+            )
         editable_view_evidence["pre_save"] = fit_page_to_window(page)
-        export_width = int(build_record.get("canvas_size", (1200, 0))[0])
-        page.save_fig(str(pre_png), type="png", replace=True, width=export_width)
+        # Opt-in only. The default of 1 keeps the promoted 1:1 export byte for
+        # byte. A factor above 1 is recorded in the builder route, and
+        # "export_supersample" is registered in the _effective_builder_route
+        # allowlist in scripts/origin_candidate_worker.py so it reaches the
+        # render identity; without that registration the key is dropped and a
+        # supersampled export would carry a 1:1 export's fingerprint.
+        if export_supersample != 1:
+            build_record["export_supersample"] = export_supersample
+        export_evidence["pre_save"] = export_page_png(
+            page,
+            pre_png,
+            build_record.get("canvas_size", (1200, 0)),
+            export_supersample,
+        )
         build_session["pre_save_demo_gate"] = assert_no_demo_watermark(pre_png)
         op.save(str(opju))
 
@@ -255,15 +317,19 @@ def build_origin_figure(
         op,
         attach_existing_authorized=attach_existing_authorized,
         require_administrator=False,
-        allow_diagnostic_hidden=allow_diagnostic_hidden,
-        expected_origin_pid=int(build_session["origin_pid"]) if attach_existing_authorized else None,
+        allow_diagnostic_new=allow_diagnostic_new,
+        expected_origin_pid=int(build_session["origin_pid"])
+        if attach_existing_authorized
+        else None,
     ) as reopen_session:
         if attach_existing_authorized:
             op.new(asksave=False)
         editable_open_evidence = open_opju_editable(op, opju)
         page = find_graph(op, build_record["page_name"])
         if page is None:
-            raise RuntimeError(f"Built graph page not found after reopen: {build_record['page_name']}")
+            raise RuntimeError(
+                f"Built graph page not found after reopen: {build_record['page_name']}"
+            )
         editable_view_evidence["post_reopen"] = fit_page_to_window(page)
         # Persist the fitted edit view in the delivered OPJU. This affects only
         # the Origin window zoom; the fixed page dimensions and exports are unchanged.
@@ -271,7 +337,9 @@ def build_origin_figure(
         readback = inspect_page(
             op,
             page,
-            expected_graphobject_names_by_layer=build_record.get("required_graphobject_names_by_layer"),
+            expected_graphobject_names_by_layer=build_record.get(
+                "required_graphobject_names_by_layer"
+            ),
         )
         worksheet_readback = _validate_required_worksheet_books(
             op,
@@ -280,10 +348,15 @@ def build_origin_figure(
         worksheet_row_budget = _validate_worksheet_row_budget(
             op,
             build_record.get("required_worksheet_books", []),
-            int(build_record.get("max_direct_plot_worksheet_rows", MAX_DIRECT_PLOT_WORKSHEET_ROWS)),
+            int(
+                build_record.get(
+                    "max_direct_plot_worksheet_rows", MAX_DIRECT_PLOT_WORKSHEET_ROWS
+                )
+            ),
         )
-        export_width = int(build_record.get("canvas_size", (1200, 0))[0])
-        page.save_fig(str(png), type="png", replace=True, width=export_width)
+        export_evidence["post_reopen"] = export_page_png(
+            page, png, build_record.get("canvas_size", (1200, 0)), export_supersample
+        )
 
     expected = int(build_record["expected_plot_count"])
     actual = int(readback.get("plot_count", 0))
@@ -327,7 +400,9 @@ def build_origin_figure(
         declared_checks.append(layer_plot_count_validation["status"] == "ok")
     if expected_graphobjects > 0:
         declared_checks.append(actual_graphobjects >= expected_graphobjects)
-    axis_validation = validate_axis_contract(readback, build_record.get("axis_contract", []))
+    axis_validation = validate_axis_contract(
+        readback, build_record.get("axis_contract", [])
+    )
     if axis_validation["status"] != "not_required":
         declared_checks.append(axis_validation["status"] == "ok")
     graphobject_contract_validation = validate_graphobject_contracts(
@@ -355,7 +430,9 @@ def build_origin_figure(
         readback, build_record.get("legend_plot_reference_contracts", [])
     )
     if "legend_plot_reference_contracts" in build_record:
-        declared_checks.append(legend_plot_reference_validation["status"] in {"ok", "not_required"})
+        declared_checks.append(
+            legend_plot_reference_validation["status"] in {"ok", "not_required"}
+        )
     plot_style_validation = validate_plot_style_contracts(
         readback, build_record.get("plot_style_contracts", [])
     )
@@ -373,6 +450,7 @@ def build_origin_figure(
             {"path": str(pre_png), "phase": "pre_save"},
             {"path": str(png), "phase": "post_reopen"},
         ],
+        "origin_export_evidence": export_evidence,
         "origin_object_readback": {build_record["page_name"]: readback},
         "origin_object_readback_validation": {
             "status": "ok" if structure_ok else "failed",
@@ -409,11 +487,11 @@ def build_origin_figure(
         "session_mode": (
             "administrator_attach_existing_authorized_two_phase"
             if attach_existing_authorized
-            else "diagnostic_new_hidden_origin_then_clean_reopen_not_pass_eligible"
+            else "diagnostic_new_visible_origin_then_clean_reopen_not_pass_eligible"
         ),
         "default_origin_policy": "administrator_attach_existing_visible_origin",
         "attach_existing_authorized": bool(attach_existing_authorized),
         "require_administrator": bool(require_administrator),
-        "allow_diagnostic_hidden": bool(allow_diagnostic_hidden),
+        "allow_diagnostic_new": bool(allow_diagnostic_new),
         "per_figure": {figure_id: figure_result},
     }

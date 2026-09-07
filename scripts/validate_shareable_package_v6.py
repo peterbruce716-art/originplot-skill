@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -86,27 +87,60 @@ def validate(path: Path) -> list[str]:
         if missing:
             errors.append("missing required v6 package files: " + ", ".join(missing))
 
-        banned_binary = sorted(name for name in names if Path(name).suffix.lower() in BANNED_SUFFIXES)
+        banned_binary = sorted(
+            name for name in names if Path(name).suffix.lower() in BANNED_SUFFIXES
+        )
         if banned_binary:
-            errors.append("forbidden generated/private data files: " + ", ".join(banned_binary[:10]))
+            errors.append(
+                "forbidden generated/private data files: "
+                + ", ".join(banned_binary[:10])
+            )
 
-        legacy_prefix = sorted(name for name in names if name.startswith(BANNED_PREFIXES))
+        legacy_prefix = sorted(
+            name for name in names if name.startswith(BANNED_PREFIXES)
+        )
         if legacy_prefix:
-            errors.append("default v6 package contains benchmark/legacy/tooling roots: " + ", ".join(legacy_prefix[:10]))
+            errors.append(
+                "default v6 package contains benchmark/legacy/tooling roots: "
+                + ", ".join(legacy_prefix[:10])
+            )
 
         legacy_files = sorted(BANNED_FILES & names)
         if legacy_files:
-            errors.append("default v6 package contains legacy or duplicate files: " + ", ".join(legacy_files))
+            errors.append(
+                "default v6 package contains legacy or duplicate files: "
+                + ", ".join(legacy_files)
+            )
 
         if any("-v5" in Path(name).name.lower() for name in names):
             errors.append("default v6 package must not ship v5-named contracts")
 
         if "version.json" in names:
             version = json.loads(archive.read("version.json").decode("utf-8"))
-            if version.get("version") != "6.0.0":
-                errors.append("package version must be 6.0.0")
+            declared = version.get("version")
+            if not isinstance(declared, str) or not declared.strip():
+                errors.append("version.json must declare a nonempty release version")
+            # A hardcoded expected version rots silently: this validator pinned
+            # "6.0.0" while pyproject.toml, CHANGELOG.md and SKILL.md all declared
+            # 6.1.2, so it certified a package whose own metadata disagreed with
+            # itself. pyproject.toml ships inside the archive, so compare the
+            # package against itself rather than against a literal.
+            elif "pyproject.toml" in names:
+                project_text = archive.read("pyproject.toml").decode("utf-8")
+                match = re.search(
+                    r'^version\s*=\s*"([^"]+)"', project_text, re.MULTILINE
+                )
+                if match is None:
+                    errors.append("pyproject.toml does not declare a project version")
+                elif declared != match.group(1):
+                    errors.append(
+                        f"version.json version {declared!r} must match "
+                        f"pyproject.toml version {match.group(1)!r}"
+                    )
             if (version.get("benchmark_evidence") or {}).get("aa2195") != "5.8.9-p18":
-                errors.append("AA2195 historical evidence identity must remain recorded in version metadata")
+                errors.append(
+                    "AA2195 historical evidence identity must remain recorded in version metadata"
+                )
 
         for profile in PROFILE_PATHS:
             if profile not in names:
@@ -115,10 +149,14 @@ def validate(path: Path) -> list[str]:
             if payload.get("schema") != "originplot.capabilities.v6":
                 errors.append(f"{profile} must use originplot.capabilities.v6")
             if payload.get("live_evidence_primitives") != []:
-                errors.append(f"{profile} must not promote live evidence in the offline package")
+                errors.append(
+                    f"{profile} must not promote live evidence in the offline package"
+                )
             authorization = payload.get("authorization") or {}
             if authorization.get("origin_worker") != "administrator_required":
-                errors.append(f"{profile} must preserve administrator-only Origin workers")
+                errors.append(
+                    f"{profile} must preserve administrator-only Origin workers"
+                )
 
     return errors
 

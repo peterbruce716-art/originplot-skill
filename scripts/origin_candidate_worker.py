@@ -644,6 +644,11 @@ def _effective_builder_route(fig_result: dict[str, Any]) -> dict[str, Any]:
         "fresh_source_data_sha256",
         "fresh_source_bundle_sha256",
         "fresh_source_pdf_sha256",
+        # Present only when the builder rendered above the benchmark canvas.
+        # This is an allowlist: a route key missing from it is dropped silently
+        # and never reaches the render identity, so a rendering change would be
+        # invisible in the evidence.
+        "export_supersample",
         "candidate_params",
     ]
     effective = {key: route[key] for key in keys if key in route}

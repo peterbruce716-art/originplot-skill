@@ -7,7 +7,9 @@ param(
     [string]$ReuseBatchRoot = $null,
     [string]$SkillRoot = $null,
     [string]$PythonExe = $null,
-    [string]$LaunchOriginExe = $null
+    [string]$LaunchOriginExe = $null,
+    [ValidateRange(1, 60)]
+    [int]$FigureDisplaySeconds = 3
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,6 +33,135 @@ $reuseBuilder = Join-Path $SkillRoot "scripts\build_validated_data_reuse_record.
 $reextractor = Join-Path $SkillRoot "scripts\reextract_validated_source_bundle.py"
 $candidateRoot = Join-Path $SkillRoot "benchmarks\aa2195\examples\candidates"
 $originProcessNames = @("Origin64", "Origin_64", "Origin_32", "Origin")
+$originLaunchExe = $null
+
+function Resolve-OriginGuiExecutable {
+    param([Parameter(Mandatory = $true)][string]$RequestedPath)
+
+    $resolvedRequest = [IO.Path]::GetFullPath($RequestedPath)
+    if (Test-Path -LiteralPath $resolvedRequest -PathType Container) {
+        $guiCandidate = Join-Path $resolvedRequest "Origin64.exe"
+        if (Test-Path -LiteralPath $guiCandidate -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $guiCandidate).Path
+        }
+        $guiCandidate = Join-Path $resolvedRequest "Origin.exe"
+        if (Test-Path -LiteralPath $guiCandidate -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $guiCandidate).Path
+        }
+        throw "E120_ENVIRONMENT_MISMATCH: no Origin GUI executable was found under $resolvedRequest."
+    }
+    if (-not (Test-Path -LiteralPath $resolvedRequest -PathType Leaf)) {
+        throw "E120_ENVIRONMENT_MISMATCH: LaunchOriginExe was not found."
+    }
+    if ([IO.Path]::GetFileName($resolvedRequest) -ieq "Origin.exe") {
+        $guiCandidate = Join-Path (Split-Path -Parent $resolvedRequest) "Origin64.exe"
+        if (Test-Path -LiteralPath $guiCandidate -PathType Leaf) {
+            return (Resolve-Path -LiteralPath $guiCandidate).Path
+        }
+    }
+    return (Resolve-Path -LiteralPath $resolvedRequest).Path
+}
+
+function Clear-OriginEmbeddingProcesses {
+    $targets = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $candidate = $_
+        $nativeProcess = Get-Process -Id $candidate.ProcessId -ErrorAction SilentlyContinue
+        $candidate.Name -like "Origin*.exe" -and [string]$candidate.CommandLine -match "(?i)-Embedding" -and
+            $nativeProcess -and $nativeProcess.MainWindowHandle -eq 0
+    })
+    $detected = @($targets | ForEach-Object { [int]$_.ProcessId })
+    $stopped = @()
+    $failures = @()
+    $skipped = @()
+    foreach ($target in $targets) {
+        try {
+            $currentTarget = Get-CimInstance Win32_Process -Filter ("ProcessId = {0}" -f $target.ProcessId) -ErrorAction Stop
+            $currentProcess = Get-Process -Id $target.ProcessId -ErrorAction SilentlyContinue
+            if (-not $currentTarget -or -not $currentProcess -or
+                $currentTarget.Name -notlike "Origin*.exe" -or
+                [string]$currentTarget.CommandLine -notmatch "(?i)-Embedding" -or
+                $currentTarget.CreationDate -ne $target.CreationDate -or
+                $currentProcess.MainWindowHandle -ne 0) {
+                $skipped += [ordered]@{ pid = [int]$target.ProcessId; reason = "identity_or_window_changed" }
+                continue
+            }
+            Stop-Process -Id ([int]$target.ProcessId) -Force -ErrorAction Stop
+            $stopped += [int]$target.ProcessId
+        } catch {
+            $failures += [ordered]@{ pid = [int]$target.ProcessId; error = $_.Exception.Message }
+        }
+    }
+    [pscustomobject]@{
+        detected_pids = @($detected | Sort-Object -Unique)
+        stopped_pids = @($stopped | Sort-Object -Unique)
+        failures = @($failures)
+        skipped = @($skipped)
+    }
+}
+
+function Get-OriginProcessRecords {
+    @(@(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue) | ForEach-Object {
+        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = {0}" -f $_.Id) -ErrorAction SilentlyContinue
+        $commandLine = if ($process) { [string]$process.CommandLine } else { "" }
+        [ordered]@{
+            pid = $_.Id
+            name = $_.ProcessName
+            main_window_handle = $_.MainWindowHandle.ToInt64()
+            executable_path = if ($process) { $process.ExecutablePath } else { $null }
+            command_line = $commandLine
+            is_embedding = $commandLine -match "(?i)-Embedding"
+        }
+    })
+}
+
+function Initialize-OriginWindowApi {
+    if (-not ("OriginPlot.NativeWindow" -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+namespace OriginPlot {
+    public static class NativeWindow {
+        [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr handle, int command);
+        [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
+        [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+        [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr handle);
+        [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    }
+}
+"@
+    }
+}
+
+function Get-OriginWindowState {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+    Initialize-OriginWindowApi
+    $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    $handle = if ($process) { $process.MainWindowHandle } else { [IntPtr]::Zero }
+    $visible = $handle -ne [IntPtr]::Zero -and [OriginPlot.NativeWindow]::IsWindowVisible($handle)
+    $iconic = $handle -ne [IntPtr]::Zero -and [OriginPlot.NativeWindow]::IsIconic($handle)
+    [pscustomobject]@{
+        pid = $ProcessId
+        main_window_handle = $handle.ToInt64()
+        is_visible = [bool]$visible
+        is_iconic = [bool]$iconic
+        restored = [bool]($visible -and -not $iconic)
+        foregrounded = [bool]($handle -ne [IntPtr]::Zero -and [OriginPlot.NativeWindow]::GetForegroundWindow() -eq $handle)
+        observed_at = (Get-Date).ToString("o")
+    }
+}
+
+function Show-OriginWindow {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+    Initialize-OriginWindowApi
+    $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
+    if ($process -and $process.MainWindowHandle -ne 0) {
+        $null = [OriginPlot.NativeWindow]::ShowWindowAsync($process.MainWindowHandle, 9)
+        $null = [OriginPlot.NativeWindow]::SetForegroundWindow($process.MainWindowHandle)
+        # Native return values describe API calls, not the resulting state.
+        Start-Sleep -Milliseconds 150
+    }
+    Get-OriginWindowState -ProcessId $ProcessId
+}
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -43,12 +174,7 @@ if (-not (Test-IsAdministrator)) {
 }
 
 if ($LaunchOriginExe) {
-    if ($SourceDataPolicy -ne "fresh_extract") {
-        throw "E132_ORIGIN_LAUNCH_CONFLICT: batch-started Origin is limited to fresh_extract runs."
-    }
-    if (-not (Test-Path -LiteralPath $LaunchOriginExe -PathType Leaf)) {
-        throw "E120_ENVIRONMENT_MISMATCH: LaunchOriginExe was not found."
-    }
+    $originLaunchExe = Resolve-OriginGuiExecutable -RequestedPath $LaunchOriginExe
 }
 
 if (Test-Path -LiteralPath $OutputRoot) {
@@ -69,6 +195,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "E120_ENVIRONMENT_MISMATCH: administrator preflight failed."
 }
 
+$originEmbeddingCleanup = Clear-OriginEmbeddingProcesses
 $sourceBundleDir = Join-Path $OutputRoot "source_bundle"
 $sourceManifest = Join-Path $sourceBundleDir "source_bundle.json"
 $reuseRecordPath = $null
@@ -140,51 +267,132 @@ foreach ($figure in $figures) {
 }
 
 if ($LaunchOriginExe) {
-    $originBeforeLaunch = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue)
-    if ($originBeforeLaunch.Count -ne 0) {
-        throw "E132_ORIGIN_LAUNCH_CONFLICT: close all visible and hidden Origin processes before a batch-started run."
+    $launchEmbeddingCleanup = Clear-OriginEmbeddingProcesses
+    $originEmbeddingCleanup.detected_pids = @($originEmbeddingCleanup.detected_pids + $launchEmbeddingCleanup.detected_pids | Sort-Object -Unique)
+    $originEmbeddingCleanup.stopped_pids = @($originEmbeddingCleanup.stopped_pids + $launchEmbeddingCleanup.stopped_pids | Sort-Object -Unique)
+    $originEmbeddingCleanup.failures = @($originEmbeddingCleanup.failures + $launchEmbeddingCleanup.failures)
+    $originBeforeLaunchRecords = @(Get-OriginProcessRecords)
+    if ($originBeforeLaunchRecords.Count -ne 0) {
+        $originConflictDetails = $originBeforeLaunchRecords | ConvertTo-Json -Compress -Depth 4
+        throw "E132_ORIGIN_LAUNCH_CONFLICT: Origin processes remain after default -Embedding cleanup; release them before a batch-started run: $originConflictDetails"
     }
-    $startedOrigin = Start-Process -FilePath $LaunchOriginExe `
-        -WorkingDirectory (Split-Path -Parent $LaunchOriginExe) `
+    $startedOrigin = Start-Process -FilePath $originLaunchExe `
+        -WorkingDirectory (Split-Path -Parent $originLaunchExe) `
+        -WindowStyle Normal `
         -PassThru
     $origin = @()
     $originLaunchDeadline = (Get-Date).AddSeconds(8)
     do {
-        $origin = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+        $originRecords = @(Get-OriginProcessRecords)
+        $origin = @($originRecords | Where-Object { $_.main_window_handle -ne 0 -and -not $_.is_embedding })
         if ($origin.Count -eq 1) { break }
         Start-Sleep -Milliseconds 100
     } while ((Get-Date) -lt $originLaunchDeadline)
 } else {
-    $origin = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
+    $originRecords = @(Get-OriginProcessRecords)
+    $origin = @($originRecords | Where-Object { $_.main_window_handle -ne 0 -and -not $_.is_embedding })
 }
-if ($origin.Count -ne 1) {
+if (-not $originRecords) { $originRecords = @(Get-OriginProcessRecords) }
+$hiddenOriginRecords = @($originRecords | Where-Object { $_.main_window_handle -eq 0 })
+if ($originRecords.Count -ne 1 -or $origin.Count -ne 1 -or $hiddenOriginRecords.Count -ne 0) {
     throw "E121_ATTACH_POLICY_VIOLATION: exactly one visible supported Origin process is required."
 }
-$originPid = $origin[0].Id
+$originPid = $origin[0].pid
+$originWindowPresentation = Show-OriginWindow -ProcessId $originPid
 $runs = @()
+$figureIndex = 0
 foreach ($figure in $figures) {
     $candidate = Join-Path $runCandidateRoot "$figure.json"
     $outputDir = Join-Path $OutputRoot $figure
     $stdout = Join-Path $OutputRoot "$figure.stdout.txt"
     $stderr = Join-Path $OutputRoot "$figure.stderr.txt"
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+    $figureIndex++
+    Write-Host ("[{0}/5] {1}: drawing in visible Origin PID {2}" -f $figureIndex, $figure, $originPid)
+    $originWindowPresentation = Show-OriginWindow -ProcessId $originPid
+    if (-not $originWindowPresentation.restored) {
+        throw "E133_ORIGIN_WINDOW_NOT_VISIBLE: cannot display Origin before $figure."
+    }
+    $figureClock = [Diagnostics.Stopwatch]::StartNew()
+    $windowSamples = @($originWindowPresentation)
+    $windowRestorationCount = 0
+    $workerArguments = @($worker, "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live", "--require-live-success")
+    # Start-Process joins ArgumentList with spaces; quote path-bearing tokens.
+    $quotedWorkerArguments = @($workerArguments | ForEach-Object { '"' + $_ + '"' })
     $process = Start-Process -FilePath $PythonExe `
-        -ArgumentList @($worker, "--figure", $figure, "--candidate", $candidate, "--output-dir", $outputDir, "--live", "--require-live-success") `
+        -ArgumentList $quotedWorkerArguments `
         -WorkingDirectory $SkillRoot `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr `
         -WindowStyle Hidden `
-        -PassThru `
-        -Wait
-    $current = @(Get-Process -Name $originProcessNames -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })
-    $pidStable = $current.Count -eq 1 -and $current[0].Id -eq $originPid
+        -PassThru
+    # Sampling ends with this worker. There is no global or background monitor.
+    while (-not $process.HasExited) {
+        $sampleBeforeRestore = Get-OriginWindowState -ProcessId $originPid
+        $windowSample = $sampleBeforeRestore
+        if (-not $sampleBeforeRestore.restored) {
+            $windowRestorationCount++
+            $windowSample = Show-OriginWindow -ProcessId $originPid
+        }
+        $windowSamples += $windowSample
+        Start-Sleep -Milliseconds 500
+        $process.Refresh()
+    }
+    $process.WaitForExit()
+    $figureClock.Stop()
+    $postWorkerWindow = Get-OriginWindowState -ProcessId $originPid
+    if (-not $postWorkerWindow.restored) {
+        $windowRestorationCount++
+        $postWorkerWindow = Show-OriginWindow -ProcessId $originPid
+    }
+    $windowSamples += $postWorkerWindow
+    $samplePath = Join-Path $outputDir "origin_window_samples.json"
+    ConvertTo-Json -InputObject @($windowSamples) -Depth 4 | Set-Content -LiteralPath $samplePath -Encoding UTF8
+    $failedSamples = @($windowSamples | Where-Object { -not $_.is_visible -or $_.is_iconic -or $_.main_window_handle -eq 0 })
+    $visibilityVerified = $failedSamples.Count -eq 0
+    $null = Show-OriginWindow -ProcessId $originPid
+    Write-Host ("[{0}/5] {1}: exit={2}, elapsed={3:N1}s, visible samples={4}/{5}; display {6}s" -f $figureIndex, $figure, $process.ExitCode, $figureClock.Elapsed.TotalSeconds, ($windowSamples.Count - $failedSamples.Count), $windowSamples.Count, $FigureDisplaySeconds)
+    Start-Sleep -Seconds $FigureDisplaySeconds
+    $postDisplayWindow = Get-OriginWindowState -ProcessId $originPid
+    # Capture anomalies before cleanup; stopping residue must not turn failure into success.
+    $preCleanupRecords = @(Get-OriginProcessRecords)
+    $preCleanupStable = $preCleanupRecords.Count -eq 1 -and $preCleanupRecords[0].pid -eq $originPid -and
+        -not $preCleanupRecords[0].is_embedding -and $preCleanupRecords[0].main_window_handle -ne 0
+    $runEmbeddingCleanup = Clear-OriginEmbeddingProcesses
+    $originEmbeddingCleanup.detected_pids = @($originEmbeddingCleanup.detected_pids + $runEmbeddingCleanup.detected_pids | Sort-Object -Unique)
+    $originEmbeddingCleanup.stopped_pids = @($originEmbeddingCleanup.stopped_pids + $runEmbeddingCleanup.stopped_pids | Sort-Object -Unique)
+    $originEmbeddingCleanup.failures = @($originEmbeddingCleanup.failures + $runEmbeddingCleanup.failures)
+    $currentRecords = @(Get-OriginProcessRecords)
+    $current = @($currentRecords | Where-Object { $_.main_window_handle -ne 0 -and -not $_.is_embedding })
+    $hiddenCurrentRecords = @($currentRecords | Where-Object { $_.main_window_handle -eq 0 })
+    $pidStable = $preCleanupStable -and $currentRecords.Count -eq 1 -and $current.Count -eq 1 -and $current[0].pid -eq $originPid -and $hiddenCurrentRecords.Count -eq 0
+    $evidenceManifestPath = Join-Path $outputDir "evidence\run_manifest.json"
+    $evidenceRunId = $null
+    if (Test-Path -LiteralPath $evidenceManifestPath -PathType Leaf) {
+        $evidenceManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $evidenceManifestPath | ConvertFrom-Json
+        $evidenceRunId = [string]$evidenceManifest.run_id
+    }
     $runs += [ordered]@{
         figure = $figure
+        run_id = $evidenceRunId
         exit_code = $process.ExitCode
         output_dir = $outputDir
         stdout = $stdout
         stderr = $stderr
-        visible_origin_pid = if ($current.Count -eq 1) { $current[0].Id } else { $null }
+        visible_origin_pid = if ($current.Count -eq 1) { $current[0].pid } else { $null }
+        origin_window_presentation = $originWindowPresentation
+        origin_window_after_worker = $postWorkerWindow
+        origin_window_after_display = $postDisplayWindow
+        origin_window_samples = $samplePath
+        visibility_sample_count = $windowSamples.Count
+        visibility_failed_sample_count = $failedSamples.Count
+        visibility_verified = $visibilityVerified
+        visibility_restore_count = $windowRestorationCount
+        elapsed_seconds = [Math]::Round($figureClock.Elapsed.TotalSeconds, 3)
+        figure_display_seconds = $FigureDisplaySeconds
+        origin_processes_before_cleanup = $preCleanupRecords
+        origin_processes_after_cleanup = $currentRecords
+        origin_cleanup = $runEmbeddingCleanup
         pid_stable = $pidStable
     }
     if (-not $pidStable) {
@@ -192,11 +400,14 @@ foreach ($figure in $figures) {
     }
 }
 
-$failedRuns = @($runs | Where-Object { $_.exit_code -ne 0 -or -not $_.pid_stable })
+$failedRuns = @($runs | Where-Object { $_.exit_code -ne 0 -or -not $_.pid_stable -or -not $_.visibility_verified -or -not $_.origin_window_after_display.restored })
 $batch = [ordered]@{
     schema = "originplot.five_figure_live_batch.v2"
+    visible_window_evidence_required = $true
+    figure_display_seconds = $FigureDisplaySeconds
     fresh_output_root_verified = $true
     admin_preflight = $adminPreflight
+    origin_embedding_cleanup = $originEmbeddingCleanup
     source_data_policy = $SourceDataPolicy
     source_pdf = if ($SourcePdf) { (Resolve-Path -LiteralPath $SourcePdf).Path } else { $null }
     source_bundle_manifest = $sourceManifest
@@ -208,6 +419,10 @@ $batch = [ordered]@{
     python_executable = $PythonExe
     python_version = $pythonVersion
     origin_launch_mode = if ($LaunchOriginExe) { "batch_started" } else { "preexisting_visible" }
+    origin_requested_exe = $LaunchOriginExe
+    origin_launch_exe = $originLaunchExe
+    origin_embedding_cleanup_stopped_pids = @($originEmbeddingCleanup.stopped_pids)
+    origin_window_presentation = $originWindowPresentation
     started_visible_origin_pid = $originPid
     completed_at = (Get-Date).ToString("o")
     status = if ($runs.Count -eq 5 -and $failedRuns.Count -eq 0) { "completed" } else { "failed" }
@@ -215,5 +430,5 @@ $batch = [ordered]@{
 }
 $batch | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $OutputRoot "live_validation_status.json") -Encoding UTF8
 
-& $PythonExe $audit --root $OutputRoot --json-out (Join-Path $OutputRoot "five_figure_batch_audit.json")
+& $PythonExe $audit --root $OutputRoot --require-visible-window-evidence --json-out (Join-Path $OutputRoot "five_figure_batch_audit.json")
 exit $LASTEXITCODE

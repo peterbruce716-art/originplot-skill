@@ -1,3 +1,9 @@
+﻿## Unreleased
+
+- Made confirmed `Origin*.exe -Embedding` cleanup the default before live batch launch and after each worker; the runner records detected/stopped PIDs, rejects any remaining Origin process before a batch-started run, and never targets visible Origin windows.
+- Standardized cleanup and diagnostic helpers to prefer the installed PowerShell 7 executable while retaining a safe PATH fallback.
+- Kept the five-figure live benchmark honest: a current Origin 2022 run is blocked by a genuine demo-watermark export gate, with no watermark bypass added.
+
 # Changelog
 
 ## v5.9.1

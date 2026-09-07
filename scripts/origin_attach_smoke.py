@@ -3,12 +3,21 @@ from __future__ import annotations
 import argparse
 import importlib.metadata as metadata
 import json
+import shutil
 import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+
+def _powershell_executable() -> str:
+    standard = Path(r"C:\Program Files\PowerShell\7\pwsh.exe")
+    if standard.is_file():
+        return str(standard)
+    return shutil.which("pwsh") or shutil.which("powershell") or "powershell"
+
 
 try:
     from scripts.origin_com_health import classify_origin_com_failure
@@ -27,7 +36,9 @@ def write_status(path: Path | None, result: dict[str, Any]) -> None:
     if path is None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def read_status(path: Path | None) -> dict[str, Any]:
@@ -53,8 +64,12 @@ def collect_recent_origin_events(since: datetime) -> list[dict[str, Any]]:
     ) % since.strftime("%Y-%m-%dT%H:%M:%S")
     try:
         completed = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", script],
-            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=15,
+            [_powershell_executable(), "-NoProfile", "-Command", script],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=15,
         )
         payload = json.loads(completed.stdout) if completed.stdout.strip() else []
         return payload if isinstance(payload, list) else [payload]
@@ -62,7 +77,9 @@ def collect_recent_origin_events(since: datetime) -> list[dict[str, Any]]:
         return []
 
 
-def cleanup_embedding_processes(*, attempts: int = 15, delay_seconds: float = 1.0) -> dict[str, Any]:
+def cleanup_embedding_processes(
+    *, attempts: int = 15, delay_seconds: float = 1.0
+) -> dict[str, Any]:
     script = (
         "$ids = @(); "
         "try { "
@@ -82,7 +99,7 @@ def cleanup_embedding_processes(*, attempts: int = 15, delay_seconds: float = 1.
             time.sleep(max(0.0, delay_seconds))
         try:
             completed = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", script],
+                [_powershell_executable(), "-NoProfile", "-Command", script],
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -90,11 +107,19 @@ def cleanup_embedding_processes(*, attempts: int = 15, delay_seconds: float = 1.
                 timeout=10,
             )
             last_returncode = completed.returncode
-            stopped.extend(int(item) for item in completed.stdout.strip().split(",") if item.strip().isdigit())
+            stopped.extend(
+                int(item)
+                for item in completed.stdout.strip().split(",")
+                if item.strip().isdigit()
+            )
         except Exception as exc:
             failures.append(f"{exc.__class__.__name__}: {exc}")
     unique = sorted(set(stopped))
-    result: dict[str, Any] = {"stopped_embedding_pids": unique, "returncode": last_returncode, "attempts": max(1, attempts)}
+    result: dict[str, Any] = {
+        "stopped_embedding_pids": unique,
+        "returncode": last_returncode,
+        "attempts": max(1, attempts),
+    }
     if failures:
         result["cleanup_errors"] = failures
     return result
@@ -103,9 +128,13 @@ def cleanup_embedding_processes(*, attempts: int = 15, delay_seconds: float = 1.
 def launch_delayed_embedding_cleanup(status_json: Path | None) -> dict[str, Any]:
     helper = Path(__file__).resolve().parent / "origin_cleanup_embedding.py"
     if status_json is not None:
-        json_out = status_json.resolve().with_name(status_json.stem + "_delayed_embedding_cleanup.json")
+        json_out = status_json.resolve().with_name(
+            status_json.stem + "_delayed_embedding_cleanup.json"
+        )
     else:
-        json_out = Path("outputs/origin_attach_smoke/delayed_embedding_cleanup.json").resolve()
+        json_out = Path(
+            "outputs/origin_attach_smoke/delayed_embedding_cleanup.json"
+        ).resolve()
     stdout_log = json_out.with_suffix(".stdout.log")
     stderr_log = json_out.with_suffix(".stderr.log")
     command = [
@@ -140,7 +169,11 @@ def launch_delayed_embedding_cleanup(status_json: Path | None) -> dict[str, Any]
             "command": command,
         }
     except Exception as exc:
-        return {"status": "failed", "error": f"{exc.__class__.__name__}: {exc}", "command": command}
+        return {
+            "status": "failed",
+            "error": f"{exc.__class__.__name__}: {exc}",
+            "command": command,
+        }
 
 
 def run_parent(args: argparse.Namespace) -> int:
@@ -159,8 +192,6 @@ def run_parent(args: argparse.Namespace) -> int:
     ]
     if args.status_json:
         command.extend(["--status-json", str(args.status_json)])
-    if args.new_hidden:
-        command.append("--new-hidden")
     try:
         completed = subprocess.run(
             command,
@@ -182,7 +213,9 @@ def run_parent(args: argparse.Namespace) -> int:
                 "output_dir": str(args.output_dir.resolve()),
                 "steps": [],
                 "errors": [],
-                "mode": args.originext_mode if args.originext_mode != "originpro" else ("new_hidden" if args.new_hidden else "attach_existing"),
+                "mode": args.originext_mode
+                if args.originext_mode != "originpro"
+                else "attach_existing",
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "python_executable": sys.executable,
                 "python_version": sys.version,
@@ -197,15 +230,21 @@ def run_parent(args: argparse.Namespace) -> int:
             {
                 "error_class": "TimeoutExpired",
                 "message": "Child process did not return from Origin attach or OriginExt constructor before timeout.",
-                "last_step": status.get("steps", [None])[-1] if status.get("steps") else None,
+                "last_step": status.get("steps", [None])[-1]
+                if status.get("steps")
+                else None,
             }
         )
         status["timeout_stdout_tail"] = str(exc.stdout or "")[-1000:]
         status["timeout_stderr_tail"] = str(exc.stderr or "")[-1000:]
         status["pre_spawn_embedding_cleanup"] = pre_cleanup
         status["embedding_cleanup"] = cleanup_embedding_processes()
-        status["delayed_embedding_cleanup"] = launch_delayed_embedding_cleanup(args.status_json)
-        health = classify_origin_com_failure(collect_recent_origin_events(datetime.now()))
+        status["delayed_embedding_cleanup"] = launch_delayed_embedding_cleanup(
+            args.status_json
+        )
+        health = classify_origin_com_failure(
+            collect_recent_origin_events(datetime.now())
+        )
         status["origin_com_health"] = health
         if health["blocking"]:
             status["error_code"] = health["error_code"]
@@ -216,10 +255,20 @@ def run_parent(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run a generic OriginPro/OriginExt smoke test.")
-    parser.add_argument("--output-dir", type=Path, default=Path("outputs/origin_attach_smoke"))
+    parser = argparse.ArgumentParser(
+        description="Run a generic OriginPro/OriginExt smoke test."
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=Path("outputs/origin_attach_smoke")
+    )
     parser.add_argument("--status-json", type=Path)
-    parser.add_argument("--new-hidden", action="store_true", help="Use originpro new-hidden mode instead of attach-existing.")
+    parser.add_argument(
+        "--allow-diagnostic-new",
+        "--new-hidden",
+        dest="allow_diagnostic_new",
+        action="store_true",
+        help="Create a visible diagnostic Origin session; --new-hidden is a deprecated compatibility alias.",
+    )
     parser.add_argument(
         "--phase-timeout-seconds",
         type=int,
@@ -229,7 +278,12 @@ def main() -> int:
     parser.add_argument("--child-process", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--originext-mode",
-        choices=["originpro", "originext_application", "originext_si", "originext_comsi"],
+        choices=[
+            "originpro",
+            "originext_application",
+            "originext_si",
+            "originext_comsi",
+        ],
         default="originpro",
         help="Use an OriginExt constructor smoke instead of originpro when not set to originpro.",
     )
@@ -245,7 +299,11 @@ def main() -> int:
         "output_dir": str(out_dir),
         "steps": [],
         "errors": [],
-        "mode": args.originext_mode if args.originext_mode != "originpro" else ("new_hidden" if args.new_hidden else "attach_existing"),
+        "mode": args.originext_mode
+        if args.originext_mode != "originpro"
+        else (
+            "diagnostic_new_visible" if args.allow_diagnostic_new else "attach_existing"
+        ),
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "python_executable": sys.executable,
         "python_version": sys.version,
@@ -270,7 +328,13 @@ def main() -> int:
             result["steps"].append(f"create_{args.originext_mode}")
             write_status(args.status_json, result)
             originext_app = class_by_mode[args.originext_mode]()
-            for command, step in [("sec -poc", "lt_sec_poc"), ("doc -s", "lt_doc_s"), ("doc -nt", "lt_doc_nt")]:
+            originext_app.Visible = originext_app.MAINWND_SHOW
+            result["steps"].append("originext_show_visible")
+            for command, step in [
+                ("sec -poc", "lt_sec_poc"),
+                ("doc -s", "lt_doc_s"),
+                ("doc -nt", "lt_doc_nt"),
+            ]:
                 result["steps"].append(step)
                 write_status(args.status_json, result)
                 originext_app.LT_execute(command)
@@ -281,12 +345,17 @@ def main() -> int:
             import originpro as op  # type: ignore
 
             result["steps"].append("after_import_originpro")
-            if args.new_hidden:
-                result["steps"].append("new_hidden")
+            if args.allow_diagnostic_new:
+                result["steps"].append("diagnostic_new_visible")
+                write_status(args.status_json, result)
+                op.set_show(True)
+                op.new(asksave=False)
             else:
                 result["steps"].append("attach")
                 write_status(args.status_json, result)
+                op.set_show(True)
                 op.attach()
+                op.set_show(True)
             result["steps"].append("new")
             write_status(args.status_json, result)
             op.new(asksave=False)
@@ -308,7 +377,9 @@ def main() -> int:
             result["status"] = "ok"
     except Exception as exc:
         result["status"] = "failed"
-        result["errors"].append({"error_class": exc.__class__.__name__, "message": str(exc)})
+        result["errors"].append(
+            {"error_class": exc.__class__.__name__, "message": str(exc)}
+        )
     finally:
         if originext_app is not None:
             for release_name in ["Detach", "Exit"]:
@@ -320,18 +391,24 @@ def main() -> int:
                     result["release"] = f"OriginExt.{release_name}()"
                     break
                 except Exception as exc:
-                    result["release"] = f"OriginExt.{release_name}() failed: {exc.__class__.__name__}: {exc}"
+                    result["release"] = (
+                        f"OriginExt.{release_name}() failed: {exc.__class__.__name__}: {exc}"
+                    )
         elif op is not None:
             try:
-                if args.new_hidden:
+                if args.allow_diagnostic_new:
                     op.exit()
                     result["release"] = "op.exit()"
                 else:
                     op.detach()
                     result["release"] = "op.detach()"
             except Exception as exc:
-                release_call = "op.exit()" if args.new_hidden else "op.detach()"
-                result["release"] = f"{release_call} failed: {exc.__class__.__name__}: {exc}"
+                release_call = (
+                    "op.exit()" if args.allow_diagnostic_new else "op.detach()"
+                )
+                result["release"] = (
+                    f"{release_call} failed: {exc.__class__.__name__}: {exc}"
+                )
         else:
             result["release"] = "not_imported"
 
