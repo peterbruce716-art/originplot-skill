@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from .common_origin_utils import (
@@ -218,10 +220,54 @@ def _add_panel(
     )
 
 
+def _canvas_layout(
+    panels: list[dict[str, Any]],
+    extraction: dict[str, Any],
+    requested_mode: str | None = None,
+) -> tuple[tuple[int, int], tuple[float, float], list[dict[str, Any]], str]:
+    mode = extraction.get("fig3_canvas_mode", "legacy")
+    if mode not in ("legacy", "full"):
+        raise ValueError("Fig3 source canvas mode must be legacy or full")
+    if requested_mode is not None and requested_mode != mode:
+        raise ValueError("Fig3 candidate canvas mode must match the source manifest")
+    canvas_size = (1245, 950) if mode == "full" else (1245, 900)
+    if tuple(extraction.get("canvas_size", (1245, 900))) != canvas_size:
+        raise ValueError("Fig3 source canvas dimensions do not match its mode")
+    route = "worksheet_backed_source_calibrated_four_layer_line"
+    if mode == "legacy":
+        return canvas_size, (12.45, 9.0), panels, route
+    clip = extraction.get("pdf_clip_points")
+    if clip != [95.0, 48.3333333333, 510.0, 365.0]:
+        raise ValueError("Fig3 full canvas requires the complete source PDF crop")
+    vertical_scale = 900.0 / canvas_size[1]
+    render_panels = []
+    for panel in panels:
+        left, top, width, height = panel["frame_percent"]
+        render_panels.append(
+            {
+                **panel,
+                "frame_percent": (
+                    left,
+                    top * vertical_scale,
+                    width,
+                    height * vertical_scale,
+                ),
+            }
+        )
+    return canvas_size, (12.45, 9.5), render_panels, route + "_full_canvas"
+
+
 def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
     fresh_source = load_fresh_figure_data(candidate_params, "fig3")
-    panels = fresh_source["data"]["panels"]
-    page_size_inches = (12.45, 9.0)
+    source_manifest = json.loads(
+        Path(fresh_source["manifest_path"]).read_text(encoding="utf-8-sig")
+    )
+    extraction = source_manifest["figures"]["fig3"].get("extraction", {})
+    canvas_size, page_size_inches, panels, route = _canvas_layout(
+        fresh_source["data"]["panels"],
+        extraction,
+        candidate_params.get("fig3_canvas_mode"),
+    )
     page = create_visible_graph_page(
         op, lname="Fig3_source_calibrated_four_panel", template="LINE"
     )
@@ -269,8 +315,8 @@ def build(op: Any, candidate_params: dict[str, Any]) -> dict[str, Any]:
         "page_name": "Fig3_source_calibrated_four_panel",
         "expected_plot_count": sum(counts.values()),
         "expected_plot_count_by_layer": counts,
-        "route": "worksheet_backed_source_calibrated_four_layer_line",
-        "canvas_size": (1245, 900),
+        "route": route,
+        "canvas_size": canvas_size,
         "page_size_inches": page_size_inches,
         "required_worksheet_books": books,
         "direct_worksheet_plot_contracts": plot_contracts,

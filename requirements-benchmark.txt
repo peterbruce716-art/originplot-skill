@@ -1,6 +1,5 @@
 -r requirements-core.txt
-pytest>=7,<9
-ruff>=0.8,<1
+-r requirements-origin.txt
 numpy>=1.23,<3
 scikit-image>=0.20,<1
 opencv-python>=4.8,<5
