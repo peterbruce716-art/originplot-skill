@@ -13,7 +13,7 @@ from originplot.runtime.doctor import doctor
 from originplot.semantic import inspect_table
 from originplot.semantic.plan import build_figurespec
 from originplot.spec import load_figure_spec
-from originplot.verification import required_artifacts
+from originplot.verification.output import verify_output
 
 
 def _print(payload: Any) -> None:
@@ -37,7 +37,9 @@ def _mapping(args: argparse.Namespace) -> dict[str, str]:
 
 def _write(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def _read_json_object(path: Path | None) -> dict[str, Any] | None:
@@ -45,7 +47,9 @@ def _read_json_object(path: Path | None) -> dict[str, Any] | None:
         return None
     payload = json.loads(path.resolve().read_text(encoding="utf-8-sig"))
     if not isinstance(payload, dict):
-        raise OriginPlotError("E340_STYLE_SPEC_INVALID", f"style JSON must contain an object: {path}")
+        raise OriginPlotError(
+            "E340_STYLE_SPEC_INVALID", f"style JSON must contain an object: {path}"
+        )
     return payload
 
 
@@ -59,22 +63,39 @@ def _add_mapping_flags(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_style_flags(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--reference-style-json", type=Path, help="confirmed visual-only suggestions extracted from a reference figure")
-    parser.add_argument("--style-json", type=Path, help="explicit user visual choices; highest precedence")
+    parser.add_argument(
+        "--reference-style-json",
+        type=Path,
+        help="confirmed visual-only suggestions extracted from a reference figure",
+    )
+    parser.add_argument(
+        "--style-json",
+        type=Path,
+        help="explicit user visual choices; highest precedence",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="originplot", description="OriginPlot v6 editable scientific plotting workflow")
+    parser = argparse.ArgumentParser(
+        prog="originplot",
+        description="OriginPlot v6 editable scientific plotting workflow",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    doctor_parser = sub.add_parser("doctor", help="read-only environment and Origin capability diagnostics")
+    doctor_parser = sub.add_parser(
+        "doctor", help="read-only environment and Origin capability diagnostics"
+    )
     doctor_parser.add_argument("--origin-version")
 
-    inspect_parser = sub.add_parser("inspect", help="inspect a scientific table without modifying it")
+    inspect_parser = sub.add_parser(
+        "inspect", help="inspect a scientific table without modifying it"
+    )
     inspect_parser.add_argument("data", type=Path)
     inspect_parser.add_argument("--sheet")
 
-    plan_parser = sub.add_parser("plan", help="freeze semantic choices into FigureSpec v6")
+    plan_parser = sub.add_parser(
+        "plan", help="freeze semantic choices into FigureSpec v6"
+    )
     plan_parser.add_argument("data", type=Path)
     plan_parser.add_argument("--sheet")
     plan_parser.add_argument("--plot-type")
@@ -83,7 +104,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_mapping_flags(plan_parser)
     _add_style_flags(plan_parser)
 
-    render_parser = sub.add_parser("render", help="compile and execute an existing FigureSpec")
+    render_parser = sub.add_parser(
+        "render", help="compile and execute an existing FigureSpec"
+    )
     render_parser.add_argument("figure_spec", type=Path)
     render_parser.add_argument("--profile", choices=PROFILE_NAMES)
     render_parser.add_argument("--output-dir", type=Path)
@@ -111,27 +134,14 @@ def _default_output(data: Path) -> Path:
 
 
 def _verify_output(output_dir: Path) -> dict[str, Any]:
-    output_dir = output_dir.resolve()
-    artifacts = required_artifacts(output_dir)
-    states = {name: path.is_file() and path.stat().st_size > 0 for name, path in artifacts.items()}
-    verification = {}
-    if artifacts["verification.json"].is_file():
-        try:
-            verification = json.loads(artifacts["verification.json"].read_text(encoding="utf-8-sig"))
-        except (OSError, json.JSONDecodeError):
-            verification = {}
-    return {
-        "output_dir": str(output_dir),
-        "artifacts": states,
-        "all_required_present": all(states.values()),
-        "live_origin_verified": bool(verification.get("live_origin_verified")),
-        "command_success": bool(verification.get("command_success")),
-    }
+    return verify_output(output_dir)
 
 
 def _planned_style_args(args: argparse.Namespace) -> dict[str, Any]:
     return {
-        "reference_style": _read_json_object(getattr(args, "reference_style_json", None)),
+        "reference_style": _read_json_object(
+            getattr(args, "reference_style_json", None)
+        ),
         "user_style": _read_json_object(getattr(args, "style_json", None)),
     }
 
@@ -158,12 +168,21 @@ def main(argv: list[str] | None = None) -> int:
             )
             output = (args.output or args.data.with_suffix(".figure.json")).resolve()
             _write(output, result)
-            _print({"status": "planned", "figure_spec": str(output), "plot_type": result["figure"]["type"]})
+            _print(
+                {
+                    "status": "planned",
+                    "figure_spec": str(output),
+                    "plot_type": result["figure"]["type"],
+                }
+            )
             return 0
         if args.command == "render":
             spec = load_figure_spec(args.figure_spec)
             profile = resolve_profile(args.profile or spec.profile)
-            output = (args.output_dir or args.figure_spec.resolve().parent / f"{spec.figure_id}_OriginPlot").resolve()
+            output = (
+                args.output_dir
+                or args.figure_spec.resolve().parent / f"{spec.figure_id}_OriginPlot"
+            ).resolve()
             result = execute(
                 profile=profile,
                 figure_spec_path=args.figure_spec,
@@ -172,7 +191,12 @@ def main(argv: list[str] | None = None) -> int:
                 require_live_success=args.require_live_success,
             )
             _print(result)
-            return 0 if result.get("command_success") or result.get("status") == "planned_not_executed" else 1
+            return (
+                0
+                if result.get("command_success")
+                or result.get("status") == "planned_not_executed"
+                else 1
+            )
         if args.command == "draw":
             output = (args.output_dir or _default_output(args.data)).resolve()
             output.mkdir(parents=True, exist_ok=True)
@@ -194,13 +218,26 @@ def main(argv: list[str] | None = None) -> int:
                 require_live_success=not args.dry_run,
             )
             _print(result)
-            return 0 if result.get("command_success") or result.get("status") == "planned_not_executed" else 1
+            return (
+                0
+                if result.get("command_success")
+                or result.get("status") == "planned_not_executed"
+                else 1
+            )
         if args.command == "verify":
             result = _verify_output(args.output_dir)
             _print(result)
-            return 0 if result["all_required_present"] and result["command_success"] else 1
+            return (
+                0 if result["all_required_present"] and result["command_success"] else 1
+            )
     except (OriginPlotError, OSError, ValueError, json.JSONDecodeError) as exc:
-        _print({"status": "failed", "error_code": getattr(exc, "code", "E100_V6_COMMAND_FAILED"), "message": str(exc)})
+        _print(
+            {
+                "status": "failed",
+                "error_code": getattr(exc, "code", "E100_V6_COMMAND_FAILED"),
+                "message": str(exc),
+            }
+        )
         return 1
     return 2
 

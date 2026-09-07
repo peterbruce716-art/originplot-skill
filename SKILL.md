@@ -83,6 +83,8 @@ Never:
 
 `uncertain` means unresolved information.
 
+For wide XY tables, automatic planning includes every recognized Y column. An explicit `--y` selects one curve. If multiple curves have error columns, use a FigureSpec with confirmed per-series error mappings; do not reuse the first error column across curves. Invalid mapped column names fail before a plan is written.
+
 ## Semantic roles
 
 Supported roles:
@@ -171,6 +173,8 @@ A verified Origin deliverable requires:
 6. binding readback;
 7. Origin export;
 8. output validation.
+
+The standalone `verify` command checks current artifact hashes, image decoding/nonblankness, PDF parsing and nonempty page streams, and recorded live gates. It does not launch Origin or reopen OPJU. Its success means the files match recorded live evidence, not a fresh native verification or authenticated evidence. Older records without artifact hashes require a new live run; do not manufacture hashes to promote historical results.
 
 ## Profiles
 
